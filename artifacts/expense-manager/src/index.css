@@ -370,6 +370,12 @@
   max-width: 400px;
 }
 
+@media (min-width: 640px) {
+  .mobile-bottom-nav-wrapper {
+    display: none !important;
+  }
+}
+
 .mobile-bottom-nav--hidden {
   transform: translateX(-50%) translateY(160%);
   opacity: 0;

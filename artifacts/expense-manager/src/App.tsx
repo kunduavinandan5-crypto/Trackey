@@ -1061,12 +1061,14 @@ function ProgressRing({ percent }: { percent: number }) {
   );
 }
 
+
 function ExpenseRow({
   expense,
   index,
   compact = false,
   onEdit,
   onDelete,
+
 }: {
   expense: Expense;
   index: number;
@@ -1078,39 +1080,81 @@ function ExpenseRow({
   return (
     <div
       data-testid={`row-expense-${expense.id}`}
-      className={`rise-in stagger-${Math.min(index + 1, 5)} group flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-muted/60 ${compact ? '' : 'border-b border-border/60'
-        }`}
+      className={`rise-in stagger-${Math.min(index + 1, 5)} group flex items-center gap-3 rounded-xl px-3 py-3.5 transition hover:bg-muted/60 ${compact ? '' : 'border-b border-border/50 last:border-0'}`}
     >
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-bold" style={{ backgroundColor: `${color}20`, color }}>
+      {/* Category icon */}
+      <span
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-bold"
+        style={{ backgroundColor: `${color}22`, color }}
+      >
         {expense.category.slice(0, 1)}
       </span>
+
+      {/* Info */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold">{expense.description}</p>
+        <p className="truncate text-sm font-bold leading-snug">{expense.description}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {expense.category} <span className="px-1">·</span> {shortDate(expense.date)}
+          {expense.category} <span className="px-1 opacity-40">·</span> {shortDate(expense.date)}
         </p>
+        {!compact && expense.notes && (
+          <p className="mt-0.5 truncate text-xs italic text-muted-foreground/70">{expense.notes}</p>
+        )}
       </div>
-      <p className="font-mono-ui text-sm font-medium">{rupees(expense.amount)}</p>
+
+      {/* Amount */}
+      <p className="font-mono-ui text-sm font-semibold tabular-nums">{rupees(expense.amount)}</p>
+
+      {/* Action buttons — always visible on mobile, hover-reveal on desktop */}
       {(onEdit || onDelete) && (
-        <div className="ml-2 hidden items-center gap-1 group-hover:flex">
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label={`Edit ${expense.description}`}
-            data-testid={`button-edit-${expense.id}`}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary"
-          >
-            <Edit3 className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={`Delete ${expense.description}`}
-            data-testid={`button-delete-${expense.id}`}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+        <div className="ml-1 flex items-center gap-0.5 sm:hidden sm:group-hover:flex">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Edit ${expense.description}`}
+              data-testid={`button-edit-${expense.id}`}
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary active:scale-95"
+            >
+              <Edit3 className="h-4 w-4" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label={`Delete ${expense.description}`}
+              data-testid={`button-delete-${expense.id}`}
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive active:scale-95"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Desktop: hover reveal only */}
+      {(onEdit || onDelete) && (
+        <div className="ml-1 hidden items-center gap-0.5 group-hover:flex max-sm:hidden">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Edit ${expense.description}`}
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+            >
+              <Edit3 className="h-4 w-4" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label={`Delete ${expense.description}`}
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1118,6 +1162,7 @@ function ExpenseRow({
 }
 
 function EmptyExpenses({ compact = false }: { compact?: boolean }) {
+
   return (
     <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-8' : 'rounded-2xl border border-dashed border-border py-16'}`}>
       <div className="grid h-12 w-12 place-items-center rounded-2xl bg-muted text-primary">
@@ -1665,7 +1710,7 @@ function SettingsPage({
   };
 
   return (
-    <div className="page-enter max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <PageIntro eyebrow="Your space" title="Settings." description="Keep your monthly context, private categories, and app preferences up to date." />
 
       {/* Account & Supabase Authentication */}
