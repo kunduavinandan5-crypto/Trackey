@@ -47,34 +47,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Check for local saved user session first
-    const savedLocalUser = localStorage.getItem('paisa_auth_user');
-    if (savedLocalUser) {
-      try {
-        const parsed = JSON.parse(savedLocalUser);
-        setUser(parsed);
-      } catch {
-        localStorage.removeItem('paisa_auth_user');
-      }
-    }
-
     if (!isSupabaseConfigured) {
+      const savedLocalUser = localStorage.getItem('paisa_auth_user');
+      if (savedLocalUser) {
+        try {
+          const parsed = JSON.parse(savedLocalUser);
+          setUser(parsed);
+        } catch {
+          localStorage.removeItem('paisa_auth_user');
+        }
+      }
       setLoading(false);
       return;
     }
 
     // Get initial Supabase session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-        getUserProfile(session.user.id).then((p) => {
-          if (p) setProfile(p);
-          else upsertUserProfile(session.user!).then(setProfile);
-        });
-      }
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (session?.user) {
+          setSession(session);
+          setUser(session.user);
+          getUserProfile(session.user.id)
+            .then((p) => {
+              if (p) setProfile(p);
+              else upsertUserProfile(session.user!).then(setProfile);
+            })
+            .catch(() => {});
+        } else {
+          setUser(null);
+          setSession(null);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
 
     // Listen for Supabase auth state changes
     const {
@@ -84,16 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         setUser(session.user);
         localStorage.setItem('paisa_auth_user', JSON.stringify(session.user));
-        
-        // When signed in or token refreshed, ensure profile exists & record login event
-        if (event === 'SIGNED_IN') {
-          await recordUserLogin(session.user);
-          const p = await upsertUserProfile(session.user);
-          if (p) setProfile(p);
-        } else {
-          getUserProfile(session.user.id).then((p) => {
+
+        try {
+          if (event === 'SIGNED_IN') {
+            await recordUserLogin(session.user);
+            const p = await upsertUserProfile(session.user);
             if (p) setProfile(p);
-          });
+          } else {
+            const p = await getUserProfile(session.user.id);
+            if (p) setProfile(p);
+          }
+        } catch (err) {
+          console.warn('[Supabase] Auth state profile/login warning:', err);
         }
       } else {
         setUser(null);
@@ -110,26 +120,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPassword = async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
-      // If keys aren't added, seamlessly log in locally with this account
       signInWithDemo(email, email.split('@')[0]);
       return { error: null };
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error && data.user) {
       setUser(data.user);
+      if (data.session) setSession(data.session);
       localStorage.setItem('paisa_auth_user', JSON.stringify(data.user));
-      // Record login event in separate table: public.user_logins
-      await recordUserLogin(data.user);
-      // Sync/upsert profile in separate table: public.profiles
-      const p = await upsertUserProfile(data.user);
-      if (p) setProfile(p);
+      try {
+        await recordUserLogin(data.user);
+        const p = await upsertUserProfile(data.user);
+        if (p) setProfile(p);
+      } catch (err) {
+        console.warn('[Supabase] Login tracking warning:', err);
+      }
     }
     return { error: error as Error | null };
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     if (!isSupabaseConfigured) {
-      // If keys aren't added, seamlessly register locally
       signInWithDemo(email, fullName || email.split('@')[0]);
       return { error: null };
     }
@@ -139,12 +150,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: fullName ? { data: { full_name: fullName } } : undefined,
     });
     if (!error && data.user) {
-      // Create profile in separate table: public.profiles
-      const p = await upsertUserProfile(data.user, fullName);
-      if (p) setProfile(p);
-      if (data.session) {
-        // Record login event in separate table: public.user_logins
-        await recordUserLogin(data.user);
+      try {
+        const p = await upsertUserProfile(data.user, fullName);
+        if (p) setProfile(p);
+        if (data.session) {
+          setUser(data.user);
+          setSession(data.session);
+          await recordUserLogin(data.user);
+        }
+      } catch (err) {
+        console.warn('[Supabase] Signup profile tracking warning:', err);
       }
     }
     return { error: error as Error | null };

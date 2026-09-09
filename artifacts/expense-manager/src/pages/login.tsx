@@ -29,9 +29,14 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // If already logged in, redirect home
+  // If already logged in, redirect home safely via useEffect
+  useEffect(() => {
+    if (user) {
+      setLocation('/');
+    }
+  }, [user, setLocation]);
+
   if (user) {
-    setLocation('/');
     return null;
   }
 

@@ -6,9 +6,15 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 import './index.css';
 
-// Register PWA Service Worker with automatic updates
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+// Register PWA Service Worker in production only (avoids dev reload loops)
+if (import.meta.env.PROD && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   registerSW({ immediate: true });
+} else if (import.meta.env.DEV && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+    }
+  });
 }
 
 createRoot(document.getElementById('root')!, {
