@@ -34,11 +34,22 @@ import {
   LogOut,
   Shield,
   X,
+  Database,
+  RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import LoginPage from '@/pages/login';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
+import {
+  saveExpenseToDb,
+  deleteExpenseFromDb,
+  fetchUserExpenses,
+  fetchUserSalaries,
+  saveSalaryToDb,
+  isRealSupabaseUser,
+} from '@/lib/db-service';
 
 type Expense = {
   id: string;
@@ -125,8 +136,10 @@ function useTheme() {
 
 
 function useFinance() {
+  const { user } = useAuth();
   const [store, setStore] = useState<FinanceStore>(loadStore);
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'danger' } | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
@@ -141,27 +154,139 @@ function useFinance() {
   const categories = [...BASE_CATEGORIES, ...store.customCategories.filter((c) => !BASE_CATEGORIES.includes(c))];
   const notify = (message: string, kind: 'success' | 'danger' = 'success') => setToast({ message, kind });
 
+  // Sync with Supabase on login or user switch
+  useEffect(() => {
+    if (!user || !isRealSupabaseUser(user)) return;
+
+    let cancelled = false;
+    const loadSupabaseData = async () => {
+      setIsSyncing(true);
+      try {
+        const [remoteExpenses, remoteSalaries] = await Promise.all([
+          fetchUserExpenses(user.id),
+          fetchUserSalaries(user.id),
+        ]);
+
+        if (cancelled) return;
+
+        setStore((current) => {
+          let mergedExpenses = current.expenses;
+          if (remoteExpenses && remoteExpenses.length > 0) {
+            const remoteMap = new Map(
+              remoteExpenses.map((e) => [
+                e.id,
+                {
+                  id: e.id,
+                  amount: Number(e.amount),
+                  description: e.description,
+                  category: e.category,
+                  date: e.date,
+                  notes: e.notes || '',
+                },
+              ])
+            );
+
+            // Upload any unsynced local expenses
+            current.expenses.forEach((localExp) => {
+              if (!remoteMap.has(localExp.id)) {
+                saveExpenseToDb(user.id, localExp);
+                remoteMap.set(localExp.id, localExp);
+              }
+            });
+
+            mergedExpenses = Array.from(remoteMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+          } else if (current.expenses.length > 0) {
+            // First time user logged in with local records: push to Supabase
+            current.expenses.forEach((e) => saveExpenseToDb(user.id, e));
+          }
+
+          let mergedSalaries = current.salaries;
+          if (remoteSalaries && Object.keys(remoteSalaries).length > 0) {
+            mergedSalaries = { ...current.salaries, ...remoteSalaries };
+          } else if (Object.keys(current.salaries).length > 0) {
+            Object.entries(current.salaries).forEach(([m, amt]) => saveSalaryToDb(user.id, m, amt));
+          }
+
+          return {
+            ...current,
+            expenses: mergedExpenses,
+            salaries: mergedSalaries,
+          };
+        });
+      } catch (err) {
+        console.warn('Supabase sync error:', err);
+      } finally {
+        if (!cancelled) setIsSyncing(false);
+      }
+    };
+
+    loadSupabaseData();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const addExpense = (expense: Omit<Expense, 'id'>) => {
-    setStore((current) => ({ ...current, expenses: [{ ...expense, id: uid() }, ...current.expenses] }));
+    const newExpense: Expense = { ...expense, id: uid() };
+    setStore((current) => ({ ...current, expenses: [newExpense, ...current.expenses] }));
     notify('Expense tucked away.');
+
+    if (user && isRealSupabaseUser(user)) {
+      saveExpenseToDb(user.id, newExpense);
+    }
   };
 
   const updateExpense = (id: string, changes: Omit<Expense, 'id'>) => {
+    const updated: Expense = { ...changes, id };
     setStore((current) => ({
       ...current,
-      expenses: current.expenses.map((expense) => (expense.id === id ? { ...changes, id } : expense)),
+      expenses: current.expenses.map((expense) => (expense.id === id ? updated : expense)),
     }));
     notify('Expense updated.');
+
+    if (user && isRealSupabaseUser(user)) {
+      saveExpenseToDb(user.id, updated);
+    }
   };
 
   const deleteExpense = (id: string) => {
     setStore((current) => ({ ...current, expenses: current.expenses.filter((expense) => expense.id !== id) }));
     notify('Expense removed.', 'danger');
+
+    if (user && isRealSupabaseUser(user)) {
+      deleteExpenseFromDb(user.id, id);
+    }
   };
 
   const setSalary = (month: string, salary: number) => {
     setStore((current) => ({ ...current, salaries: { ...current.salaries, [month]: salary } }));
     notify(`${monthLabel(month)} salary saved.`);
+
+    if (user && isRealSupabaseUser(user)) {
+      saveSalaryToDb(user.id, month, salary);
+    }
+  };
+
+  const syncWithSupabase = async () => {
+    if (!user || !isRealSupabaseUser(user)) {
+      notify('Please sign in with a Supabase account to sync.', 'danger');
+      return;
+    }
+    setIsSyncing(true);
+    notify('Syncing all data to Supabase...');
+    try {
+      for (const exp of store.expenses) {
+        await saveExpenseToDb(user.id, exp);
+      }
+      for (const [m, amt] of Object.entries(store.salaries)) {
+        await saveSalaryToDb(user.id, m, amt);
+      }
+      notify('Supabase database is fully up to date!');
+    } catch {
+      notify('Failed to complete sync.', 'danger');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const addCategory = (category: string) => {
@@ -184,6 +309,10 @@ function useFinance() {
       const customCategories = Array.isArray(imported.customCategories) ? imported.customCategories : [];
       setStore({ expenses, salaries, customCategories });
       notify('Backup restored successfully!');
+      if (user && isRealSupabaseUser(user)) {
+        expenses.forEach((e) => saveExpenseToDb(user.id, e));
+        Object.entries(salaries).forEach(([m, amt]) => saveSalaryToDb(user.id, m, amt));
+      }
       return true;
     } catch {
       notify('Could not restore backup file.', 'danger');
@@ -196,7 +325,21 @@ function useFinance() {
     notify('Your local data is clear.');
   };
 
-  return { store, categories, toast, addExpense, updateExpense, deleteExpense, setSalary, addCategory, removeCategory, importStore, reset };
+  return {
+    store,
+    categories,
+    toast,
+    isSyncing,
+    syncWithSupabase,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    setSalary,
+    addCategory,
+    removeCategory,
+    importStore,
+    reset,
+  };
 }
 
 function AppShell({
@@ -1385,7 +1528,7 @@ function SettingsPage({
   theme: 'light' | 'dark';
   toggleTheme: () => void;
 }) {
-  const { user, signOut, isConfigured } = useAuth();
+  const { user, profile, signOut, isConfigured } = useAuth();
   const [month, setMonth] = useState(monthKey());
   const [salary, setSalaryValue] = useState(String(finance.store.salaries[month] ?? ''));
   const [newCategory, setNewCategory] = useState('');
@@ -1431,28 +1574,35 @@ function SettingsPage({
 
       {/* Account & Supabase Authentication */}
       <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
-        <div className="flex items-start gap-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
-            <Shield className="h-5 w-5" />
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl">Account & Cloud Sync</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {user
+                  ? `Signed in as ${user.email}. Database is actively connected.`
+                  : 'Connect your Supabase account to sync your expenses securely across all your devices.'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-display text-2xl">Account & Cloud Sync</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {user
-                ? `Signed in as ${user.email}. Your session is securely authenticated with Supabase.`
-                : 'Connect your Supabase account to sync your expenses securely across all your devices.'}
-            </p>
-          </div>
+          {isRealSupabaseUser(user) && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-500 border border-emerald-500/20">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Supabase Connected
+            </span>
+          )}
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/40 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 font-bold text-primary">
-              {user?.email ? user.email[0].toUpperCase() : <UserIcon className="h-5 w-5 text-muted-foreground" />}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground shadow-sm">
+              {profile?.full_name ? profile.full_name[0].toUpperCase() : user?.email ? user.email[0].toUpperCase() : <UserIcon className="h-5 w-5 text-muted-foreground" />}
             </div>
             <div>
               <p className="text-sm font-bold">
-                {user ? user.user_metadata?.full_name || user.email : 'Guest / Offline Mode'}
+                {profile?.full_name || user?.user_metadata?.full_name || user?.email || 'Guest / Offline Mode'}
               </p>
               <p className="text-xs text-muted-foreground">
                 {user
@@ -1464,24 +1614,71 @@ function SettingsPage({
             </div>
           </div>
 
-          {user ? (
-            <button
-              type="button"
-              onClick={signOut}
-              data-testid="button-settings-signout"
-              className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition hover:bg-destructive/20"
-            >
-              <LogOut className="h-4 w-4" /> Sign Out
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              data-testid="button-settings-login"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-md transition hover:bg-primary/90"
-            >
-              <LogIn className="h-4 w-4" /> Sign In / Create Account
-            </Link>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {isRealSupabaseUser(user) && (
+              <button
+                type="button"
+                onClick={finance.syncWithSupabase}
+                disabled={finance.isSyncing}
+                data-testid="button-settings-sync"
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-2 text-xs font-bold text-primary transition hover:bg-primary/20 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${finance.isSyncing ? 'animate-spin' : ''}`} />
+                {finance.isSyncing ? 'Syncing...' : 'Sync with DB'}
+              </button>
+            )}
+
+            {user ? (
+              <button
+                type="button"
+                onClick={signOut}
+                data-testid="button-settings-signout"
+                className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition hover:bg-destructive/20"
+              >
+                <LogOut className="h-4 w-4" /> Sign Out
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                data-testid="button-settings-login"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-md transition hover:bg-primary/90"
+              >
+                <LogIn className="h-4 w-4" /> Sign In / Create Account
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Database Tables Overview */}
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Database className="h-3.5 w-3.5 text-primary" />
+              <span>profiles</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">User personal details</p>
+          </div>
+          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Database className="h-3.5 w-3.5 text-primary" />
+              <span>expenses</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{finance.store.expenses.length} entries</p>
+          </div>
+          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Database className="h-3.5 w-3.5 text-primary" />
+              <span>salaries</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{Object.keys(finance.store.salaries).length} recorded months</p>
+          </div>
+          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Database className="h-3.5 w-3.5 text-primary" />
+              <span>user_logins</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">Login history & audit</p>
+          </div>
         </div>
       </section>
 

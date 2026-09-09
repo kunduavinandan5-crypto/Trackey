@@ -32,6 +32,8 @@ node_modules
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.*
 /.sass-cache
 /connect.lock
 /coverage

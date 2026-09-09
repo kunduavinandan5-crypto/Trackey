@@ -7,9 +7,17 @@ import {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  recordUserLogin,
+  upsertUserProfile,
+  getUserProfile,
+  type DbProfile,
+  isRealSupabaseUser,
+} from '@/lib/db-service';
 
 interface AuthContextType {
   user: User | null;
+  profile: DbProfile | null;
   session: Session | null;
   loading: boolean;
   isConfigured: boolean;
@@ -20,22 +28,31 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   continueAsGuest: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<DbProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState<boolean>(false);
+
+  const refreshProfile = async () => {
+    if (!user || !isRealSupabaseUser(user)) return;
+    const p = await getUserProfile(user.id);
+    if (p) setProfile(p);
+  };
 
   useEffect(() => {
     // Check for local saved user session first
     const savedLocalUser = localStorage.getItem('paisa_auth_user');
     if (savedLocalUser) {
       try {
-        setUser(JSON.parse(savedLocalUser));
+        const parsed = JSON.parse(savedLocalUser);
+        setUser(parsed);
       } catch {
         localStorage.removeItem('paisa_auth_user');
       }
@@ -51,6 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         setSession(session);
         setUser(session.user);
+        getUserProfile(session.user.id).then((p) => {
+          if (p) setProfile(p);
+          else upsertUserProfile(session.user!).then(setProfile);
+        });
       }
       setLoading(false);
     });
@@ -58,13 +79,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for Supabase auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       if (session?.user) {
         setUser(session.user);
         localStorage.setItem('paisa_auth_user', JSON.stringify(session.user));
+        
+        // When signed in or token refreshed, ensure profile exists & record login event
+        if (event === 'SIGNED_IN') {
+          await recordUserLogin(session.user);
+          const p = await upsertUserProfile(session.user);
+          if (p) setProfile(p);
+        } else {
+          getUserProfile(session.user.id).then((p) => {
+            if (p) setProfile(p);
+          });
+        }
       } else {
         setUser(null);
+        setProfile(null);
         localStorage.removeItem('paisa_auth_user');
       }
       setLoading(false);
@@ -85,6 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data.user) {
       setUser(data.user);
       localStorage.setItem('paisa_auth_user', JSON.stringify(data.user));
+      // Record login event in separate table: public.user_logins
+      await recordUserLogin(data.user);
+      // Sync/upsert profile in separate table: public.profiles
+      const p = await upsertUserProfile(data.user);
+      if (p) setProfile(p);
     }
     return { error: error as Error | null };
   };
@@ -95,11 +133,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithDemo(email, fullName || email.split('@')[0]);
       return { error: null };
     }
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: fullName ? { data: { full_name: fullName } } : undefined,
     });
+    if (!error && data.user) {
+      // Create profile in separate table: public.profiles
+      const p = await upsertUserProfile(data.user, fullName);
+      if (p) setProfile(p);
+      if (data.session) {
+        // Record login event in separate table: public.user_logins
+        await recordUserLogin(data.user);
+      }
+    }
     return { error: error as Error | null };
   };
 
@@ -128,6 +175,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       factors: [],
     };
     setUser(mockUser);
+    setProfile({
+      id: mockUser.id,
+      email: mockUser.email || '',
+      full_name: name,
+    });
     localStorage.setItem('paisa_auth_user', JSON.stringify(mockUser));
   };
 
@@ -140,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setUser(null);
+    setProfile(null);
     setSession(null);
     localStorage.removeItem('paisa_auth_user');
   };
@@ -162,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        profile,
         session,
         loading,
         isConfigured: isSupabaseConfigured,
@@ -172,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         resetPassword,
         continueAsGuest,
+        refreshProfile,
       }}
     >
       {children}
