@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useLocation, Link } from 'wouter';
 import {
   ReceiptIndianRupee,
