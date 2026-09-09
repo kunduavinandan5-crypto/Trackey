@@ -1,0 +1,32 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="paisa-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1b5a53"/>
+      <stop offset="100%" stop-color="#2c9489"/>
+    </linearGradient>
+    <linearGradient id="coin-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f89e7a"/>
+      <stop offset="100%" stop-color="#e17551"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0e322f" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- App Icon Base -->
+  <rect width="512" height="512" rx="128" fill="url(#paisa-grad)"/>
+  
+  <!-- Subtle Inner Border Highlight -->
+  <rect x="8" y="8" width="496" height="496" rx="120" stroke="white" stroke-opacity="0.12" stroke-width="4"/>
+  
+  <!-- Central Badge/Coin -->
+  <circle cx="256" cy="256" r="150" fill="url(#coin-grad)" filter="url(#shadow)"/>
+  <circle cx="256" cy="256" r="148" stroke="#ffffff" stroke-opacity="0.25" stroke-width="3"/>
+  
+  <!-- Rupee Symbol -->
+  <path d="M 216 172 H 296 M 216 206 H 284 M 216 172 V 240 C 246 240 268 232 268 206 C 268 180 246 172 216 172 Z M 240 240 L 298 338" 
+        stroke="#ffffff" 
+        stroke-width="26" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+</svg>

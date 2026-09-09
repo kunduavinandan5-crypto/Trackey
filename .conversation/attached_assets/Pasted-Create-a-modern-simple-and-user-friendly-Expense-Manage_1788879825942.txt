@@ -1,0 +1,178 @@
+Create a modern, simple, and user-friendly **Expense Manager App** for managing monthly salary and expenses.
+
+### 1. Salary Setup
+
+When the user opens the app for the first time, show a **Salary Setup screen**.
+
+* Ask the user to enter their monthly salary.
+* Allow the user to select the month/year.
+* Add a **Save Salary** button.
+* After saving, automatically open the main Expense Dashboard.
+* Allow the user to edit/update their salary later.
+
+### 2. Expense Dashboard
+
+After entering the salary, show a new dashboard with:
+
+* **Monthly Salary**
+* **Total Expenses**
+* **Remaining Balance**
+* **Number of Expenses**
+* A progress bar showing how much of the salary has been spent.
+
+Example:
+
+Salary: ₹50,000
+Total Expenses: ₹18,500
+Remaining: ₹31,500
+Spent: 37%
+
+### 3. Add Expense
+
+Add a prominent **"+ Add Expense"** button.
+
+When clicked, open an expense form containing:
+
+* Expense amount
+* Expense name/description
+* Category/label
+* Date
+* Optional notes
+
+Provide predefined categories such as:
+
+* 🍔 Food
+* 🏠 Rent
+* 🚗 Travel
+* 🛒 Shopping
+* 💡 Bills
+* 🎓 Education
+* 💊 Health
+* 🎬 Entertainment
+* 💻 Work
+* 📦 Other
+
+Allow the user to create their own custom categories/labels as well.
+
+### 4. Expense List
+
+Display all expenses in a clean list/table.
+
+Each expense should show:
+
+* Expense name
+* Category
+* Date
+* Amount
+
+Example:
+
+| Expense | Category      | Date   | Amount |
+| ------- | ------------- | ------ | -----: |
+| Lunch   | Food          | 08 Sep |   ₹250 |
+| Uber    | Travel        | 08 Sep |   ₹180 |
+| Netflix | Entertainment | 07 Sep |   ₹649 |
+
+Allow the user to:
+
+* Edit an expense
+* Delete an expense
+* Search expenses
+* Filter by category
+* Filter by date
+
+### 5. Monthly Tracking
+
+Create a **Monthly Summary** section/tab.
+
+The user should be able to select any month and see:
+
+* Salary for that month
+* Total expenses
+* Remaining balance
+* Total number of transactions
+* Category-wise spending
+
+Show a simple chart displaying spending by category.
+
+Example:
+
+September 2026
+
+Salary: ₹50,000
+Expenses: ₹22,450
+Remaining: ₹27,550
+
+Category breakdown:
+
+Food → ₹5,200
+Travel → ₹3,500
+Shopping → ₹6,000
+Bills → ₹4,250
+Entertainment → ₹3,500
+
+### 6. Navigation
+
+Use a simple bottom/sidebar navigation:
+
+**Dashboard | Expenses | Add Expense | Monthly Summary | Settings**
+
+The Dashboard should always provide a quick overview of the current month.
+
+### 7. Data Persistence
+
+All salary and expense data should be saved persistently so that the user does not lose data after closing or refreshing the app.
+
+Organize data month-wise so previous months can be viewed later.
+
+### 8. UI/UX
+
+Design the app with a clean, modern financial-dashboard style.
+
+* Responsive design for desktop and mobile
+* Clean cards
+* Rounded corners
+* Simple icons
+* Clear typography
+* Easy-to-read amounts
+* Use ₹ (Indian Rupee) throughout the app
+* Use green for remaining balance/income and appropriate warning styling when expenses become high.
+* Keep the interface simple and beginner-friendly.
+
+### 9. Important Functionality
+
+The app should automatically calculate:
+
+**Remaining Balance = Salary − Total Expenses**
+
+Whenever an expense is added, edited, or deleted, update the totals immediately.
+
+If expenses exceed the salary, clearly show that the user has exceeded their monthly budget.
+
+### 10. Dashboard Example
+
+**September 2026**
+
+💰 Salary
+₹50,000
+
+💸 Expenses
+₹18,500
+
+💵 Remaining
+₹31,500
+
+📊 37% of salary spent
+
+[ + Add Expense ]
+
+Recent Expenses:
+
+* Food — ₹250
+* Travel — ₹180
+* Shopping — ₹2,500
+* Bills — ₹1,200
+
+Also include a **monthly spending chart** and a **category-wise breakdown** on the dashboard.
+
+Build the app as a complete working application, not just a static UI. Ensure all buttons, forms, calculations, filters, editing, deletion, monthly tracking, and data persistence work correctly.
