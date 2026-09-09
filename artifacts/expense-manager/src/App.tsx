@@ -388,8 +388,8 @@ function AppShell({
   return (
     <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
 
-      {/* ── Single Floating Navbar with Ambient Light Glow ── */}
-      <header className={`floating-nav-top flex${navHidden ? ' floating-nav-top--hidden' : ''}`}>
+      {/* ── Desktop Floating Navbar (hidden on mobile) ── */}
+      <header className={`floating-nav-top hidden sm:flex${navHidden ? ' floating-nav-top--hidden' : ''}`}>
         <div className="floating-nav-glow" aria-hidden="true" />
         <nav className="floating-nav-pill" aria-label="Primary navigation">
           <Brand compact />
@@ -398,15 +398,15 @@ function AppShell({
             <FloatingNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} active={location === item.href} />
           ))}
 
-          {/* Add button shifted to the middle */}
+          {/* Add button in the middle */}
           <Link
             href="/add-expense"
             data-testid="link-nav-add"
             aria-label="Add expense"
-            className="floating-nav-add-btn mx-0.5 sm:mx-1"
+            className="floating-nav-add-btn mx-1"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add</span>
+            <span>Add</span>
           </Link>
 
           {rightNavItems.map((item) => (
@@ -440,14 +440,17 @@ function AppShell({
               title="Sign In"
             >
               <LogIn className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign In</span>
+              <span>Sign In</span>
             </Link>
           )}
         </nav>
       </header>
 
+      {/* ── Mobile Bottom Navigation (hidden on sm+) ── */}
+      <MobileBottomNav location={location} theme={theme} toggleTheme={toggleTheme} />
+
       {/* ── Main Content ── */}
-      <main className="mx-auto min-h-[100dvh] max-w-[1420px] px-4 pt-24 pb-16 sm:px-8 sm:pt-28 lg:px-12">
+      <main className="mx-auto min-h-[100dvh] max-w-[1420px] px-4 pb-24 pt-6 sm:px-8 sm:pb-16 sm:pt-28 lg:px-12">
         {children}
       </main>
 
@@ -456,7 +459,7 @@ function AppShell({
         <div
           role="status"
           data-testid="status-toast"
-          className={`fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold shadow-2xl ${
+          className={`fixed bottom-24 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold shadow-2xl sm:bottom-6 ${
             toast.kind === 'danger' ? 'bg-destructive text-destructive-foreground' : 'bg-foreground text-background'
           }`}
         >
@@ -530,8 +533,77 @@ function FloatingNavItem({
       title={label}
     >
       <Icon className="h-[17px] w-[17px] shrink-0" />
-      <span className="hidden sm:inline">{label}</span>
+      <span>{label}</span>
     </Link>
+  );
+}
+
+function MobileBottomNav({
+  location,
+  theme,
+  toggleTheme,
+}: {
+  location: string;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+}) {
+  const { user } = useAuth();
+  const navItems = [
+    { href: '/', label: 'Home', icon: HomeIcon },
+    { href: '/expenses', label: 'Expenses', icon: ClipboardList },
+    { href: '/summary', label: 'Reports', icon: BarChart3 },
+    { href: '/settings', label: 'Profile', icon: UserIcon },
+  ];
+
+  return (
+    <nav className="mobile-bottom-nav sm:hidden" aria-label="Mobile navigation">
+      {/* Home & Expenses */}
+      {navItems.slice(0, 2).map((item) => {
+        const Icon = item.icon;
+        const active = location === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            data-testid={`link-mobile-${item.label.toLowerCase()}`}
+            className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
+          >
+            <Icon className="h-[22px] w-[22px]" />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+
+      {/* Centre Add Button */}
+      <Link
+        href="/add-expense"
+        data-testid="link-mobile-add"
+        aria-label="Add expense"
+        className="mobile-bottom-nav-add"
+      >
+        <span className="mobile-bottom-nav-add-icon">
+          <Plus className="h-5 w-5" />
+        </span>
+        <span>Add</span>
+      </Link>
+
+      {/* Reports & Profile */}
+      {navItems.slice(2).map((item) => {
+        const Icon = item.icon;
+        const active = location === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            data-testid={`link-mobile-${item.label.toLowerCase()}`}
+            className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
+          >
+            <Icon className="h-[22px] w-[22px]" />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
