@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pnpm --filter @workspace/expense-manager build",
+  "outputDirectory": "artifacts/expense-manager/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
