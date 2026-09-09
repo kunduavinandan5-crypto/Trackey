@@ -226,9 +226,11 @@ function AppShell({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const navItems = [
+  const leftNavItems = [
     { href: '/', label: 'Overview', icon: HomeIcon },
     { href: '/expenses', label: 'Expenses', icon: ClipboardList },
+  ];
+  const rightNavItems = [
     { href: '/summary', label: 'Summary', icon: BarChart3 },
     { href: '/settings', label: 'Settings', icon: Settings2 },
   ];
@@ -236,12 +238,28 @@ function AppShell({
   return (
     <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
 
-      {/* ── Single Floating Navbar ── */}
+      {/* ── Single Floating Navbar with Ambient Light Glow ── */}
       <header className={`floating-nav-top flex${navHidden ? ' floating-nav-top--hidden' : ''}`}>
+        <div className="floating-nav-glow" aria-hidden="true" />
         <nav className="floating-nav-pill" aria-label="Primary navigation">
           <Brand compact />
           <div className="floating-nav-divider" />
-          {navItems.map((item) => (
+          {leftNavItems.map((item) => (
+            <FloatingNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} active={location === item.href} />
+          ))}
+
+          {/* Add button shifted to the middle */}
+          <Link
+            href="/add-expense"
+            data-testid="link-nav-add"
+            aria-label="Add expense"
+            className="floating-nav-add-btn mx-0.5 sm:mx-1"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add</span>
+          </Link>
+
+          {rightNavItems.map((item) => (
             <FloatingNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} active={location === item.href} />
           ))}
           <div className="floating-nav-divider" />
@@ -253,15 +271,6 @@ function AppShell({
           >
             {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4" />}
           </button>
-          <Link
-            href="/add-expense"
-            data-testid="link-desktop-add"
-            aria-label="Add expense"
-            className="floating-nav-add-btn"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add</span>
-          </Link>
         </nav>
       </header>
 
