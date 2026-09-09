@@ -547,7 +547,26 @@ function MobileBottomNav({
   theme: 'light' | 'dark';
   toggleTheme: () => void;
 }) {
-  const { user } = useAuth();
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        const current = window.scrollY;
+        if (current > lastScrollY.current + 10 && current > 60) setHidden(true);
+        else if (current < lastScrollY.current - 6) setHidden(false);
+        lastScrollY.current = current;
+        ticking.current = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const navItems = [
     { href: '/', label: 'Home', icon: HomeIcon },
     { href: '/expenses', label: 'Expenses', icon: ClipboardList },
@@ -556,56 +575,61 @@ function MobileBottomNav({
   ];
 
   return (
-    <nav className="mobile-bottom-nav sm:hidden" aria-label="Mobile navigation">
-      {/* Home & Expenses */}
-      {navItems.slice(0, 2).map((item) => {
-        const Icon = item.icon;
-        const active = location === item.href;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            data-testid={`link-mobile-${item.label.toLowerCase()}`}
-            className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
-          >
-            <Icon className="h-[22px] w-[22px]" />
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
+    <div className={`mobile-bottom-nav-wrapper sm:hidden${hidden ? ' mobile-bottom-nav--hidden' : ''}`}>
+      {/* Ambient glow */}
+      <div className="mobile-bottom-nav-glow" aria-hidden="true" />
+      <nav className="mobile-bottom-nav-pill" aria-label="Mobile navigation">
+        {/* Home & Expenses */}
+        {navItems.slice(0, 2).map((item) => {
+          const Icon = item.icon;
+          const active = location === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-testid={`link-mobile-${item.label.toLowerCase()}`}
+              className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
+            >
+              <Icon className="h-[20px] w-[20px] shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
 
-      {/* Centre Add Button */}
-      <Link
-        href="/add-expense"
-        data-testid="link-mobile-add"
-        aria-label="Add expense"
-        className="mobile-bottom-nav-add"
-      >
-        <span className="mobile-bottom-nav-add-icon">
-          <Plus className="h-5 w-5" />
-        </span>
-        <span>Add</span>
-      </Link>
+        {/* Centre Add Button */}
+        <Link
+          href="/add-expense"
+          data-testid="link-mobile-add"
+          aria-label="Add expense"
+          className="mobile-bottom-nav-add"
+        >
+          <span className="mobile-bottom-nav-add-icon">
+            <Plus className="h-[18px] w-[18px]" />
+          </span>
+          <span>Add</span>
+        </Link>
 
-      {/* Reports & Profile */}
-      {navItems.slice(2).map((item) => {
-        const Icon = item.icon;
-        const active = location === item.href;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            data-testid={`link-mobile-${item.label.toLowerCase()}`}
-            className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
-          >
-            <Icon className="h-[22px] w-[22px]" />
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+        {/* Reports & Profile */}
+        {navItems.slice(2).map((item) => {
+          const Icon = item.icon;
+          const active = location === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-testid={`link-mobile-${item.label.toLowerCase()}`}
+              className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
+            >
+              <Icon className="h-[20px] w-[20px] shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
+
 
 function PageIntro({
   eyebrow,
