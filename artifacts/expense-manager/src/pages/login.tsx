@@ -306,10 +306,10 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleGuestMode}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-border/80 bg-muted/30 py-2.5 text-xs font-semibold text-foreground transition-all hover:bg-muted/70 active:scale-[0.98]"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 py-2.5 text-xs font-bold text-primary transition-all hover:bg-primary/20 active:scale-[0.98]"
           >
             <Sparkles className="h-3.5 w-3.5 text-accent" />
-            <span>Continue as Guest (Offline Mode)</span>
+            <span>Try Demo / Continue as Guest</span>
           </button>
 
           {/* Privacy & Supabase Footer */}

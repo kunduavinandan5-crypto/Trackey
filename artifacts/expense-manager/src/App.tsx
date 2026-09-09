@@ -58,7 +58,7 @@ type FinanceStore = {
 const STORAGE_KEY = 'paisa-pocket-finance-v1';
 const THEME_KEY = 'paisa-theme-preference';
 const BASE_CATEGORIES = ['Food', 'Rent', 'Travel', 'Shopping', 'Bills', 'Education', 'Health', 'Entertainment', 'Work', 'Other'];
-const CATEGORY_COLORS = ['#27877d', '#e18562', '#d3a53c', '#6f567a', '#4f9a9d', '#d77e99', '#739359', '#bb7650', '#53749b', '#9c8b6e'];
+const CATEGORY_COLORS = ['#6366f1', '#e18562', '#d3a53c', '#6f567a', '#4f9a9d', '#d77e99', '#739359', '#bb7650', '#53749b', '#9c8b6e'];
 
 const monthKey = (date = new Date()) => {
   const y = date.getFullYear();
@@ -524,7 +524,7 @@ function MetricCard({
   testId: string;
 }) {
   const tones = {
-    mint: 'bg-[#d8eee3] text-[#123832] dark:bg-[#1a3832] dark:text-[#a8d8bd]',
+    mint: 'bg-[#e0e7ff] text-[#3730a3] dark:bg-[#1e1b4b] dark:text-[#c7d2fe]',
     coral: 'bg-[#f4d8cc] text-[#4a2218] dark:bg-[#3d241d] dark:text-[#f4b8a5]',
     cream: 'bg-[#f0e6c7] text-[#423315] dark:bg-[#38311d] dark:text-[#f0d99d]',
     plum: 'bg-[#e6ddea] text-[#3b2746] dark:bg-[#34243d] dark:text-[#d9c4e2]',
@@ -1488,7 +1488,7 @@ function SettingsPage({
       {/* Salary Configuration */}
       <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
         <div className="flex items-start gap-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#d8eee3] text-primary dark:bg-[#1a3832] dark:text-[#a8d8bd]">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#e0e7ff] text-primary dark:bg-[#1e1b4b] dark:text-[#c7d2fe]">
             <Banknote className="h-5 w-5" />
           </div>
           <div>
@@ -1644,14 +1644,39 @@ function SettingsPage({
 }
 
 function Router() {
+  const { user, loading } = useAuth();
   const finance = useFinance();
   const { theme, toggleTheme } = useTheme();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg animate-pulse">
+            <ReceiptIndianRupee className="h-6 w-6" />
+          </div>
+          <span className="font-display text-xl font-bold tracking-tight">
+            paisa<span className="text-accent">.</span>
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // If unauthenticated, show Login & Signup page on startup
+  if (!user) {
+    return (
+      <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
+        <LoginPage />
+      </div>
+    );
+  }
+
   return (
     <AppShell toast={finance.toast} theme={theme} toggleTheme={toggleTheme}>
       <ErrorBoundary resetKey={location.pathname}>
         <Switch>
           <Route path="/" component={() => <HomePage finance={finance} />} />
-          <Route path="/login" component={LoginPage} />
           <Route path="/expenses" component={() => <ExpensesPage finance={finance} />} />
           <Route path="/add-expense/:id" component={() => <ExpenseFormPage finance={finance} />} />
           <Route path="/add-expense" component={() => <ExpenseFormPage finance={finance} />} />

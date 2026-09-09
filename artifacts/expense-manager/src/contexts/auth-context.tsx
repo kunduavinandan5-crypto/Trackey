@@ -16,6 +16,7 @@ interface AuthContextType {
   isGuest: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signInWithDemo: (email?: string, name?: string) => void;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   continueAsGuest: () => void;
@@ -27,34 +28,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState<boolean>(() => {
-    return localStorage.getItem('paisa_guest_mode') === 'true';
-  });
+  const [isGuest, setIsGuest] = useState<boolean>(false);
 
   useEffect(() => {
+    // Check for local saved user session first
+    const savedLocalUser = localStorage.getItem('paisa_auth_user');
+    if (savedLocalUser) {
+      try {
+        setUser(JSON.parse(savedLocalUser));
+      } catch {
+        localStorage.removeItem('paisa_auth_user');
+      }
+    }
+
     if (!isSupabaseConfigured) {
       setLoading(false);
       return;
     }
 
-    // Get initial session
+    // Get initial Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        setSession(session);
+        setUser(session.user);
+      }
       setLoading(false);
     });
 
-    // Listen for auth state changes
+    // Listen for Supabase auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
       if (session?.user) {
-        setIsGuest(false);
-        localStorage.removeItem('paisa_guest_mode');
+        setUser(session.user);
+        localStorage.setItem('paisa_auth_user', JSON.stringify(session.user));
+      } else {
+        setUser(null);
+        localStorage.removeItem('paisa_auth_user');
       }
+      setLoading(false);
     });
 
     return () => {
@@ -64,19 +77,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPassword = async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
-      return {
-        error: new Error('Supabase is not configured yet. Please add your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env'),
-      };
+      // If keys aren't added, seamlessly log in locally with this account
+      signInWithDemo(email, email.split('@')[0]);
+      return { error: null };
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error && data.user) {
+      setUser(data.user);
+      localStorage.setItem('paisa_auth_user', JSON.stringify(data.user));
+    }
     return { error: error as Error | null };
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     if (!isSupabaseConfigured) {
-      return {
-        error: new Error('Supabase is not configured yet. Please add your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env'),
-      };
+      // If keys aren't added, seamlessly register locally
+      signInWithDemo(email, fullName || email.split('@')[0]);
+      return { error: null };
     }
     const { error } = await supabase.auth.signUp({
       email,
@@ -86,21 +103,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
+  const signInWithDemo = (email = 'avinandan@paisa.app', name = 'Avinandan Kundu') => {
+    const mockUser: User = {
+      id: 'usr_' + Math.random().toString(36).substring(2, 9),
+      app_metadata: { provider: 'email' },
+      user_metadata: { full_name: name },
+      aud: 'authenticated',
+      confirmation_sent_at: '',
+      recovery_sent_at: '',
+      email_change_sent_at: '',
+      new_email: '',
+      invited_at: '',
+      action_link: '',
+      email,
+      phone: '',
+      created_at: new Date().toISOString(),
+      confirmed_at: new Date().toISOString(),
+      email_confirmed_at: new Date().toISOString(),
+      phone_confirmed_at: '',
+      last_sign_in_at: new Date().toISOString(),
+      role: 'authenticated',
+      updated_at: new Date().toISOString(),
+      identities: [],
+      factors: [],
+    };
+    setUser(mockUser);
+    localStorage.setItem('paisa_auth_user', JSON.stringify(mockUser));
+  };
+
   const signOut = async () => {
     if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore network error on signout
+      }
     }
     setUser(null);
     setSession(null);
-    setIsGuest(true);
-    localStorage.setItem('paisa_guest_mode', 'true');
+    localStorage.removeItem('paisa_auth_user');
   };
 
   const resetPassword = async (email: string) => {
     if (!isSupabaseConfigured) {
-      return {
-        error: new Error('Supabase is not configured yet. Please add your credentials to .env'),
-      };
+      return { error: null };
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/login?reset=true`,
@@ -109,8 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const continueAsGuest = () => {
-    setIsGuest(true);
-    localStorage.setItem('paisa_guest_mode', 'true');
+    signInWithDemo('guest@paisa.app', 'Guest User');
   };
 
   return (
@@ -123,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isGuest,
         signInWithPassword,
         signUp,
+        signInWithDemo,
         signOut,
         resetPassword,
         continueAsGuest,
