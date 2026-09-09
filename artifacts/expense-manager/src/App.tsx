@@ -470,11 +470,11 @@ function AppShell({
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" data-testid="link-brand" className="flex items-center gap-2.5">
-      <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-accent text-foreground shadow-sm">
-        <ReceiptIndianRupee className="h-5 w-5" />
+    <Link href="/" data-testid="link-brand" className="flex items-center gap-2">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-accent text-foreground shadow-sm sm:h-9 sm:w-9 sm:rounded-[11px]">
+        <ReceiptIndianRupee className="h-4 w-4 sm:h-5 sm:w-5" />
       </span>
-      <span className={`${compact ? 'text-lg' : 'text-xl'} font-display font-semibold tracking-tight`}>
+      <span className={`hidden sm:inline ${compact ? 'text-lg' : 'text-xl'} font-display font-semibold tracking-tight`}>
         paisa<span className="text-accent">.</span>
       </span>
     </Link>
