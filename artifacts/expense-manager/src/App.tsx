@@ -29,8 +29,14 @@ import {
   Trash2,
   TrendingDown,
   Upload,
+  User as UserIcon,
+  LogIn,
+  LogOut,
+  Shield,
   X,
 } from 'lucide-react';
+import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import LoginPage from '@/pages/login';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 
@@ -204,6 +210,7 @@ function AppShell({
   theme: 'light' | 'dark';
   toggleTheme: () => void;
 }) {
+  const { user } = useAuth();
   const [location] = useLocation();
 
   // Scroll-hide behaviour
@@ -271,6 +278,28 @@ function AppShell({
           >
             {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4" />}
           </button>
+
+          {/* User Account or Sign In */}
+          {user ? (
+            <Link
+              href="/settings"
+              data-testid="link-nav-profile"
+              className="ml-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary transition hover:bg-primary/30"
+              title={`Logged in as ${user.email}`}
+            >
+              {user.email ? user.email[0].toUpperCase() : 'U'}
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              data-testid="link-nav-login"
+              className="ml-0.5 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:bg-muted/70 hover:text-foreground"
+              title="Sign In"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sign In</span>
+            </Link>
+          )}
         </nav>
       </header>
 
@@ -1356,6 +1385,7 @@ function SettingsPage({
   theme: 'light' | 'dark';
   toggleTheme: () => void;
 }) {
+  const { user, signOut, isConfigured } = useAuth();
   const [month, setMonth] = useState(monthKey());
   const [salary, setSalaryValue] = useState(String(finance.store.salaries[month] ?? ''));
   const [newCategory, setNewCategory] = useState('');
@@ -1398,6 +1428,62 @@ function SettingsPage({
   return (
     <div className="page-enter max-w-4xl space-y-6">
       <PageIntro eyebrow="Your space" title="Settings." description="Keep your monthly context, private categories, and app preferences up to date." />
+
+      {/* Account & Supabase Authentication */}
+      <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+        <div className="flex items-start gap-4">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
+            <Shield className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-display text-2xl">Account & Cloud Sync</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {user
+                ? `Signed in as ${user.email}. Your session is securely authenticated with Supabase.`
+                : 'Connect your Supabase account to sync your expenses securely across all your devices.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/40 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 font-bold text-primary">
+              {user?.email ? user.email[0].toUpperCase() : <UserIcon className="h-5 w-5 text-muted-foreground" />}
+            </div>
+            <div>
+              <p className="text-sm font-bold">
+                {user ? user.user_metadata?.full_name || user.email : 'Guest / Offline Mode'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {user
+                  ? `Active session · ${user.email}`
+                  : isConfigured
+                  ? 'Ready to connect with your Supabase account'
+                  : 'Add Supabase keys in .env to connect'}
+              </p>
+            </div>
+          </div>
+
+          {user ? (
+            <button
+              type="button"
+              onClick={signOut}
+              data-testid="button-settings-signout"
+              className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive transition hover:bg-destructive/20"
+            >
+              <LogOut className="h-4 w-4" /> Sign Out
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              data-testid="button-settings-login"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-md transition hover:bg-primary/90"
+            >
+              <LogIn className="h-4 w-4" /> Sign In / Create Account
+            </Link>
+          )}
+        </div>
+      </section>
 
       {/* Salary Configuration */}
       <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
@@ -1565,6 +1651,7 @@ function Router() {
       <ErrorBoundary resetKey={location.pathname}>
         <Switch>
           <Route path="/" component={() => <HomePage finance={finance} />} />
+          <Route path="/login" component={LoginPage} />
           <Route path="/expenses" component={() => <ExpensesPage finance={finance} />} />
           <Route path="/add-expense/:id" component={() => <ExpenseFormPage finance={finance} />} />
           <Route path="/add-expense" component={() => <ExpenseFormPage finance={finance} />} />
@@ -1580,7 +1667,9 @@ function Router() {
 function App() {
   return (
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-      <Router />
+      <AuthProvider>
+        <Router />
+      </AuthProvider>
     </WouterRouter>
   );
 }
