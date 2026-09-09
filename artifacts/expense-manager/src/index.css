@@ -3,7 +3,7 @@
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -67,26 +67,28 @@
 }
 
 .dark {
-  --background: 201 42% 11%;
-  --foreground: 42 39% 97%;
-  --border: 201 26% 24%;
-  --input: 201 26% 24%;
-  --ring: 172 37% 54%;
-  --card: 201 36% 16%;
-  --card-foreground: 42 39% 97%;
-  --card-border: 201 26% 24%;
-  --sidebar: 201 47% 9%;
-  --sidebar-foreground: 42 39% 97%;
-  --primary: 172 37% 54%;
-  --primary-foreground: 201 42% 11%;
-  --secondary: 201 26% 24%;
-  --secondary-foreground: 42 39% 97%;
-  --muted: 201 26% 24%;
-  --muted-foreground: 201 16% 70%;
-  --accent: 15 76% 65%;
-  --accent-foreground: 201 42% 11%;
-  --destructive: 4 67% 61%;
-  --destructive-foreground: 42 39% 97%;
+  --background: 222 28% 7%;
+  --foreground: 220 20% 95%;
+  --border: 220 16% 18%;
+  --input: 220 16% 18%;
+  --ring: 142 76% 45%;
+  --card: 222 22% 11%;
+  --card-foreground: 220 20% 95%;
+  --card-border: 220 16% 17%;
+  --sidebar: 222 28% 5%;
+  --sidebar-foreground: 220 20% 95%;
+  --primary: 142 76% 45%;
+  --primary-foreground: 222 28% 7%;
+  --secondary: 220 16% 16%;
+  --secondary-foreground: 220 20% 90%;
+  --muted: 220 16% 14%;
+  --muted-foreground: 220 12% 52%;
+  --accent: 142 76% 45%;
+  --accent-foreground: 222 28% 7%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 220 20% 95%;
+  --popover: 222 22% 11%;
+  --popover-foreground: 220 20% 95%;
 }
 
 @layer base {
@@ -144,9 +146,6 @@
 .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
 
-/* ─────────────────────────────────────────
-   FLOATING TOP NAVBAR (desktop)
-───────────────────────────────────────── */
 .floating-nav-top {
   position: fixed;
   top: 1.25rem;
@@ -155,6 +154,14 @@
   z-index: 50;
   justify-content: center;
   pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: calc(100vw - 1.5rem);
+}
+
+.floating-nav-top--hidden {
+  transform: translateX(-50%) translateY(-150%);
+  opacity: 0;
 }
 
 .floating-nav-pill {
@@ -262,135 +269,6 @@
   box-shadow: 0 4px 20px hsl(var(--primary) / 0.45);
 }
 
-/* ─────────────────────────────────────────
-   FLOATING BOTTOM NAVBAR (mobile)
-───────────────────────────────────────── */
-.floating-nav-bottom {
-  position: fixed;
-  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%) translateY(0);
-  z-index: 50;
-  width: max-content;
-  align-items: center;
-  pointer-events: none;
-  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity  0.38s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 1;
-}
-
-.floating-nav-bottom--hidden {
-  transform: translateX(-50%) translateY(calc(100% + 2rem));
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Ambient glow halo */
-.floating-nav-glow {
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 110%;
-  height: 60px;
-  border-radius: 9999px;
-  background: radial-gradient(
-    ellipse at center,
-    hsl(var(--primary) / 0.7) 0%,
-    hsl(var(--accent) / 0.35) 45%,
-    transparent 70%
-  );
-  filter: blur(18px);
-  animation: glow-pulse 2.8s ease-in-out infinite;
-  pointer-events: none;
-  z-index: -1;
-}
-
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.8; transform: translateX(-50%) scaleX(1); }
-  50%       { opacity: 1;   transform: translateX(-50%) scaleX(1.06); }
-}
-
-.floating-nav-pill-mobile {
-  pointer-events: auto;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.1rem;
-  padding: 0.5rem 0.6rem;
-  border-radius: 9999px;
-  background: hsl(var(--card) / 0.92);
-  border: 1px solid hsl(var(--border) / 0.7);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  box-shadow:
-    0 0 0 1px hsl(var(--primary) / 0.12),
-    0 8px 32px hsl(var(--foreground) / 0.22),
-    inset 0 1px 0 hsl(var(--card-foreground) / 0.08);
-  width: max-content;
-}
-
-.floating-mobile-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.18rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 9999px;
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: hsl(var(--muted-foreground));
-  text-decoration: none;
-  transition: background 0.18s, color 0.18s, transform 0.15s;
-  min-width: 0;
-  white-space: nowrap;
-  text-align: center;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  outline: none;
-}
-
-.floating-mobile-item:active {
-  transform: scale(0.93);
-}
-
-.floating-mobile-item--active {
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--primary));
-}
-
-.floating-mobile-add-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 9999px;
-  /* frosted glass */
-  background: hsl(var(--primary) / 0.18);
-  border: 1.5px solid hsl(var(--primary) / 0.45);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  color: hsl(var(--primary));
-  box-shadow:
-    0 0 0 4px hsl(var(--primary) / 0.08),
-    0 4px 18px hsl(var(--primary) / 0.4),
-    inset 0 1px 0 hsl(255 100% 100% / 0.15);
-  text-decoration: none;
-  transition: transform 0.18s, box-shadow 0.22s, background 0.18s;
-  flex-shrink: 0;
-  margin: 0 0.25rem;
-}
-
-.floating-mobile-add-center:active {
-  transform: scale(0.88);
-  box-shadow:
-    0 0 0 2px hsl(var(--primary) / 0.15),
-    0 2px 8px hsl(var(--primary) / 0.3),
-    inset 0 1px 0 hsl(255 100% 100% / 0.1);
-}
 /* HOME PAGE DASHBOARD */
 .home-greeting-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem; }
 .home-greeting-sub { font-size:0.8rem; color:hsl(var(--muted-foreground)); font-weight:500; }
@@ -439,35 +317,6 @@
 @media (max-width:360px) {
   .home-budget-grid { grid-template-columns:1fr 1fr; }
   .home-bottom-grid { grid-template-columns:1fr; }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   DESKTOP DARK DASHBOARD THEME  (≥1024px always dark)
-═══════════════════════════════════════════════════════════════ */
-@media (min-width: 1024px) {
-  :root, :root.dark {
-    --background:        222 28% 7%;
-    --foreground:        220 20% 95%;
-    --border:            220 16% 18%;
-    --input:             220 16% 18%;
-    --card:              222 22% 11%;
-    --card-foreground:   220 20% 95%;
-    --card-border:       220 16% 17%;
-    --sidebar:           222 28% 5%;
-    --sidebar-foreground:220 20% 95%;
-    --primary:           142 76% 45%;
-    --primary-foreground:222 28% 7%;
-    --secondary:         220 16% 16%;
-    --secondary-foreground:220 20% 90%;
-    --muted:             220 16% 14%;
-    --muted-foreground:  220 12% 52%;
-    --accent:            142 76% 45%;
-    --accent-foreground: 222 28% 7%;
-    --destructive:       0 72% 51%;
-    --destructive-foreground:220 20% 95%;
-    --popover:           222 22% 11%;
-    --popover-foreground:220 20% 95%;
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -607,18 +456,16 @@
 .desk-spend-bar-track { height:8px; background:hsl(var(--muted)); border-radius:9999px; overflow:hidden; margin-top:.75rem; }
 .desk-spend-bar-fill  { height:100%; background:hsl(var(--primary)); border-radius:9999px; transition:width .8s cubic-bezier(.22,1,.36,1); }
 
-/* Desktop floating nav overrides — darker glass */
-@media (min-width:1024px) {
-  .floating-nav-pill {
-    background: hsl(222 22% 11% / 0.92) !important;
-    border-color: hsl(220 16% 20%) !important;
-    box-shadow: 0 4px 32px hsl(0 0% 0% / 0.45), 0 0 0 1px hsl(142 76% 45% / 0.08) !important;
-  }
-  .floating-nav-item { color: hsl(220 12% 55%); }
-  .floating-nav-item:hover { background: hsl(220 16% 16%); color: hsl(220 20% 95%); }
-  .floating-nav-item--active { background: hsl(142 76% 45% / 0.15); color: hsl(142 76% 55%) !important; }
-  .floating-nav-add-btn { background: hsl(142 76% 45%); color: hsl(222 28% 7%); }
-  .floating-nav-theme-btn { color: hsl(220 12% 55%); }
-  .floating-nav-theme-btn:hover { background: hsl(220 16% 16%); }
-  .floating-nav-divider { background: hsl(220 16% 20%) !important; }
+/* Dark floating nav overrides */
+.dark .floating-nav-pill {
+  background: hsl(222 22% 11% / 0.92) !important;
+  border-color: hsl(220 16% 20%) !important;
+  box-shadow: 0 4px 32px hsl(0 0% 0% / 0.45), 0 0 0 1px hsl(142 76% 45% / 0.08) !important;
 }
+.dark .floating-nav-item { color: hsl(220 12% 55%); }
+.dark .floating-nav-item:hover { background: hsl(220 16% 16%); color: hsl(220 20% 95%); }
+.dark .floating-nav-item--active { background: hsl(142 76% 45% / 0.15); color: hsl(142 76% 55%) !important; }
+.dark .floating-nav-add-btn { background: hsl(142 76% 45%); color: hsl(222 28% 7%); }
+.dark .floating-nav-theme-btn { color: hsl(220 12% 55%); }
+.dark .floating-nav-theme-btn:hover { background: hsl(220 16% 16%); }
+.dark .floating-nav-divider { background: hsl(220 16% 20%) !important; }

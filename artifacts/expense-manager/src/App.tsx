@@ -29,6 +29,7 @@ import {
   Trash2,
   TrendingDown,
   Upload,
+  X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
@@ -225,25 +226,22 @@ function AppShell({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const leftItems = [
+  const navItems = [
     { href: '/', label: 'Overview', icon: HomeIcon },
     { href: '/expenses', label: 'Expenses', icon: ClipboardList },
-  ];
-  const rightItems = [
     { href: '/summary', label: 'Summary', icon: BarChart3 },
     { href: '/settings', label: 'Settings', icon: Settings2 },
   ];
-  const allItems = [...leftItems, ...rightItems];
 
   return (
     <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
 
-      {/* ── Floating Top Navbar (desktop only) ── */}
-      <header className="floating-nav-top hidden lg:flex">
+      {/* ── Single Floating Navbar ── */}
+      <header className={`floating-nav-top flex${navHidden ? ' floating-nav-top--hidden' : ''}`}>
         <nav className="floating-nav-pill" aria-label="Primary navigation">
           <Brand compact />
           <div className="floating-nav-divider" />
-          {allItems.map((item) => (
+          {navItems.map((item) => (
             <FloatingNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} active={location === item.href} />
           ))}
           <div className="floating-nav-divider" />
@@ -262,75 +260,24 @@ function AppShell({
             className="floating-nav-add-btn"
           >
             <Plus className="h-4 w-4" />
-            <span>Add</span>
+            <span className="hidden sm:inline">Add</span>
           </Link>
         </nav>
       </header>
 
       {/* ── Main Content ── */}
-      <main className="mx-auto min-h-[100dvh] max-w-[1420px] px-4
-        pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]
-        pt-[calc(5.5rem+env(safe-area-inset-top,0px))]
-        sm:px-8
-        lg:px-12
-        lg:pb-12
-        lg:pt-28">
+      <main className="mx-auto min-h-[100dvh] max-w-[1420px] px-4 pt-24 pb-16 sm:px-8 sm:pt-28 lg:px-12">
         {children}
       </main>
-
-      {/* ── Floating Bottom Navbar (mobile) ── */}
-      <div className={`floating-nav-bottom flex flex-col lg:hidden${navHidden ? ' floating-nav-bottom--hidden' : ''}`}>
-        <div className="floating-nav-glow" aria-hidden="true" />
-        <nav className="floating-nav-pill-mobile" aria-label="Primary navigation">
-          {leftItems.map((item) => {
-            const isActive = location === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-testid={`link-bottom-${item.label.toLowerCase()}`}
-                className={`floating-mobile-item ${isActive ? 'floating-mobile-item--active' : ''}`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-
-          {/* Glassy centred + button */}
-          <Link
-            href="/add-expense"
-            data-testid="link-mobile-add"
-            aria-label="Add expense"
-            className="floating-mobile-add-center"
-          >
-            <Plus className="h-6 w-6" />
-          </Link>
-
-          {rightItems.map((item) => {
-            const isActive = location === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-testid={`link-bottom-${item.label.toLowerCase()}`}
-                className={`floating-mobile-item ${isActive ? 'floating-mobile-item--active' : ''}`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
 
       {/* Floating Toast */}
       {toast && (
         <div
           role="status"
           data-testid="status-toast"
-          className={`fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom,0px))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold shadow-2xl lg:bottom-8 ${toast.kind === 'danger' ? 'bg-destructive text-destructive-foreground' : 'bg-foreground text-background'
-            }`}
+          className={`fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold shadow-2xl ${
+            toast.kind === 'danger' ? 'bg-destructive text-destructive-foreground' : 'bg-foreground text-background'
+          }`}
         >
           <Check className="h-4 w-4 shrink-0" />
           <span>{toast.message}</span>
@@ -399,9 +346,10 @@ function FloatingNavItem({
       href={href}
       data-testid={`link-nav-${label.toLowerCase()}`}
       className={`floating-nav-item ${active ? 'floating-nav-item--active' : ''}`}
+      title={label}
     >
-      <Icon className="h-[17px] w-[17px]" />
-      <span>{label}</span>
+      <Icon className="h-[17px] w-[17px] shrink-0" />
+      <span className="hidden sm:inline">{label}</span>
     </Link>
   );
 }
