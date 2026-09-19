@@ -1,47 +1,71 @@
 import { type ChangeEvent, type FormEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation, useParams } from 'wouter';
 import {
+  Activity,
+  ArrowDownLeft,
   ArrowDownRight,
   ArrowLeft,
   ArrowUpRight,
+  Award,
   Banknote,
   BarChart3,
+  Bell,
+  Briefcase,
   CalendarDays,
+  Car,
   Check,
+  CheckCircle2,
   ChevronDown,
   CircleAlert,
   CircleDollarSign,
   ClipboardList,
   CreditCard,
+  Database,
   Edit3,
+  FileDown,
+  Film,
   Filter,
+  Gauge,
+  GraduationCap,
+  HeartPulse,
   Home as HomeIcon,
+  Landmark,
+  Lock,
+  LogIn,
+  LogOut,
   Moon,
   Plus,
+  Receipt,
   ReceiptIndianRupee,
+  RefreshCw,
   RotateCcw,
+  ScrollText,
   Search,
   Settings2,
+  Shield,
+  ShieldCheck,
+  ShoppingBag,
   SlidersHorizontal,
   Smartphone,
+  Sparkles,
   Sun,
   Tag,
   Trash2,
   TrendingDown,
+  TrendingUp,
   Upload,
   User as UserIcon,
-  LogIn,
-  LogOut,
-  Shield,
+  UserCog,
+  UtensilsCrossed,
+  Wallet,
   X,
-  Database,
-  RefreshCw,
-  CheckCircle2,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import LoginPage from '@/pages/login';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
+import { ReportCharts } from '@/components/report-charts';
+import { exportMonthlyExpensePdf } from '@/lib/pdf-report';
 import {
   saveExpenseToDb,
   deleteExpenseFromDb,
@@ -63,7 +87,8 @@ type Expense = {
 type FinanceStore = {
   expenses: Expense[];
   salaries: Record<string, number>;
-  customCategories: string[];
+  categories?: string[];
+  customCategories?: string[];
 };
 
 const STORAGE_KEY = 'paisa-pocket-finance-v1';
@@ -88,18 +113,69 @@ const shortDate = (date: string) =>
 const rupees = (amount: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Math.round(amount));
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning! ☀️';
+  if (hour < 17) return 'Good afternoon! 🌤️';
+  return 'Good evening! 🌙';
+}
+
+function getCategoryIcon(category: string) {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('food') || cat.includes('grocer') || cat.includes('dining') || cat.includes('restaurant') || cat.includes('tea') || cat.includes('coffee')) {
+    return UtensilsCrossed;
+  }
+  if (cat.includes('transport') || cat.includes('travel') || cat.includes('cab') || cat.includes('fuel') || cat.includes('auto') || cat.includes('metro') || cat.includes('car')) {
+    return Car;
+  }
+  if (cat.includes('shop') || cat.includes('cloth') || cat.includes('mall') || cat.includes('amazon') || cat.includes('flipkart')) {
+    return ShoppingBag;
+  }
+  if (cat.includes('health') || cat.includes('medic') || cat.includes('doctor') || cat.includes('pharmacy') || cat.includes('hospital')) {
+    return HeartPulse;
+  }
+  if (cat.includes('entertainment') || cat.includes('movie') || cat.includes('cinema') || cat.includes('netflix') || cat.includes('game') || cat.includes('music')) {
+    return Film;
+  }
+  if (cat.includes('bill') || cat.includes('electric') || cat.includes('wifi') || cat.includes('recharge') || cat.includes('rent') || cat.includes('utility')) {
+    return Receipt;
+  }
+  if (cat.includes('educat') || cat.includes('course') || cat.includes('book') || cat.includes('tuition') || cat.includes('school') || cat.includes('college')) {
+    return GraduationCap;
+  }
+  if (cat.includes('work') || cat.includes('office') || cat.includes('business')) {
+    return Briefcase;
+  }
+  if (cat.includes('salary') || cat.includes('income') || cat.includes('bonus') || cat.includes('deposit')) {
+    return Wallet;
+  }
+  return CreditCard;
+}
+
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-const fallbackStore: FinanceStore = { expenses: [], salaries: {}, customCategories: [] };
+const fallbackStore: FinanceStore = { expenses: [], salaries: {}, categories: [...BASE_CATEGORIES], customCategories: [] };
 
 function loadStore(): FinanceStore {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return fallbackStore;
     const parsed = JSON.parse(raw) as Partial<FinanceStore>;
+    let cats: string[] = [];
+    if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+      cats = parsed.categories;
+    } else {
+      const custom = Array.isArray(parsed.customCategories) ? parsed.customCategories : [];
+      const combined = [...BASE_CATEGORIES];
+      custom.forEach((c) => {
+        if (!combined.includes(c)) combined.push(c);
+      });
+      cats = combined;
+    }
     return {
       expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [],
       salaries: parsed.salaries && typeof parsed.salaries === 'object' ? parsed.salaries : {},
+      categories: cats,
       customCategories: Array.isArray(parsed.customCategories) ? parsed.customCategories : [],
     };
   } catch {
@@ -151,7 +227,7 @@ function useFinance() {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
-  const categories = [...BASE_CATEGORIES, ...store.customCategories.filter((c) => !BASE_CATEGORIES.includes(c))];
+  const categories = store.categories && store.categories.length > 0 ? store.categories : BASE_CATEGORIES;
   const notify = (message: string, kind: 'success' | 'danger' = 'success') => setToast({ message, kind });
 
   // Sync with Supabase on login or user switch
@@ -291,15 +367,39 @@ function useFinance() {
 
   const addCategory = (category: string) => {
     const clean = category.trim();
-    if (!clean || categories.includes(clean)) return false;
-    setStore((current) => ({ ...current, customCategories: [...current.customCategories, clean] }));
-    notify('New category added.');
+    if (!clean) return false;
+    if (categories.some((c) => c.toLowerCase() === clean.toLowerCase())) {
+      notify('Category already exists.', 'danger');
+      return false;
+    }
+    setStore((current) => {
+      const currentCats = current.categories && current.categories.length > 0 ? current.categories : [...BASE_CATEGORIES];
+      return {
+        ...current,
+        categories: [...currentCats, clean],
+        customCategories: [...(current.customCategories || []), clean],
+      };
+    });
+    notify(`Added "${clean}" category.`);
     return true;
   };
 
   const removeCategory = (category: string) => {
-    setStore((current) => ({ ...current, customCategories: current.customCategories.filter((item) => item !== category) }));
-    notify('Category removed.');
+    if (categories.length <= 1) {
+      notify('Must keep at least one category.', 'danger');
+      return;
+    }
+    setStore((current) => {
+      const currentCats = current.categories && current.categories.length > 0 ? current.categories : [...BASE_CATEGORIES];
+      const filtered = currentCats.filter((item) => item.toLowerCase() !== category.toLowerCase());
+      const filteredCustom = (current.customCategories || []).filter((item) => item.toLowerCase() !== category.toLowerCase());
+      return {
+        ...current,
+        categories: filtered,
+        customCategories: filteredCustom,
+      };
+    });
+    notify(`Removed "${category}" category.`);
   };
 
   const importStore = (imported: Partial<FinanceStore>) => {
@@ -377,12 +477,12 @@ function AppShell({
   }, []);
 
   const leftNavItems = [
-    { href: '/', label: 'Overview', icon: HomeIcon },
-    { href: '/expenses', label: 'Expenses', icon: ClipboardList },
+    { href: '/', label: 'HOME', icon: Landmark },
+    { href: '/summary', label: 'REPORTS', icon: TrendingUp },
   ];
   const rightNavItems = [
-    { href: '/summary', label: 'Summary', icon: BarChart3 },
-    { href: '/settings', label: 'Settings', icon: Settings2 },
+    { href: '/expenses', label: 'LEDGER', icon: ScrollText },
+    { href: '/settings', label: 'PROFILE', icon: UserCog },
   ];
 
   return (
@@ -450,7 +550,7 @@ function AppShell({
       <MobileBottomNav location={location} theme={theme} toggleTheme={toggleTheme} />
 
       {/* ── Main Content ── */}
-      <main className="mx-auto min-h-[100dvh] max-w-[1420px] px-4 pb-24 pt-6 sm:px-8 sm:pb-16 sm:pt-28 lg:px-12">
+      <main className="mx-auto min-h-[100dvh] max-w-[1420px] px-3.5 pb-24 pt-2.5 sm:px-8 sm:pb-16 sm:pt-28 lg:px-12">
         {children}
       </main>
 
@@ -478,7 +578,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
         <ReceiptIndianRupee className="h-4 w-4 sm:h-5 sm:w-5" />
       </span>
       <span className={`hidden sm:inline ${compact ? 'text-lg' : 'text-xl'} font-display font-semibold tracking-tight`}>
-        paisa<span className="text-accent">.</span>
+        spendly<span className="text-accent">.</span>
       </span>
     </Link>
   );
@@ -547,85 +647,65 @@ function MobileBottomNav({
   theme: 'light' | 'dark';
   toggleTheme: () => void;
 }) {
-  const [hidden, setHidden] = useState(false);
-  const lastScrollY = useRef(0);
-  const ticking = useRef(false);
-
-  useEffect(() => {
-    const onScroll = () => {
-      if (ticking.current) return;
-      ticking.current = true;
-      requestAnimationFrame(() => {
-        const current = window.scrollY;
-        if (current > lastScrollY.current + 10 && current > 60) setHidden(true);
-        else if (current < lastScrollY.current - 6) setHidden(false);
-        lastScrollY.current = current;
-        ticking.current = false;
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const navItems = [
-    { href: '/', label: 'Home', icon: HomeIcon },
-    { href: '/expenses', label: 'Expenses', icon: ClipboardList },
-    { href: '/summary', label: 'Reports', icon: BarChart3 },
-    { href: '/settings', label: 'Profile', icon: UserIcon },
-  ];
-
   return (
-    <div className={`mobile-bottom-nav-wrapper sm:hidden${hidden ? ' mobile-bottom-nav--hidden' : ''}`}>
-      {/* Ambient glow */}
-      <div className="mobile-bottom-nav-glow" aria-hidden="true" />
-      <nav className="mobile-bottom-nav-pill" aria-label="Mobile navigation">
-        {/* Home & Expenses */}
-        {navItems.slice(0, 2).map((item) => {
-          const Icon = item.icon;
-          const active = location === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-testid={`link-mobile-${item.label.toLowerCase()}`}
-              className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
-            >
-              <Icon className="h-[20px] w-[20px] shrink-0" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-
-        {/* Centre Add Button */}
+    <div className="spendly-bottom-bar-wrap sm:hidden">
+      {/* Curved 4-Button Dock */}
+      <nav className="spendly-bottom-bar" aria-label="Mobile Spendly Navigation">
+        {/* Home */}
         <Link
-          href="/add-expense"
-          data-testid="link-mobile-add"
-          aria-label="Add expense"
-          className="mobile-bottom-nav-add"
+          href="/"
+          data-testid="link-mobile-home"
+          className={`spendly-bottom-nav-btn ${location === '/' ? 'spendly-bottom-nav-btn--active' : ''}`}
+          title="Home"
         >
-          <span className="mobile-bottom-nav-add-icon">
-            <Plus className="h-[18px] w-[18px]" />
-          </span>
-          <span>Add</span>
+          <Landmark className="h-4 w-4" />
+          <span>HOME</span>
         </Link>
 
-        {/* Reports & Profile */}
-        {navItems.slice(2).map((item) => {
-          const Icon = item.icon;
-          const active = location === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-testid={`link-mobile-${item.label.toLowerCase()}`}
-              className={`mobile-bottom-nav-item ${active ? 'mobile-bottom-nav-item--active' : ''}`}
-            >
-              <Icon className="h-[20px] w-[20px] shrink-0" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+        {/* Reports */}
+        <Link
+          href="/summary"
+          data-testid="link-mobile-summary"
+          className={`spendly-bottom-nav-btn ${location === '/summary' ? 'spendly-bottom-nav-btn--active' : ''}`}
+          title="Reports"
+        >
+          <TrendingUp className="h-4 w-4" />
+          <span>REPORTS</span>
+        </Link>
+
+        {/* Ledger */}
+        <Link
+          href="/expenses"
+          data-testid="link-mobile-expenses"
+          className={`spendly-bottom-nav-btn ${location.startsWith('/expenses') ? 'spendly-bottom-nav-btn--active' : ''}`}
+          title="Ledger"
+        >
+          <ScrollText className="h-4 w-4" />
+          <span>LEDGER</span>
+        </Link>
+
+        {/* Profile */}
+        <Link
+          href="/settings"
+          data-testid="link-mobile-settings"
+          className={`spendly-bottom-nav-btn ${location === '/settings' ? 'spendly-bottom-nav-btn--active' : ''}`}
+          title="Profile"
+        >
+          <UserCog className="h-4 w-4" />
+          <span>PROFILE</span>
+        </Link>
       </nav>
+
+      {/* Separate Floating Glowing Gold + Add Button */}
+      <Link
+        href="/add-expense"
+        data-testid="link-mobile-add"
+        aria-label="Add transaction"
+        className="spendly-bottom-add-btn"
+        title="Add Transaction"
+      >
+        <Plus className="h-6 w-6 stroke-[3]" />
+      </Link>
     </div>
   );
 }
@@ -763,20 +843,336 @@ function MetricCard({
   testId: string;
 }) {
   const tones = {
-    mint: 'bg-[#e0e7ff] text-[#3730a3] dark:bg-[#1e1b4b] dark:text-[#c7d2fe]',
-    coral: 'bg-[#f4d8cc] text-[#4a2218] dark:bg-[#3d241d] dark:text-[#f4b8a5]',
-    cream: 'bg-[#f0e6c7] text-[#423315] dark:bg-[#38311d] dark:text-[#f0d99d]',
-    plum: 'bg-[#e6ddea] text-[#3b2746] dark:bg-[#34243d] dark:text-[#d9c4e2]',
+    mint: 'bg-[#e0e7ff] text-[#3730a3] dark:bg-[#1e1b4b] dark:text-[#c7d2fe] border-indigo-200/50 dark:border-indigo-900/50',
+    coral: 'bg-[#f4d8cc] text-[#4a2218] dark:bg-[#3d241d] dark:text-[#f4b8a5] border-rose-200/50 dark:border-rose-950/50',
+    cream: 'bg-[#f0e6c7] text-[#423315] dark:bg-[#38311d] dark:text-[#f0d99d] border-amber-200/50 dark:border-amber-950/50',
+    plum: 'bg-[#e6ddea] text-[#3b2746] dark:bg-[#34243d] dark:text-[#d9c4e2] border-purple-200/50 dark:border-purple-950/50',
   };
   return (
-    <article data-testid={testId} className={`rise-in rounded-2xl p-5 ${tones[tone]} border border-border/40`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-[.14em] opacity-80">{label}</span>
-        <Icon className="h-5 w-5 opacity-75" />
+    <article
+      data-testid={testId}
+      className={`rise-in relative flex flex-col justify-between overflow-hidden rounded-2xl p-3.5 sm:p-5 ${tones[tone]} border transition-all duration-200 hover:shadow-md`}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[.12em] sm:tracking-[.14em] opacity-80 leading-tight truncate">
+          {label}
+        </span>
+        <span className="grid h-6 w-6 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-lg bg-black/5 dark:bg-white/10">
+          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-85" />
+        </span>
       </div>
-      <p className="mt-5 font-display text-3xl tracking-tight sm:text-[2.1rem]">{value}</p>
-      <p className="mt-1 text-xs opacity-75">{detail}</p>
+      <div className="mt-2.5 sm:mt-5">
+        <p className="font-display text-lg sm:text-3xl xl:text-[2.1rem] font-bold tracking-tight leading-none">
+          {value}
+        </p>
+        <p className="mt-1 text-[10px] sm:text-xs opacity-75 truncate sm:whitespace-normal font-medium leading-tight">
+          {detail}
+        </p>
+      </div>
     </article>
+  );
+}
+
+function SpendlyMobileHome({
+  finance,
+  selectedMonth,
+  setSelectedMonth,
+  salary,
+  spent,
+  balance,
+  expenses,
+}: {
+  finance: ReturnType<typeof useFinance>;
+  selectedMonth: string;
+  setSelectedMonth: (month: string) => void;
+  salary: number;
+  spent: number;
+  balance: number;
+  expenses: Expense[];
+}) {
+  const { user, profile } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  const greeting = getGreeting();
+  const userName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split('@')[0] : 'Alex Kim');
+
+  const userInitial = userName ? userName[0].toUpperCase() : 'A';
+
+  const filteredExpenses = useMemo(() => {
+    if (activeCategory === 'All') return expenses;
+    return expenses.filter((e) => e.category.toLowerCase() === activeCategory.toLowerCase());
+  }, [expenses, activeCategory]);
+
+  // Curated category filter list on home page to keep it clean and uncluttered (All, Food, Travel, Shopping)
+  const homeCategories = useMemo(() => {
+    const activeCatsInMonth = Array.from(new Set(expenses.map((e) => e.category)));
+    const defaults = ['Food', 'Travel', 'Shopping'];
+    const merged = Array.from(new Set([...defaults, ...activeCatsInMonth]));
+    return merged.slice(0, 3);
+  }, [expenses]);
+
+  return (
+    <div className="space-y-3.5">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <p className="text-xs font-medium text-[#9ca3af] tracking-wide flex items-center gap-1">
+            {greeting}
+          </p>
+          <h1 className="text-2xl font-serif font-black text-[#ffffff] tracking-tight mt-0.5">
+            {userName}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Month Selector Dropdown Pill */}
+          <div className="relative">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/30 px-3 py-1.5 pr-7 text-[11px] font-bold text-[#fde68a] outline-none"
+            >
+              {getMonthOptions(selectedMonth).map((m) => (
+                <option key={m} value={m} className="bg-[#0b0f19] text-[#f3f4f6]">
+                  {monthLabel(m)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[#fbbf24]" />
+          </div>
+
+          {/* User Avatar with Glowing Gold Ring */}
+          <Link
+            href="/settings"
+            className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-sm font-black text-[#080c14] shadow-[0_0_16px_rgba(245,158,11,0.45)] ring-2 ring-[#fbbf24] ring-offset-2 ring-offset-[#080c14] transition active:scale-95"
+            title="Profile & Settings"
+          >
+            {userInitial}
+          </Link>
+        </div>
+      </div>
+
+      {/* ── SPENDLY LUXURY GOLD OBSIDIAN CREDIT CARD HERO ── */}
+      <div className="spendly-credit-card">
+        {/* Card Sheen & Mesh Texture Overlay */}
+        <div className="spendly-credit-card__sheen" />
+        <div className="spendly-credit-card__mesh-pattern" />
+
+        {/* Top Row: Smart Chip, Contactless Wave & Tier Logo */}
+        <div className="spendly-credit-card__top">
+          <div className="flex items-center gap-2.5">
+            {/* Gold EMV Smart Chip */}
+            <div className="spendly-chip" title="EMV Smart Chip">
+              <div className="spendly-chip__line spendly-chip__line--h" />
+              <div className="spendly-chip__line spendly-chip__line--v" />
+              <div className="spendly-chip__core" />
+            </div>
+
+            {/* Contactless Wave Icon */}
+            <svg
+              className="h-4.5 w-4.5 text-[#fbbf24]/80"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+            >
+              <path d="M8.5 16.5a5 5 0 0 1 0-9" />
+              <path d="M12 19a8.5 8.5 0 0 0 0-14" />
+              <path d="M15.5 21.5a12 12 0 0 0 0-19" />
+            </svg>
+          </div>
+
+          {/* Brand & Platinum Tier Badge */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[#fde68a] drop-shadow-sm font-display">
+              SPENDLY
+            </span>
+            <span className="rounded-full bg-[#1e1c12] border border-[#fbbf24]/40 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-widest text-[#fde68a] shadow-sm">
+              PRIVATE WEALTH
+            </span>
+          </div>
+        </div>
+
+        {/* Card Body: Total Balance */}
+        <div className="spendly-credit-card__body">
+          <p className="spendly-credit-card__label">Total Balance</p>
+          <p className="spendly-credit-card__amount" data-testid="spendly-total-balance">
+            {rupees(balance)}
+          </p>
+        </div>
+
+        {/* Card Footer: Embossed Number, Cardholder, Expiry & Hologram */}
+        <div className="spendly-credit-card__footer">
+          <div>
+            <p className="spendly-credit-card__number font-mono">
+              •••• &nbsp;•••• &nbsp;•••• &nbsp;{selectedMonth ? selectedMonth.replace('-', '') : '2026'}
+            </p>
+            <div className="flex items-center gap-4 mt-1">
+              <div>
+                <p className="text-[7.5px] font-bold uppercase tracking-wider text-[#9ca3af]">Cardholder</p>
+                <p className="text-[11px] font-bold text-white uppercase tracking-wide truncate max-w-[130px]">
+                  {userName}
+                </p>
+              </div>
+              <div>
+                <p className="text-[7.5px] font-bold uppercase tracking-wider text-[#9ca3af]">Valid Thru</p>
+                <p className="text-[11px] font-bold text-white font-mono tracking-wider">
+                  {selectedMonth ? selectedMonth.slice(5) : '09'}/29
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Holographic Overlapping Spheres */}
+          <div className="spendly-card-network" title="Spendly Network">
+            <div className="spendly-card-network__circle spendly-card-network__circle--1" />
+            <div className="spendly-card-network__circle spendly-card-network__circle--2" />
+          </div>
+        </div>
+
+        {/* Dual Frosted Glass Badges: Income & Expenses */}
+        <div className="spendly-card-pills">
+          {/* Income Pill */}
+          <div className="spendly-card-pill spendly-card-pill--income">
+            <div className="spendly-card-pill__icon spendly-card-pill__icon--income">
+              <ArrowDownLeft className="h-3.5 w-3.5 stroke-[2.5]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="spendly-card-pill__label">Income</p>
+              <p className="spendly-card-pill__value truncate">{rupees(salary)}</p>
+            </div>
+          </div>
+
+          {/* Expenses Pill */}
+          <div className="spendly-card-pill spendly-card-pill--expense">
+            <div className="spendly-card-pill__icon spendly-card-pill__icon--expense">
+              <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="spendly-card-pill__label">Expenses</p>
+              <p className="spendly-card-pill__value truncate">{rupees(spent)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Transactions Section Header */}
+      <div className="flex items-center justify-between pt-1 px-0.5">
+        <h2 className="text-base font-bold text-[#f1f5f3] tracking-tight">Transactions</h2>
+        <Link
+          href="/expenses"
+          data-testid="link-spendly-see-all"
+          className="inline-flex items-center gap-1 text-xs font-bold text-[#fbbf24] hover:text-[#fde68a] transition"
+        >
+          <span>See all</span>
+          <ArrowUpRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
+      {/* Horizontal Category Carousel Filter Chips */}
+      <div className="spendly-cat-carousel">
+        <button
+          type="button"
+          onClick={() => setActiveCategory('All')}
+          className={`spendly-cat-chip ${activeCategory === 'All' ? 'spendly-cat-chip--active' : 'spendly-cat-chip--inactive'}`}
+        >
+          <span>All</span>
+        </button>
+        {homeCategories.map((cat) => {
+          const IconComponent = getCategoryIcon(cat);
+          const isSelected = activeCategory.toLowerCase() === cat.toLowerCase();
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(isSelected ? 'All' : cat)}
+              className={`spendly-cat-chip ${isSelected ? 'spendly-cat-chip--active' : 'spendly-cat-chip--inactive'}`}
+            >
+              <IconComponent className="h-3.5 w-3.5 shrink-0" />
+              <span>{cat}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Arched Lower Sheet for Transactions */}
+      <div className="spendly-sheet">
+        {/* Top Notch Handle */}
+        <div className="spendly-sheet__notch" />
+
+        {/* Transaction Rows in Dark Glass */}
+        <div className="space-y-2.5">
+          {salary > 0 && (activeCategory === 'All' || activeCategory.toLowerCase().includes('salary')) && (
+            <div className="spendly-tx-card">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="spendly-tx-card__icon text-[#fbbf24]">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="spendly-tx-card__title truncate">Salary deposit</p>
+                  <p className="spendly-tx-card__sub truncate">Income • {monthLabel(selectedMonth)}</p>
+                </div>
+              </div>
+              <p className="spendly-tx-card__amount spendly-tx-card__amount--income">
+                +{rupees(salary)}
+              </p>
+            </div>
+          )}
+
+          {filteredExpenses.length > 0 ? (
+            filteredExpenses.map((expense) => {
+              const Icon = getCategoryIcon(expense.category);
+              return (
+                <div
+                  key={expense.id}
+                  onClick={() => setLocation(`/add-expense/${expense.id}`)}
+                  className="spendly-tx-card cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="spendly-tx-card__icon">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="spendly-tx-card__title truncate">{expense.description}</p>
+                      <p className="spendly-tx-card__sub truncate">
+                        {expense.category} • {shortDate(expense.date)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="spendly-tx-card__amount spendly-tx-card__amount--expense">
+                      -{rupees(expense.amount)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="rounded-2xl border border-[#fbbf24]/15 bg-[#101626]/80 p-5 text-center backdrop-blur-md">
+              <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20 shadow-inner">
+                <ReceiptIndianRupee className="h-5 w-5" />
+              </div>
+              <p className="mt-2.5 text-xs font-bold text-[#e2e8f0]">No transactions in this category</p>
+              <p className="mt-0.5 text-[11px] text-[#9ca3af]">Tap the '+' button to record an expense.</p>
+              <button
+                type="button"
+                onClick={() => setLocation('/add-expense')}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-1.5 text-xs font-bold text-[#080c14] shadow-[0_0_14px_rgba(245,158,11,0.35)] transition active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5 stroke-[3]" />
+                <span>Add expense</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -808,189 +1204,207 @@ function HomePage({ finance }: { finance: ReturnType<typeof useFinance> }) {
 
   return (
     <div className="page-enter">
-      <PageIntro
-        eyebrow={hasAnyData ? 'Your month at a glance' : 'A softer way to stay aware'}
-        title={
-          <>
-            {hasAnyData ? (
-              <>
-                Make room for
-                <br />
-                <span className="text-primary">what matters.</span>
-              </>
-            ) : (
-              <>
-                Let’s make your
-                <br />
-                <span className="text-primary">money visible.</span>
-              </>
-            )}
-          </>
-        }
-        description={
-          hasAnyData
-            ? `Here’s the shape of ${monthLabel(selectedMonth).toLowerCase()} so far.`
-            : 'Start with your monthly take-home. Then add the little things — the picture gets clearer quickly.'
-        }
-        action={
-          <div className="flex items-center gap-2">
-            <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
-            <Link href="/add-expense" data-testid="link-add-expense-header" className="hidden sm:inline-flex">
-              <Button>
-                <Plus className="h-4 w-4" /> Add expense
-              </Button>
-            </Link>
-          </div>
-        }
-      />
+      {/* ── SPENDLY MOBILE HOME UI (strictly for phone users < 640px) ── */}
+      <div className="sm:hidden">
+        <SpendlyMobileHome
+          finance={finance}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          salary={salary}
+          spent={spent}
+          balance={balance}
+          expenses={expenses}
+        />
+      </div>
 
-      {!hasAnyData && <SetupCard month={selectedMonth} salary={salary} onSave={finance.setSalary} />}
-
-      {hasAnyData && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            testId="metric-salary"
-            label="Monthly salary"
-            value={rupees(salary)}
-            detail={salary ? 'Your take-home for this month' : 'Add a salary to see your balance'}
-            icon={Banknote}
-            tone="mint"
-          />
-          <MetricCard
-            testId="metric-spent"
-            label="Spent so far"
-            value={rupees(spent)}
-            detail={`${expenses.length} ${expenses.length === 1 ? 'transaction' : 'transactions'}`}
-            icon={TrendingDown}
-            tone="coral"
-          />
-          <MetricCard
-            testId="metric-balance"
-            label={balance < 0 ? 'Over by' : 'Left to spend'}
-            value={rupees(Math.abs(balance))}
-            detail={balance < 0 ? 'A gentle nudge to pause' : `${Math.max(0, 100 - percent)}% of salary remains`}
-            icon={balance < 0 ? CircleAlert : CircleDollarSign}
-            tone={balance < 0 ? 'coral' : 'cream'}
-          />
-          <MetricCard
-            testId="metric-progress"
-            label="Spent percentage"
-            value={`${percent}%`}
-            detail={salary ? (percent > 100 ? 'This month needs a reset' : 'A useful pace to notice') : 'Set salary to calculate'}
-            icon={BarChart3}
-            tone="plum"
-          />
-        </div>
-      )}
-
-      {hasAnyData && (
-        <div className="mt-5 grid gap-5 xl:grid-cols-[1.18fr_.82fr]">
-          <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">Your pace</p>
-                <h2 className="mt-1 font-display text-2xl">Spending this month</h2>
-              </div>
-              <Link href="/summary" data-testid="link-view-summary" className="text-xs font-bold text-primary hover:underline">
-                See full summary <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" />
+      {/* ── DESKTOP HOME UI (strictly for desktop/tablet >= 640px) ── */}
+      <div className="hidden sm:block">
+        <PageIntro
+          eyebrow={hasAnyData ? 'Your month at a glance' : 'A softer way to stay aware'}
+          title={
+            <>
+              {hasAnyData ? (
+                <>
+                  Make room for
+                  <br />
+                  <span className="text-primary">what matters.</span>
+                </>
+              ) : (
+                <>
+                  Let’s make your
+                  <br />
+                  <span className="text-primary">money visible.</span>
+                </>
+              )}
+            </>
+          }
+          description={
+            hasAnyData
+              ? `Here’s the shape of ${monthLabel(selectedMonth).toLowerCase()} so far.`
+              : 'Start with your monthly take-home. Then add the little things — the picture gets clearer quickly.'
+          }
+          action={
+            <div className="flex items-center gap-2">
+              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+              <Link href="/add-expense" data-testid="link-add-expense-header" className="hidden sm:inline-flex">
+                <Button>
+                  <Plus className="h-4 w-4" /> Add expense
+                </Button>
               </Link>
             </div>
-            <div className="mt-8 flex flex-col items-center gap-8 sm:flex-row">
-              <ProgressRing percent={percent} />
-              <div className="flex-1">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {percent > 100
-                    ? 'You’ve spent beyond your planned take-home. No judgement — the next useful move is to see exactly where.'
-                    : percent > 75
-                      ? 'You’re in the final stretch of your monthly budget. A little awareness now can make the last week easier.'
-                      : 'There is plenty of month left. Keep recording the small choices and let the pattern do the talking.'}
-                </p>
-                <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full bg-primary" />
-                  {rupees(spent)} spent
-                  <span className="ml-3 h-2 w-2 rounded-full bg-muted-foreground/30" />
-                  {rupees(Math.max(0, salary - spent))} remaining
+          }
+        />
+
+        {!hasAnyData && <SetupCard month={selectedMonth} salary={salary} onSave={finance.setSalary} />}
+
+        {hasAnyData && (
+          <div className="rounded-3xl border border-card-border/80 bg-card/60 p-2.5 sm:p-0 sm:border-0 sm:bg-transparent shadow-[var(--shadow-card)] sm:shadow-none backdrop-blur-sm">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+              <MetricCard
+                testId="metric-salary"
+                label="Monthly salary"
+                value={rupees(salary)}
+                detail={salary ? 'Your take-home for this month' : 'Add a salary to see balance'}
+                icon={Banknote}
+                tone="mint"
+              />
+              <MetricCard
+                testId="metric-spent"
+                label="Spent so far"
+                value={rupees(spent)}
+                detail={`${expenses.length} ${expenses.length === 1 ? 'transaction' : 'transactions'}`}
+                icon={TrendingDown}
+                tone="coral"
+              />
+              <MetricCard
+                testId="metric-balance"
+                label={balance < 0 ? 'Over by' : 'Left to spend'}
+                value={rupees(Math.abs(balance))}
+                detail={balance < 0 ? 'A gentle pause' : `${Math.max(0, 100 - percent)}% remains`}
+                icon={balance < 0 ? CircleAlert : CircleDollarSign}
+                tone={balance < 0 ? 'coral' : 'cream'}
+              />
+              <MetricCard
+                testId="metric-progress"
+                label="Spent %"
+                value={`${percent}%`}
+                detail={salary ? (percent > 100 ? 'Needs a reset' : 'Pace on track') : 'Set salary first'}
+                icon={BarChart3}
+                tone="plum"
+              />
+            </div>
+          </div>
+        )}
+
+        {hasAnyData && (
+          <div className="mt-5 grid gap-5 xl:grid-cols-[1.18fr_.82fr]">
+            <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">Your pace</p>
+                  <h2 className="mt-1 font-display text-2xl">Spending this month</h2>
+                </div>
+                <Link href="/summary" data-testid="link-view-summary" className="text-xs font-bold text-primary hover:underline">
+                  See full summary <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" />
+                </Link>
+              </div>
+              <div className="mt-8 flex flex-col items-center gap-8 sm:flex-row">
+                <ProgressRing percent={percent} />
+                <div className="flex-1">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {percent > 100
+                      ? 'You’ve spent beyond your planned take-home. No judgement — the next useful move is to see exactly where.'
+                      : percent > 75
+                        ? 'You’re in the final stretch of your monthly budget. A little awareness now can make the last week easier.'
+                        : 'There is plenty of month left. Keep recording the small choices and let the pattern do the talking.'}
+                  </p>
+                  <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    {rupees(spent)} spent
+                    <span className="ml-3 h-2 w-2 rounded-full bg-muted-foreground/30" />
+                    {rupees(Math.max(0, salary - spent))} remaining
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">Latest notes</p>
-                <h2 className="mt-1 font-display text-2xl">Recent expenses</h2>
+            <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">Latest notes</p>
+                  <h2 className="mt-1 font-display text-2xl">Recent expenses</h2>
+                </div>
+                <Link href="/expenses" data-testid="link-view-expenses" className="text-xs font-bold text-primary hover:underline">
+                  View all <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" />
+                </Link>
               </div>
-              <Link href="/expenses" data-testid="link-view-expenses" className="text-xs font-bold text-primary hover:underline">
-                View all <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" />
-              </Link>
-            </div>
-            {recent.length ? (
-              <div className="mt-5 space-y-1">
-                {recent.map((expense, index) => (
-                  <ExpenseRow key={expense.id} expense={expense} index={index} compact />
-                ))}
-              </div>
-            ) : (
-              <EmptyExpenses compact />
-            )}
-          </section>
+              {recent.length ? (
+                <div className="mt-5 space-y-1">
+                  {recent.map((expense, index) => (
+                    <ExpenseRow key={expense.id} expense={expense} index={index} compact />
+                  ))}
+                </div>
+              ) : (
+                <EmptyExpenses compact />
+              )}
+            </section>
 
-          <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:col-span-2 sm:p-7">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">The shape of it</p>
-                <h2 className="mt-1 font-display text-2xl">Where the month is going</h2>
+            <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:col-span-2 sm:p-7">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">The shape of it</p>
+                  <h2 className="mt-1 font-display text-2xl">Where the month is going</h2>
+                </div>
+                <Link href="/summary" data-testid="link-dashboard-category-breakdown" className="text-xs font-bold text-primary hover:underline">
+                  Open summary <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" />
+                </Link>
               </div>
-              <Link href="/summary" data-testid="link-dashboard-category-breakdown" className="text-xs font-bold text-primary hover:underline">
-                Open summary <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" />
-              </Link>
-            </div>
-            {categoryBreakdown.length ? (
-              <div className="mt-7 grid gap-x-10 gap-y-5 sm:grid-cols-2">
-                {categoryBreakdown.map((item, index) => (
-                  <div key={item.category} className="rise-in" style={{ animationDelay: `${index * 60}ms` }}>
-                    <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 font-semibold">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                        {item.category}
-                      </span>
-                      <span className="font-mono-ui text-xs">{rupees(item.amount)}</span>
+              {categoryBreakdown.length ? (
+                <div className="mt-7 grid gap-x-10 gap-y-5 sm:grid-cols-2">
+                  {categoryBreakdown.map((item, index) => (
+                    <div key={item.category} className="rise-in" style={{ animationDelay: `${index * 60}ms` }}>
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 font-semibold">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                          {item.category}
+                        </span>
+                        <span className="font-mono-ui text-xs">{rupees(item.amount)}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${(item.amount / largestCategorySpend) * 100}%`, backgroundColor: item.color }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${(item.amount / largestCategorySpend) * 100}%`, backgroundColor: item.color }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyExpenses compact />
-            )}
-          </section>
-        </div>
-      )}
+                  ))}
+                </div>
+              ) : (
+                <EmptyExpenses compact />
+              )}
+            </section>
+          </div>
+        )}
 
-      {hasAnyData && !salary && (
-        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4 text-sm">
-          <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
-          <p>
-            <strong>No salary for {monthLabel(selectedMonth)} yet.</strong> Add it in{' '}
-            <Link href="/settings" className="font-bold underline" data-testid="link-set-salary-alert">
-              Settings
-            </Link>{' '}
-            to turn your spending into a useful picture.
-          </p>
-        </div>
-      )}
+        {hasAnyData && !salary && (
+          <div className="mt-5 flex items-start gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4 text-sm">
+            <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+            <p>
+              <strong>No salary for {monthLabel(selectedMonth)} yet.</strong> Add it in{' '}
+              <Link href="/settings" className="font-bold underline" data-testid="link-set-salary-alert">
+                Settings
+              </Link>{' '}
+              to turn your spending into a useful picture.
+            </p>
+          </div>
+        )}
 
-      <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
-        <p className="text-sm text-muted-foreground">A good money habit can start with one line.</p>
-        <Link href="/add-expense" data-testid="link-add-expense-footer" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
-          <Plus className="h-4 w-4" /> Record something
-        </Link>
+        <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
+          <p className="text-sm text-muted-foreground">A good money habit can start with one line.</p>
+          <Link href="/add-expense" data-testid="link-add-expense-footer" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+            <Plus className="h-4 w-4" /> Record something
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -1181,6 +1595,189 @@ function EmptyExpenses({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function SpendlyMobileExpenses({
+  finance,
+  selectedMonth,
+  setSelectedMonth,
+  query,
+  setQuery,
+  category,
+  setCategory,
+  dateFilter,
+  setDateFilter,
+  expenses,
+  monthExpenses,
+  setLocation,
+  setDeleteId,
+}: {
+  finance: ReturnType<typeof useFinance>;
+  selectedMonth: string;
+  setSelectedMonth: (m: string) => void;
+  query: string;
+  setQuery: (q: string) => void;
+  category: string;
+  setCategory: (c: string) => void;
+  dateFilter: string;
+  setDateFilter: (d: string) => void;
+  expenses: Expense[];
+  monthExpenses: Expense[];
+  setLocation: (url: string) => void;
+  setDeleteId: (id: string | null) => void;
+}) {
+  const totalSpent = expenses.reduce((sum, item) => sum + item.amount, 0);
+
+  return (
+    <div className="space-y-3.5">
+      {/* Header */}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <p className="text-xs font-semibold text-[#9ca3af]">Monthly Records</p>
+          <h1 className="text-xl font-serif font-extrabold text-[#f1f5f3] tracking-tight">
+            All Transactions
+          </h1>
+        </div>
+        {/* Month Selector Pill */}
+        <div className="relative">
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/30 px-3 py-1.5 pr-7 text-[11px] font-bold text-[#fde68a] outline-none"
+          >
+            {getMonthOptions(selectedMonth).map((m) => (
+              <option key={m} value={m} className="bg-[#0b0f19] text-[#f3f4f6]">
+                {monthLabel(m)}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[#fbbf24]" />
+        </div>
+      </div>
+
+      {/* Search Input Bar */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af]" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by title or category..."
+          className="w-full rounded-2xl bg-[#101626] border border-[#fbbf24]/20 pl-10 pr-4 py-2.5 text-xs text-[#f1f5f3] placeholder:text-[#9ca3af]/60 outline-none focus:border-[#fbbf24]"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#9ca3af] hover:text-[#f1f5f3]"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Horizontal Category Carousel Filter Chips */}
+      <div className="spendly-cat-carousel">
+        <button
+          type="button"
+          onClick={() => setCategory('All')}
+          className={`spendly-cat-chip ${category === 'All' ? 'spendly-cat-chip--active' : 'spendly-cat-chip--inactive'}`}
+        >
+          <span>All</span>
+        </button>
+        {finance.categories.map((cat) => {
+          const IconComponent = getCategoryIcon(cat);
+          const isSelected = category.toLowerCase() === cat.toLowerCase();
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategory(isSelected ? 'All' : cat)}
+              className={`spendly-cat-chip ${isSelected ? 'spendly-cat-chip--active' : 'spendly-cat-chip--inactive'}`}
+            >
+              <IconComponent className="h-3.5 w-3.5 shrink-0" />
+              <span>{cat}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Summary count and total */}
+      <div className="flex items-center justify-between px-1 text-xs text-[#9ca3af]">
+        <span>
+          <strong className="text-[#f1f5f3]">{expenses.length}</strong> {expenses.length === 1 ? 'record' : 'records'}
+        </span>
+        <span className="font-bold text-[#fde68a]">{rupees(totalSpent)}</span>
+      </div>
+
+      {/* List */}
+      <div className="space-y-2.5">
+        {monthExpenses.length === 0 ? (
+          <div className="rounded-2xl border border-[#fbbf24]/20 bg-[#101626]/60 p-8 text-center backdrop-blur-md">
+            <ReceiptIndianRupee className="mx-auto h-8 w-8 text-[#fbbf24]/50" />
+            <p className="mt-3 text-sm font-bold text-[#e2e8f0]">No records for {monthLabel(selectedMonth)}</p>
+            <p className="mt-1 text-xs text-[#9ca3af]">Tap '+' to log your first expense.</p>
+          </div>
+        ) : expenses.length === 0 ? (
+          <div className="rounded-2xl border border-[#fbbf24]/20 bg-[#101626]/60 p-8 text-center backdrop-blur-md">
+            <SlidersHorizontal className="mx-auto h-6 w-6 text-[#9ca3af]" />
+            <p className="mt-2 text-sm font-bold text-[#e2e8f0]">No matches found</p>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setCategory('All');
+                setDateFilter('');
+              }}
+              className="mt-2 text-xs font-bold text-[#fbbf24] hover:underline"
+            >
+              Reset filters
+            </button>
+          </div>
+        ) : (
+          expenses.map((expense) => {
+            const Icon = getCategoryIcon(expense.category);
+            return (
+              <div key={expense.id} className="spendly-tx-card">
+                <div
+                  onClick={() => setLocation(`/add-expense/${expense.id}`)}
+                  className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="spendly-tx-card__icon">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="spendly-tx-card__title truncate">{expense.description}</p>
+                    <p className="spendly-tx-card__sub truncate">
+                      {expense.category} • {shortDate(expense.date)}
+                    </p>
+                    {expense.notes && (
+                      <p className="text-[10px] text-[#9ca3af]/80 truncate mt-0.5 italic">{expense.notes}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="spendly-tx-card__amount spendly-tx-card__amount--expense">
+                    -{rupees(expense.amount)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteId(expense.id)}
+                    aria-label={`Delete ${expense.description}`}
+                    className="p-1.5 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ExpensesPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
   const [, setLocation] = useLocation();
   const [selectedMonth, setSelectedMonth] = useState(monthKey());
@@ -1202,117 +1799,139 @@ function ExpensesPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
 
   return (
     <div className="page-enter">
-      <PageIntro
-        eyebrow="The details matter"
-        title="Your expenses."
-        description="A searchable record of the small decisions that make up a month."
-        action={
-          <Link href="/add-expense" data-testid="link-add-expense">
-            <Button>
-              <Plus className="h-4 w-4" /> Add expense
-            </Button>
-          </Link>
-        }
-      />
+      {/* ── SPENDLY MOBILE EXPENSES UI (strictly for phone users < 640px) ── */}
+      <div className="sm:hidden">
+        <SpendlyMobileExpenses
+          finance={finance}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          query={query}
+          setQuery={setQuery}
+          category={category}
+          setCategory={setCategory}
+          dateFilter={dateFilter}
+          setDateFilter={setDateFilter}
+          expenses={expenses}
+          monthExpenses={monthExpenses}
+          setLocation={setLocation}
+          setDeleteId={setDeleteId}
+        />
+      </div>
 
-      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-[var(--shadow-card)]">
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <label className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by description, notes or category"
-              data-testid="input-search-expenses"
-              className="border-transparent bg-muted/70 pl-10"
-            />
-          </label>
-          <div className="flex gap-3">
-            <div className="relative flex-1 sm:w-[205px]">
-              <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-              <Select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                data-testid="select-filter-category"
+      {/* ── DESKTOP EXPENSES UI (strictly for desktop/tablet >= 640px) ── */}
+      <div className="hidden sm:block">
+        <PageIntro
+          eyebrow="The details matter"
+          title="Your expenses."
+          description="A searchable record of the small decisions that make up a month."
+          action={
+            <Link href="/add-expense" data-testid="link-add-expense">
+              <Button>
+                <Plus className="h-4 w-4" /> Add expense
+              </Button>
+            </Link>
+          }
+        />
+
+        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-[var(--shadow-card)]">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <label className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by description, notes or category"
+                data-testid="input-search-expenses"
                 className="border-transparent bg-muted/70 pl-10"
-              >
-                <option value="All">All categories</option>
-                {finance.categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </Select>
+              />
+            </label>
+            <div className="flex gap-3">
+              <div className="relative flex-1 sm:w-[205px]">
+                <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                <Select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  data-testid="select-filter-category"
+                  className="border-transparent bg-muted/70 pl-10"
+                >
+                  <option value="All">All categories</option>
+                  {finance.categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} compact />
             </div>
-            <MonthPicker value={selectedMonth} onChange={setSelectedMonth} compact />
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
+              <CalendarDays className="h-4 w-4 text-primary" /> Exact date{' '}
+              <Input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                data-testid="input-filter-date"
+                className="w-auto border-transparent bg-muted/70 py-2 text-xs font-normal normal-case tracking-normal"
+              />
+            </label>
+            {dateFilter && (
+              <button
+                type="button"
+                onClick={() => setDateFilter('')}
+                data-testid="button-clear-date-filter"
+                className="self-start text-xs font-bold text-primary hover:underline sm:self-auto"
+              >
+                Clear date
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
-            <CalendarDays className="h-4 w-4 text-primary" /> Exact date{' '}
-            <Input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              data-testid="input-filter-date"
-              className="w-auto border-transparent bg-muted/70 py-2 text-xs font-normal normal-case tracking-normal"
-            />
-          </label>
-          {dateFilter && (
+        <div className="mb-5 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-bold text-foreground">{expenses.length}</span> {expenses.length === 1 ? 'expense' : 'expenses'} in{' '}
+            {monthLabel(selectedMonth)}
+          </p>
+          <p className="font-mono-ui text-sm font-medium">{rupees(expenses.reduce((sum, item) => sum + item.amount, 0))}</p>
+        </div>
+
+        {monthExpenses.length === 0 ? (
+          <EmptyExpenses />
+        ) : expenses.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border py-14 text-center">
+            <SlidersHorizontal className="mx-auto h-6 w-6 text-muted-foreground" />
+            <p className="mt-3 font-display text-xl">Nothing matches that.</p>
             <button
               type="button"
-              onClick={() => setDateFilter('')}
-              data-testid="button-clear-date-filter"
-              className="self-start text-xs font-bold text-primary hover:underline sm:self-auto"
+              data-testid="button-clear-filters"
+              onClick={() => {
+                setQuery('');
+                setCategory('All');
+                setDateFilter('');
+              }}
+              className="mt-2 text-sm font-bold text-primary hover:underline"
             >
-              Clear date
+              Clear filters
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <section className="rounded-2xl border border-card-border bg-card p-3 shadow-[var(--shadow-card)] sm:p-5">
+            {expenses.map((expense, index) => (
+              <ExpenseRow
+                key={expense.id}
+                expense={expense}
+                index={index}
+                onEdit={() => setLocation(`/add-expense/${expense.id}`)}
+                onDelete={() => setDeleteId(expense.id)}
+              />
+            ))}
+          </section>
+        )}
       </div>
-
-      <div className="mb-5 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          <span className="font-bold text-foreground">{expenses.length}</span> {expenses.length === 1 ? 'expense' : 'expenses'} in{' '}
-          {monthLabel(selectedMonth)}
-        </p>
-        <p className="font-mono-ui text-sm font-medium">{rupees(expenses.reduce((sum, item) => sum + item.amount, 0))}</p>
-      </div>
-
-      {monthExpenses.length === 0 ? (
-        <EmptyExpenses />
-      ) : expenses.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border py-14 text-center">
-          <SlidersHorizontal className="mx-auto h-6 w-6 text-muted-foreground" />
-          <p className="mt-3 font-display text-xl">Nothing matches that.</p>
-          <button
-            type="button"
-            data-testid="button-clear-filters"
-            onClick={() => {
-              setQuery('');
-              setCategory('All');
-              setDateFilter('');
-            }}
-            className="mt-2 text-sm font-bold text-primary hover:underline"
-          >
-            Clear filters
-          </button>
-        </div>
-      ) : (
-        <section className="rounded-2xl border border-card-border bg-card p-3 shadow-[var(--shadow-card)] sm:p-5">
-          {expenses.map((expense, index) => (
-            <ExpenseRow
-              key={expense.id}
-              expense={expense}
-              index={index}
-              onEdit={() => setLocation(`/add-expense/${expense.id}`)}
-              onDelete={() => setDeleteId(expense.id)}
-            />
-          ))}
-        </section>
-      )}
 
       {deleteId && deleting && (
         <ConfirmDialog
@@ -1351,6 +1970,303 @@ function ConfirmDialog({ title, description, onClose, onConfirm }: { title: stri
   );
 }
 
+function SpendlyMobileAddTransaction({
+  finance,
+  editing,
+  existing,
+  amount,
+  setAmount,
+  description,
+  setDescription,
+  category,
+  setCategory,
+  date,
+  setDate,
+  notes,
+  setNotes,
+  onSubmit,
+  valid,
+}: {
+  finance: ReturnType<typeof useFinance>;
+  editing: boolean;
+  existing?: Expense;
+  amount: string;
+  setAmount: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
+  category: string;
+  setCategory: (v: string) => void;
+  date: string;
+  setDate: (v: string) => void;
+  notes: string;
+  setNotes: (v: string) => void;
+  onSubmit: (e: FormEvent) => void;
+  valid: boolean;
+}) {
+  const [, setLocation] = useLocation();
+  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
+  const [salaryMonth, setSalaryMonth] = useState(monthKey());
+  const [customCatOpen, setCustomCatOpen] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  const handleSaveIncome = (e: FormEvent) => {
+    e.preventDefault();
+    if (!Number(amount)) return;
+    finance.setSalary(salaryMonth, Number(amount));
+    setLocation('/');
+  };
+
+  const addCustomCat = () => {
+    if (finance.addCategory(customCategory)) {
+      setCategory(customCategory.trim());
+      setCustomCategory('');
+      setCustomCatOpen(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3.5">
+      {/* Header with Back Button */}
+      <div className="flex items-center justify-between pt-1">
+        <button
+          type="button"
+          onClick={() => setLocation('/expenses')}
+          className="grid h-10 w-10 place-items-center rounded-full bg-[#101626] border border-[#fbbf24]/25 text-[#fde68a] transition active:scale-95 shadow-sm"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="text-lg font-serif font-bold text-[#f1f5f3] tracking-tight">
+          {editing ? 'Edit Transaction' : 'Add Transaction'}
+        </h1>
+        <div className="w-10" />
+      </div>
+
+      {/* Hero Display Amount Box */}
+      <div className="spendly-glass-card text-center relative overflow-hidden">
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-24 bg-[#fbbf24]/15 blur-2xl rounded-full pointer-events-none" />
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#9ca3af]">
+          {transactionType === 'income' ? 'TOTAL INCOME' : 'TOTAL EXPENSE'}
+        </p>
+        <div className="mt-2 flex items-center justify-center gap-1">
+          <span className={`text-3xl font-extrabold ${transactionType === 'income' ? 'text-[#fbbf24]' : 'text-[#f87171]'}`}>₹</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="1"
+            step="any"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0"
+            autoFocus
+            className="w-48 bg-transparent text-center font-serif text-4xl font-black text-[#f1f5f3] outline-none placeholder:text-[#9ca3af]/40"
+          />
+        </div>
+      </div>
+
+      {/* Segmented Income / Expense Toggle */}
+      <div className="spendly-segmented-toggle">
+        <button
+          type="button"
+          onClick={() => setTransactionType('income')}
+          className={`spendly-segment-btn ${transactionType === 'income' ? 'spendly-segment-btn--active' : ''}`}
+        >
+          <Wallet className="h-4 w-4" />
+          <span>Income</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTransactionType('expense')}
+          className={`spendly-segment-btn ${transactionType === 'expense' ? 'spendly-segment-btn--active' : ''}`}
+        >
+          <CreditCard className="h-4 w-4" />
+          <span>Expense</span>
+        </button>
+      </div>
+
+      {transactionType === 'income' ? (
+        <form onSubmit={handleSaveIncome} className="space-y-4">
+          <div className="spendly-glass-card space-y-3">
+            <label className="block">
+              <span className="text-xs font-bold text-[#9ca3af] uppercase tracking-wider block mb-1.5">For Month</span>
+              <div className="relative">
+                <select
+                  value={salaryMonth}
+                  onChange={(e) => setSalaryMonth(e.target.value)}
+                  className="w-full appearance-none rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-4 py-3 text-sm font-semibold text-[#f1f5f3] outline-none"
+                >
+                  {getMonthOptions(salaryMonth).map((m) => (
+                    <option key={m} value={m} className="bg-[#0b0f19] text-[#f1f5f3]">
+                      {monthLabel(m)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#fbbf24]" />
+              </div>
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!Number(amount)}
+            className="spendly-neon-btn disabled:opacity-50"
+          >
+            <Check className="h-5 w-5 stroke-[2.5]" />
+            <span>Save Income</span>
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="spendly-glass-card space-y-4">
+            {/* Title */}
+            <div>
+              <label className="block text-xs font-bold text-[#9ca3af] uppercase tracking-wider mb-1.5">
+                Title
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Netflix subscription"
+                className="w-full rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-4 py-3 text-sm font-medium text-[#f1f5f3] placeholder:text-[#9ca3af]/50 outline-none focus:border-[#fbbf24] focus:ring-2 focus:ring-[#fbbf24]/20"
+              />
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="block text-xs font-bold text-[#9ca3af] uppercase tracking-wider mb-1.5">
+                Date
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="flex-1 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3.5 py-2.5 text-xs font-medium text-[#f1f5f3] outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setDate(todayStr)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    date === todayStr ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14]' : 'bg-[#101626] text-[#9ca3af] border border-[#fbbf24]/20'
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDate(yesterdayStr)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    date === yesterdayStr ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14]' : 'bg-[#101626] text-[#9ca3af] border border-[#fbbf24]/20'
+                  }`}
+                >
+                  Yesterday
+                </button>
+              </div>
+            </div>
+
+            {/* Category Dropdown Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-[#9ca3af] uppercase tracking-wider">
+                  Category
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setCustomCatOpen(!customCatOpen)}
+                  className="text-xs font-bold text-[#fbbf24] hover:underline"
+                >
+                  {customCatOpen ? 'Cancel' : '+ Custom'}
+                </button>
+              </div>
+
+              {customCatOpen ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="Enter category name..."
+                    autoFocus
+                    className="flex-1 rounded-xl bg-[#101626] border border-[#fbbf24]/30 px-3.5 py-2.5 text-xs text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomCat}
+                    disabled={!customCategory.trim()}
+                    className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-2.5 text-xs font-bold text-[#080c14] disabled:opacity-50 transition active:scale-95"
+                  >
+                    Add
+                  </button>
+                </div>
+              ) : (
+                <div className="relative flex items-center">
+                  {(() => {
+                    const SelectedIcon = getCategoryIcon(category);
+                    return (
+                      <div className="pointer-events-none absolute left-3.5 flex items-center text-[#fbbf24]">
+                        <SelectedIcon className="h-4 w-4" />
+                      </div>
+                    );
+                  })()}
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      if (e.target.value === '__add_custom__') {
+                        setCustomCatOpen(true);
+                      } else {
+                        setCategory(e.target.value);
+                      }
+                    }}
+                    className="w-full appearance-none rounded-xl bg-[#101626] border border-[#fbbf24]/25 py-3 pl-10 pr-10 text-sm font-semibold text-[#f1f5f3] outline-none transition focus:border-[#fbbf24] focus:ring-2 focus:ring-[#fbbf24]/20 cursor-pointer"
+                  >
+                    {finance.categories.map((cat) => (
+                      <option key={cat} value={cat} className="bg-[#0b0f19] text-[#f1f5f3]">
+                        {cat}
+                      </option>
+                    ))}
+                    <option value="__add_custom__" className="bg-[#0b0f19] text-[#fbbf24] font-bold">
+                      + Add custom category...
+                    </option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#fbbf24]" />
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-xs font-bold text-[#9ca3af] uppercase tracking-wider mb-1.5">
+                Note (optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add a note..."
+                rows={2}
+                className="w-full resize-none rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-4 py-3 text-sm font-medium text-[#f1f5f3] placeholder:text-[#9ca3af]/50 outline-none focus:border-[#fbbf24] focus:ring-2 focus:ring-[#fbbf24]/20"
+              />
+            </div>
+          </div>
+
+          {/* Glowing Neon CTA Button */}
+          <button
+            type="submit"
+            disabled={!valid}
+            className="spendly-neon-btn disabled:opacity-50"
+          >
+            <Check className="h-5 w-5 stroke-[2.5]" />
+            <span>{editing ? 'Save Changes' : 'Save Transaction'}</span>
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
@@ -1367,7 +2283,7 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
   const todayStr = new Date().toISOString().slice(0, 10);
   const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  const valid = Number(amount) > 0 && description.trim().length > 0 && date;
+  const valid = Boolean(Number(amount) > 0 && description.trim().length > 0 && date);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -1388,273 +2304,882 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
 
   return (
     <div className="page-enter mx-auto max-w-3xl">
-      <button
-        type="button"
-        onClick={() => setLocation('/expenses')}
-        data-testid="button-back-expenses"
-        className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to expenses
-      </button>
-
-      <div className="mb-8">
-        <p className="font-mono-ui text-[10px] font-medium uppercase tracking-[.18em] text-primary">{editing ? 'Refine the record' : 'One small step'}</p>
-        <h1 className="mt-2 font-display text-5xl leading-none tracking-[-.045em]">{editing ? 'Edit expense.' : 'Add an expense.'}</h1>
-        <p className="mt-3 text-sm text-muted-foreground">Keep it simple. You can always add more context later.</p>
+      {/* ── SPENDLY MOBILE ADD TRANSACTION UI (strictly for phone users < 640px) ── */}
+      <div className="sm:hidden">
+        <SpendlyMobileAddTransaction
+          finance={finance}
+          editing={editing}
+          existing={existing}
+          amount={amount}
+          setAmount={setAmount}
+          description={description}
+          setDescription={setDescription}
+          category={category}
+          setCategory={setCategory}
+          date={date}
+          setDate={setDate}
+          notes={notes}
+          setNotes={setNotes}
+          onSubmit={submit}
+          valid={valid}
+        />
       </div>
 
-      <form onSubmit={submit} className="rounded-3xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-8">
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Field label="Amount">
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-display text-2xl text-primary">₹</span>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  min="1"
-                  step="any"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0"
-                  data-testid="input-expense-amount"
-                  className="h-16 border-primary/30 bg-primary/[.04] pl-11 font-display text-3xl placeholder:text-muted-foreground/40"
-                  autoFocus
-                />
-              </div>
-            </Field>
-          </div>
+      {/* ── DESKTOP FORM UI (strictly for desktop/tablet >= 640px) ── */}
+      <div className="hidden sm:block">
+        <button
+          type="button"
+          onClick={() => setLocation('/expenses')}
+          data-testid="button-back-expenses"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to expenses
+        </button>
 
-          <Field label="What was it?">
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Evening chai with friends"
-              data-testid="input-expense-description"
-            />
-          </Field>
+        <div className="mb-8">
+          <p className="font-mono-ui text-[10px] font-medium uppercase tracking-[.18em] text-primary">{editing ? 'Refine the record' : 'One small step'}</p>
+          <h1 className="mt-2 font-display text-5xl leading-none tracking-[-.045em]">{editing ? 'Edit expense.' : 'Add an expense.'}</h1>
+          <p className="mt-3 text-sm text-muted-foreground">Keep it simple. You can always add more context later.</p>
+        </div>
 
-          <Field label="When?">
-            <div className="space-y-2">
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} data-testid="input-expense-date" />
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setDate(todayStr)}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${date === todayStr ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
-                    }`}
-                >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDate(yesterdayStr)}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${date === yesterdayStr ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
-                    }`}
-                >
-                  Yesterday
-                </button>
-              </div>
+        <form onSubmit={submit} className="rounded-3xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-8">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="Amount">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-display text-2xl text-primary">₹</span>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min="1"
+                    step="any"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0"
+                    data-testid="input-expense-amount"
+                    className="h-16 border-primary/30 bg-primary/[.04] pl-11 font-display text-3xl placeholder:text-muted-foreground/40"
+                    autoFocus
+                  />
+                </div>
+              </Field>
             </div>
-          </Field>
 
-          <Field label="Category">
-            <div className="relative">
-              <Select value={category} onChange={(e) => setCategory(e.target.value)} data-testid="select-expense-category" className="pr-10">
-                {finance.categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </Select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            </div>
-            <button
-              type="button"
-              onClick={() => setCustomOpen(!customOpen)}
-              data-testid="button-toggle-custom-category"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
-            >
-              <Plus className="h-3.5 w-3.5" /> Create custom category
-            </button>
-            {customOpen && (
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
-                  placeholder="Category name"
-                  data-testid="input-custom-category"
-                />
-                <Button type="button" onClick={addCustom} disabled={!customCategory.trim()} testId="button-save-custom-category">
-                  Add
-                </Button>
-              </div>
-            )}
-          </Field>
-
-          <div className="sm:col-span-2">
-            <Field label="Notes" hint="Optional — a little context makes the pattern more useful.">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="What do you want to remember about this?"
-                rows={4}
-                data-testid="input-expense-notes"
-                className="w-full resize-none rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10"
+            <Field label="What was it?">
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Evening chai with friends"
+                data-testid="input-expense-description"
               />
             </Field>
+
+            <Field label="When?">
+              <div className="space-y-2">
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} data-testid="input-expense-date" />
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setDate(todayStr)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${date === todayStr ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDate(yesterdayStr)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${date === yesterdayStr ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                  >
+                    Yesterday
+                  </button>
+                </div>
+              </div>
+            </Field>
+
+            <Field label="Category">
+              <div className="relative">
+                <Select value={category} onChange={(e) => setCategory(e.target.value)} data-testid="select-expense-category" className="pr-10">
+                  {finance.categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </Select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomOpen(!customOpen)}
+                data-testid="button-toggle-custom-category"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" /> Create custom category
+              </button>
+              {customOpen && (
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="Category name"
+                    data-testid="input-custom-category"
+                  />
+                  <Button type="button" onClick={addCustom} disabled={!customCategory.trim()} testId="button-save-custom-category">
+                    Add
+                  </Button>
+                </div>
+              )}
+            </Field>
+
+            <div className="sm:col-span-2">
+              <Field label="Notes" hint="Optional — a little context makes the pattern more useful.">
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="What do you want to remember about this?"
+                  rows={4}
+                  data-testid="input-expense-notes"
+                  className="w-full resize-none rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-col-reverse justify-end gap-3 border-t border-border pt-6 sm:flex-row">
+            <Button variant="quiet" type="button" onClick={() => setLocation('/expenses')} testId="button-cancel-expense">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!valid} testId="button-save-expense">
+              <Check className="h-4 w-4" />
+              {editing ? 'Save changes' : 'Save expense'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SpendlyMobileSummary({
+  finance,
+  selectedMonth,
+  setSelectedMonth,
+  salary,
+  spent,
+  balance,
+  expenses,
+  userName,
+  userEmail,
+  isExporting,
+  handleDownloadPdf,
+}: {
+  finance: ReturnType<typeof useFinance>;
+  selectedMonth: string;
+  setSelectedMonth: (month: string) => void;
+  salary: number;
+  spent: number;
+  balance: number;
+  expenses: Expense[];
+  userName: string;
+  userEmail: string;
+  isExporting: boolean;
+  handleDownloadPdf: () => void;
+}) {
+  const [yearNum, monthNum] = selectedMonth.split('-').map(Number);
+  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+  const monthShortName = new Date(yearNum, monthNum - 1, 1).toLocaleString('default', { month: 'short' });
+
+  const today = new Date();
+  const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const isCurrentMonth = selectedMonth === currentMonthKey;
+  const daysElapsed = isCurrentMonth ? Math.min(daysInMonth, today.getDate()) : daysInMonth;
+  const remainingDays = Math.max(1, daysInMonth - (isCurrentMonth ? today.getDate() : 0));
+  const dailyRunway = balance > 0 ? Math.round(balance / remainingDays) : 0;
+
+  const spentPct = salary > 0 ? Math.round((spent / salary) * 100) : 0;
+  const activeDaysCount = useMemo(() => {
+    return new Set(expenses.map((e) => e.date)).size || (expenses.length ? 1 : 0);
+  }, [expenses]);
+
+  return (
+    <div className="space-y-3.5">
+      {/* ── Top Header Bar ── */}
+      <div className="flex items-center justify-between pt-1">
+        {/* Month Selector Pill */}
+        <div className="relative">
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/30 px-3 py-1.5 pl-8 pr-7 text-[11px] font-extrabold tracking-wider text-[#fde68a] outline-none shadow-sm"
+          >
+            {getMonthOptions(selectedMonth).map((m) => (
+              <option key={m} value={m} className="bg-[#0b0f19] text-[#f3f4f6]">
+                {monthLabel(m).toUpperCase()}
+              </option>
+            ))}
+          </select>
+          <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#fbbf24]" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[#fbbf24]/80" />
+        </div>
+
+        {/* Center Editorial Title */}
+        <div className="text-center">
+          <p className="text-[8.5px] font-extrabold uppercase tracking-[0.2em] text-[#fbbf24]/90">
+            SPENDLY PRIVATE WEALTH
+          </p>
+          <h1 className="text-lg sm:text-xl font-serif font-extrabold text-white tracking-tight leading-tight">
+            Financial Reports<span className="text-[#fbbf24]">.</span>
+          </h1>
+        </div>
+
+        {/* Right Status Actions */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            className="relative grid h-8 w-8 place-items-center rounded-full bg-[#101626] border border-[#fbbf24]/25 text-[#9ca3af] hover:text-[#fbbf24] transition"
+            title="Notifications"
+          >
+            <Bell className="h-3.5 w-3.5" />
+            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#fbbf24] shadow-[0_0_6px_#fbbf24]" />
+          </button>
+          <div
+            className="grid h-8 w-8 place-items-center rounded-full bg-[#101626] border border-[#fbbf24]/40 text-[#fbbf24] shadow-[0_0_10px_rgba(245,158,11,0.25)]"
+            title="Verified Wealth Intelligence"
+          >
+            <ShieldCheck className="h-4 w-4" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Subheader row: INTELLIGENCE & FLOW + Private Vault ── */}
+      <div className="flex items-center justify-between pt-0.5 px-0.5">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-[#fbbf24] shadow-[0_0_8px_#fbbf24] animate-pulse" />
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#fbbf24]">
+            INTELLIGENCE & FLOW
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-full bg-[#101626] border border-[#fbbf24]/25 px-2.5 py-1 text-[10px] font-bold text-[#fde68a] shadow-sm transition active:scale-95"
+        >
+          <Lock className="h-3 w-3 text-[#fbbf24]" />
+          <span>Private Vault</span>
+          <ChevronDown className="h-2.5 w-2.5 text-[#fbbf24]/70" />
+        </button>
+      </div>
+
+      {/* ── Monthly Budget Velocity Card ── */}
+      <div className="spendly-glass-card !p-4 space-y-3.5">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+              <Gauge className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-serif text-base font-bold text-white tracking-tight">
+                Monthly Budget Velocity
+              </h2>
+              <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                {daysElapsed} of {daysInMonth} days elapsed
+              </p>
+            </div>
+          </div>
+
+          <span className="rounded-full bg-[#1e1c12] border border-[#fbbf24]/40 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-[#fde68a] uppercase">
+            {spentPct}% UTILIZED
+          </span>
+        </div>
+
+        {/* Glowing Gold Progress Slider Bar */}
+        <div className="relative pt-1 pb-1">
+          <div className="relative h-2 w-full rounded-full bg-[#080c14] border border-white/5 overflow-visible">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#d97706] via-[#f59e0b] to-[#fde68a] transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(2, spentPct))}%` }}
+            />
+            <div
+              className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_10px_#fbbf24] border-2 border-[#fbbf24] transition-all duration-500 pointer-events-none"
+              style={{ left: `calc(${Math.min(100, Math.max(0, spentPct))}% - 7px)` }}
+            />
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col-reverse justify-end gap-3 border-t border-border pt-6 sm:flex-row">
-          <Button variant="quiet" type="button" onClick={() => setLocation('/expenses')} testId="button-cancel-expense">
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!valid} testId="button-save-expense">
-            <Check className="h-4 w-4" />
-            {editing ? 'Save changes' : 'Save expense'}
-          </Button>
+        {/* Bottom Row: SPENT vs REMAINING RUNWAY */}
+        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+          <div>
+            <p className="text-[9.5px] font-extrabold uppercase tracking-wider text-[#9ca3af]">SPENT</p>
+            <p className="font-serif text-xl font-bold text-white mt-0.5">{rupees(spent)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9.5px] font-extrabold uppercase tracking-wider text-[#9ca3af]">REMAINING RUNWAY</p>
+            <p className="font-serif text-xl font-bold text-[#fde68a] mt-0.5">
+              {rupees(balance >= 0 ? balance : 0)}{' '}
+              <span className="font-sans text-xs font-semibold text-[#9ca3af]">
+                ({rupees(dailyRunway)}/day)
+              </span>
+            </p>
+          </div>
         </div>
-      </form>
+      </div>
+
+      {/* ── 4 Metric KPI Cards (2x2 Grid) ── */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* TAKE-HOME */}
+        <div className="spendly-metric-card">
+          <div className="spendly-metric-card__header">
+            <span className="spendly-metric-card__label">TAKE-HOME</span>
+            <div className="spendly-metric-card__icon">
+              <Wallet className="h-4 w-4" />
+            </div>
+          </div>
+          <div>
+            <p className="spendly-metric-card__value text-white" data-testid="mobile-summary-salary">
+              {salary ? rupees(salary) : '₹0'}
+            </p>
+            <p className="spendly-metric-card__detail">
+              {salary ? `↑ Credited ${monthShortName} 1` : 'Set in Profile'}
+            </p>
+          </div>
+        </div>
+
+        {/* TOTAL SPEND */}
+        <div className="spendly-metric-card">
+          <div className="spendly-metric-card__header">
+            <span className="spendly-metric-card__label">TOTAL SPEND</span>
+            <div className="spendly-metric-card__icon">
+              <CreditCard className="h-4 w-4" />
+            </div>
+          </div>
+          <div>
+            <p className="spendly-metric-card__value text-white" data-testid="mobile-summary-expenses">
+              {rupees(spent)}
+            </p>
+            <p className="spendly-metric-card__detail">
+              🗂 {expenses.length} {expenses.length === 1 ? 'ledger item' : 'ledger items'}
+            </p>
+          </div>
+        </div>
+
+        {/* NET BALANCE */}
+        <div className="spendly-metric-card">
+          <div className="spendly-metric-card__header">
+            <span className="spendly-metric-card__label">NET BALANCE</span>
+            <div className="spendly-metric-card__icon">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+          </div>
+          <div>
+            <p
+              className={`spendly-metric-card__value ${balance < 0 ? 'text-[#f87171]' : 'text-[#fde68a]'}`}
+              data-testid="mobile-summary-balance"
+            >
+              {rupees(Math.abs(balance))}
+            </p>
+            <p className="spendly-metric-card__detail">
+              {balance >= 0 ? '✓ Surplus intact' : '⚠ Deficit alert'}
+            </p>
+          </div>
+        </div>
+
+        {/* AVG / ACTIVE TX */}
+        <div className="spendly-metric-card">
+          <div className="spendly-metric-card__header">
+            <span className="spendly-metric-card__label">AVG / ACTIVE TX</span>
+            <div className="spendly-metric-card__icon">
+              <Receipt className="h-4 w-4" />
+            </div>
+          </div>
+          <div>
+            <p className="spendly-metric-card__value text-white" data-testid="mobile-summary-average">
+              {expenses.length ? rupees(spent / expenses.length) : '₹0'}
+            </p>
+            <p className="spendly-metric-card__detail">
+              ⚡ {activeDaysCount} active days
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Interactive Charts & Topology Container ── */}
+      <ReportCharts
+        expenses={expenses}
+        salary={salary}
+        selectedMonth={selectedMonth}
+        categories={finance.categories}
+        categoryColors={CATEGORY_COLORS}
+      />
+
+      {/* ── Optimal Burn Discipline / Audit PDF Card ── */}
+      <div className="spendly-glass-card !p-3.5 flex items-center justify-between gap-3 border-[#fbbf24]/20">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#182033] border border-[#fbbf24]/30 text-[#fbbf24] shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+            <Award className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-serif text-sm font-bold text-white truncate">
+              Optimal Burn Discipline
+            </p>
+            <p className="text-[11px] text-[#9ca3af] truncate mt-0.5">
+              Runway projected to surplus {rupees(balance >= 0 ? balance : 0)}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDownloadPdf}
+          disabled={isExporting}
+          data-testid="button-spendly-audit-pdf"
+          className="shrink-0 rounded-full border border-[#fbbf24]/50 bg-[#151c2e] hover:bg-[#1f2940] px-3.5 py-1.5 text-xs font-bold text-[#fde68a] tracking-wider transition active:scale-95 disabled:opacity-50 shadow-sm"
+        >
+          {isExporting ? 'GENERATING...' : 'AUDIT PDF'}
+        </button>
+      </div>
     </div>
   );
 }
 
 function SummaryPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
+  const { user, profile } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(monthKey());
+  const [isExporting, setIsExporting] = useState(false);
+
   const salary = finance.store.salaries[selectedMonth] ?? 0;
   const expenses = finance.store.expenses.filter((expense) => expense.date.slice(0, 7) === selectedMonth);
   const spent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const balance = salary - spent;
-  const grouped = finance.categories
-    .map((category, index) => ({
-      category,
-      amount: expenses.filter((expense) => expense.category === category).reduce((sum, expense) => sum + expense.amount, 0),
-      color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
-    }))
-    .filter((item) => item.amount > 0)
-    .sort((a, b) => b.amount - a.amount);
-  const max = Math.max(...grouped.map((item) => item.amount), 1);
+
+  const userName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split('@')[0] : 'Valued User');
+  const userEmail = user?.email || 'private@paisa.local';
+
+  const handleDownloadPdf = () => {
+    try {
+      setIsExporting(true);
+      exportMonthlyExpensePdf({
+        userName,
+        userEmail,
+        monthKey: selectedMonth,
+        monthLabel: monthLabel(selectedMonth),
+        salary,
+        expenses,
+        categories: finance.categories,
+      });
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      alert('Could not generate PDF report. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="page-enter">
-      <PageIntro
-        eyebrow="Patterns, not pressure"
-        title="The month in full."
-        description="A calm read on where your money went, and what’s still available."
-        action={<MonthPicker value={selectedMonth} onChange={setSelectedMonth} />}
-      />
-
-      {spent > salary && salary > 0 && (
-        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
-          <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-          <div>
-            <p className="font-bold">This month is over its salary by {rupees(spent - salary)}.</p>
-            <p className="mt-1 text-muted-foreground">No shame in the number — it’s simply asking for your attention.</p>
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          testId="summary-salary"
-          label="Salary"
-          value={salary ? rupees(salary) : 'Not set'}
-          detail={salary ? monthLabel(selectedMonth) : 'Add in Settings'}
-          icon={Banknote}
-          tone="mint"
-        />
-        <MetricCard
-          testId="summary-expenses"
-          label="Expenses"
-          value={rupees(spent)}
-          detail={`${expenses.length} transactions`}
-          icon={CreditCard}
-          tone="coral"
-        />
-        <MetricCard
-          testId="summary-balance"
-          label={balance < 0 ? 'Over by' : 'Balance'}
-          value={rupees(Math.abs(balance))}
-          detail={balance < 0 ? 'Needs a closer look' : 'Available after expenses'}
-          icon={balance < 0 ? ArrowDownRight : ArrowUpRight}
-          tone={balance < 0 ? 'coral' : 'cream'}
-        />
-        <MetricCard
-          testId="summary-average"
-          label="Average spend"
-          value={expenses.length ? rupees(spent / expenses.length) : '₹0'}
-          detail="Per transaction"
-          icon={TrendingDown}
-          tone="plum"
+      {/* ── SPENDLY MOBILE SUMMARY UI (strictly for phone users < 640px) ── */}
+      <div className="sm:hidden">
+        <SpendlyMobileSummary
+          finance={finance}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          salary={salary}
+          spent={spent}
+          balance={balance}
+          expenses={expenses}
+          userName={userName}
+          userEmail={userEmail}
+          isExporting={isExporting}
+          handleDownloadPdf={handleDownloadPdf}
         />
       </div>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_.95fr]">
-        <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">The shape of it</p>
-              <h2 className="mt-1 font-display text-2xl">By category</h2>
+      {/* ── DESKTOP SUMMARY UI (strictly for desktop/tablet >= 640px) ── */}
+      <div className="hidden sm:block space-y-6">
+        <PageIntro
+          eyebrow="Visual Analytics & Trends"
+          title="Reports & Insights."
+          description="Interactive charts, daily spending flows, category allocations, and PDF statements."
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={isExporting}
+                data-testid="button-download-pdf-report"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+                title="Download Monthly PDF Expense Report"
+              >
+                <FileDown className="h-4 w-4" />
+                <span>{isExporting ? 'Generating...' : 'Download PDF'}</span>
+              </button>
             </div>
-            <Tag className="h-5 w-5 text-muted-foreground" />
-          </div>
-          {grouped.length ? (
-            <div className="mt-7 space-y-5">
-              {grouped.map((item, index) => (
-                <div key={item.category} className="rise-in" style={{ animationDelay: `${index * 60}ms` }}>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 font-semibold">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                      {item.category}
-                    </span>
-                    <span className="font-mono-ui text-xs">{rupees(item.amount)}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${(item.amount / max) * 100}%`, backgroundColor: item.color }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyExpenses compact />
-          )}
-        </section>
+          }
+        />
 
-        <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
-          <div>
-            <p className="font-mono-ui text-[10px] uppercase tracking-[.15em] text-primary">A useful number</p>
-            <h2 className="mt-1 font-display text-2xl">Your balance</h2>
-          </div>
-          <div className="mt-8 rounded-2xl bg-sidebar p-6 text-sidebar-foreground">
-            <p className="text-xs font-bold uppercase tracking-[.14em] text-sidebar-foreground/50">
-              {balance < 0 ? 'Needs a reset' : 'Left after spending'}
-            </p>
-            <p data-testid="summary-balance-value" className={`mt-3 font-display text-4xl ${balance < 0 ? 'text-[#f19a78]' : 'text-[#a8d8bd]'}`}>
-              {rupees(Math.abs(balance))}
-            </p>
-            <div className="mt-6 h-2 overflow-hidden rounded-full bg-sidebar-foreground/15">
-              <div
-                className={`h-full rounded-full ${balance < 0 ? 'bg-[#f19a78]' : 'bg-[#a8d8bd]'}`}
-                style={{ width: `${salary ? Math.min(Math.max((spent / salary) * 100, 4), 100) : 4}%` }}
-              />
+        {spent > salary && salary > 0 && (
+          <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
+            <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            <div>
+              <p className="font-bold text-destructive">This month is over its salary by {rupees(spent - salary)}.</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">No shame in the number — it’s simply asking for your attention.</p>
             </div>
-            <p className="mt-3 text-xs leading-relaxed text-sidebar-foreground/55">
-              {salary ? `${Math.round((spent / salary) * 100)}% of your salary has found a destination.` : 'Set a salary to make this number more meaningful.'}
-            </p>
+          </div>
+        )}
+
+        {/* 4 Summary KPIs in 2x2 on phone screens, 4-col on desktop */}
+        <div className="rounded-3xl border border-card-border/80 bg-card/60 p-2.5 sm:p-0 sm:border-0 sm:bg-transparent shadow-[var(--shadow-card)] sm:shadow-none backdrop-blur-sm">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+            <MetricCard
+              testId="summary-salary"
+              label="Salary"
+              value={salary ? rupees(salary) : 'Not set'}
+              detail={salary ? monthLabel(selectedMonth) : 'Add in Settings'}
+              icon={Banknote}
+              tone="mint"
+            />
+            <MetricCard
+              testId="summary-expenses"
+              label="Expenses"
+              value={rupees(spent)}
+              detail={`${expenses.length} ${expenses.length === 1 ? 'transaction' : 'transactions'}`}
+              icon={CreditCard}
+              tone="coral"
+            />
+            <MetricCard
+              testId="summary-balance"
+              label={balance < 0 ? 'Over by' : 'Balance'}
+              value={rupees(Math.abs(balance))}
+              detail={balance < 0 ? 'Needs closer look' : 'Available after expenses'}
+              icon={balance < 0 ? ArrowDownRight : ArrowUpRight}
+              tone={balance < 0 ? 'coral' : 'cream'}
+            />
+            <MetricCard
+              testId="summary-average"
+              label="Avg per tx"
+              value={expenses.length ? rupees(spent / expenses.length) : '₹0'}
+              detail="Per transaction"
+              icon={TrendingDown}
+              tone="plum"
+            />
+          </div>
+        </div>
+
+        {/* Interactive Visual Analytics Charts & Insights */}
+        <ReportCharts
+          expenses={expenses}
+          salary={salary}
+          selectedMonth={selectedMonth}
+          categories={finance.categories}
+          categoryColors={CATEGORY_COLORS}
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExporting}
+              data-testid="button-download-pdf-bottom"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+            >
+              <FileDown className="h-4 w-4" />
+              <span>{isExporting ? 'Generating PDF...' : `Download ${monthLabel(selectedMonth)} Report (PDF)`}</span>
+            </button>
+            <Link
+              href="/expenses"
+              data-testid="link-summary-transactions"
+              className="inline-flex items-center gap-2 rounded-xl bg-card border border-card-border px-4 py-2.5 text-xs font-bold text-foreground shadow-sm transition hover:bg-muted"
+            >
+              <span>View All Transactions</span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
+            </Link>
           </div>
           <Link
-            href="/expenses"
-            data-testid="link-summary-transactions"
-            className="mt-5 flex items-center justify-between rounded-xl bg-muted px-4 py-3 text-sm font-bold transition hover:bg-border"
+            href="/add-expense"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-muted border border-border px-4 py-2.5 text-xs font-bold text-foreground shadow-sm transition hover:bg-card"
           >
-            <span>Review transactions</span>
-            <ArrowUpRight className="h-4 w-4 text-primary" />
+            <Plus className="h-3.5 w-3.5 text-primary" />
+            <span>Add Expense</span>
           </Link>
-        </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpendlyMobileSettings({
+  finance,
+  theme,
+  toggleTheme,
+}: {
+  finance: ReturnType<typeof useFinance>;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+}) {
+  const { user, profile, signOut, isConfigured } = useAuth();
+  const [selectedMonth, setSelectedMonth] = useState(monthKey());
+  const [salaryValue, setSalaryValue] = useState(String(finance.store.salaries[selectedMonth] ?? ''));
+  const [newCategory, setNewCategory] = useState('');
+
+  useEffect(() => {
+    setSalaryValue(finance.store.salaries[selectedMonth] ? String(finance.store.salaries[selectedMonth]) : '');
+  }, [finance.store.salaries, selectedMonth]);
+
+  const userName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split('@')[0] : 'Guest User');
+
+  const userInitial = userName ? userName[0].toUpperCase() : 'G';
+
+  const handleSaveSalary = (e: FormEvent) => {
+    e.preventDefault();
+    if (Number(salaryValue) > 0) {
+      finance.setSalary(selectedMonth, Number(salaryValue));
+    }
+  };
+
+  const handleAddCategory = (e: FormEvent) => {
+    e.preventDefault();
+    if (finance.addCategory(newCategory)) {
+      setNewCategory('');
+    }
+  };
+
+  return (
+    <div className="space-y-3.5">
+      {/* Top Header */}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <p className="text-xs font-semibold text-[#9ca3af] flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#fbbf24] shadow-[0_0_6px_#fbbf24]" />
+            Account & Preferences
+          </p>
+          <h1 className="text-xl font-serif font-extrabold text-[#f1f5f3] tracking-tight mt-0.5">
+            Profile & Settings<span className="text-[#fbbf24]">.</span>
+          </h1>
+        </div>
+      </div>
+
+      {/* ── VIP DIGITAL MEMBER PROFILE CARD ── */}
+      <div className="spendly-credit-card !p-4">
+        <div className="spendly-credit-card__sheen" />
+        <div className="spendly-credit-card__mesh-pattern" />
+
+        <div className="relative z-10 flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            {/* Glowing Avatar */}
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-lg font-black text-[#080c14] shadow-[0_0_16px_rgba(245,158,11,0.5)] ring-2 ring-[#fbbf24] ring-offset-2 ring-offset-[#080c14]">
+              {userInitial}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-sm font-extrabold text-white tracking-tight truncate">
+                  {userName}
+                </h2>
+                <span className="rounded-full bg-[#1e1c12] border border-[#fbbf24]/40 px-1.5 py-0.2 text-[7.5px] font-extrabold uppercase tracking-wider text-[#fde68a]">
+                  PRIVATE WEALTH
+                </span>
+              </div>
+              <p className="text-[11px] text-[#fde68a]/80 truncate font-mono mt-0.5">
+                {isRealSupabaseUser(user) ? user?.email : 'Offline Guest Mode'}
+              </p>
+            </div>
+          </div>
+
+          {/* Overlapping Hologram Circles */}
+          <div className="spendly-card-network opacity-80 shrink-0" title="Spendly Network">
+            <div className="spendly-card-network__circle spendly-card-network__circle--1" />
+            <div className="spendly-card-network__circle spendly-card-network__circle--2" />
+          </div>
+        </div>
+
+        {/* Database & Session Status Row */}
+        <div className="relative z-10 mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className={`h-2 w-2 rounded-full ${isRealSupabaseUser(user) ? 'bg-[#fbbf24] animate-pulse shadow-[0_0_6px_#fbbf24]' : 'bg-[#fbbf24]'}`} />
+            <span className="text-[10.5px] font-semibold text-[#fde68a]/90">
+              {isRealSupabaseUser(user) ? 'Cloud Synced' : 'Private (Offline)'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isRealSupabaseUser(user) ? (
+              <>
+                <button
+                  type="button"
+                  onClick={finance.syncWithSupabase}
+                  disabled={finance.isSyncing}
+                  className="rounded-lg bg-[#182033] border border-[#fbbf24]/30 px-2.5 py-1 text-[10px] font-bold text-[#fde68a] flex items-center gap-1 transition active:scale-95 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3 w-3 ${finance.isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{finance.isSyncing ? 'Syncing...' : 'Sync'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="rounded-lg bg-rose-950/80 border border-rose-400/30 px-2.5 py-1 text-[10px] font-bold text-rose-300 flex items-center gap-1 transition active:scale-95"
+                >
+                  <LogOut className="h-3 w-3" />
+                  <span>Sign Out</span>
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-lg bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-2.5 py-1 text-[10px] font-bold text-[#080c14] flex items-center gap-1 shadow-[0_0_10px_rgba(245,158,11,0.35)] transition active:scale-95"
+              >
+                <LogIn className="h-3 w-3" />
+                <span>Connect Account</span>
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── MONTHLY TAKE-HOME SALARY CARD ── */}
+      <div className="spendly-glass-card space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+              <Banknote className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#f1f5f3]">Monthly Take-Home</p>
+              <p className="text-[10px] text-[#9ca3af]">Calculates budget and savings pace</p>
+            </div>
+          </div>
+
+          {/* Month Selector Dropdown Pill */}
+          <div className="relative">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/25 px-2.5 py-1 pr-6 text-[10px] font-bold text-[#fde68a] outline-none"
+            >
+              {getMonthOptions(selectedMonth).map((m) => (
+                <option key={m} value={m} className="bg-[#0b0f19] text-[#f1f5f3]">
+                  {monthLabel(m)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-[#fbbf24]" />
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveSalary} className="flex gap-2 pt-0.5">
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#fbbf24]">₹</span>
+            <input
+              type="number"
+              min="0"
+              value={salaryValue}
+              onChange={(e) => setSalaryValue(e.target.value)}
+              placeholder="e.g. 50000"
+              className="w-full rounded-xl bg-[#101626] border border-[#fbbf24]/25 py-2 pl-7 pr-3 text-xs font-semibold text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!Number(salaryValue)}
+            className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.35)] transition active:scale-95 disabled:opacity-50"
+          >
+            Save
+          </button>
+        </form>
+      </div>
+
+      {/* ── CUSTOM CATEGORIES CARD ── */}
+      <div className="spendly-glass-card space-y-2.5">
+        <div className="flex items-center gap-2">
+          <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+            <Tag className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-[#f1f5f3]">Manage Categories</p>
+            <p className="text-[10px] text-[#9ca3af]">Custom tags and everyday buckets</p>
+          </div>
+        </div>
+
+        {/* Categories Chips */}
+        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+          {finance.categories.map((cat) => {
+            const Icon = getCategoryIcon(cat);
+            return (
+              <span
+                key={cat}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#101626] border border-[#fbbf24]/20 px-2.5 py-1 text-[11px] font-semibold text-[#fde68a] transition-all hover:border-[#fbbf24]/40"
+              >
+                <Icon className="h-3 w-3 text-[#fbbf24]" />
+                <span>{cat}</span>
+                <button
+                  type="button"
+                  onClick={() => finance.removeCategory(cat)}
+                  className="ml-0.5 rounded-full p-0.5 text-[#9ca3af] hover:text-[#f87171] hover:bg-rose-950/40 transition active:scale-90"
+                  title={`Delete ${cat}`}
+                  aria-label={`Delete ${cat}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+
+        {/* Add Category Form */}
+        <form onSubmit={handleAddCategory} className="flex gap-2 pt-0.5">
+          <input
+            type="text"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            placeholder="Add new category..."
+            className="flex-1 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-2 text-xs font-medium text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
+          />
+          <button
+            type="submit"
+            disabled={!newCategory.trim()}
+            className="rounded-xl bg-[#182033] border border-[#fbbf24]/30 px-3.5 py-2 text-xs font-bold text-[#fbbf24] transition active:scale-95 disabled:opacity-50"
+          >
+            + Add
+          </button>
+        </form>
+      </div>
+
+      {/* ── THEME & DISPLAY PREFERENCES ── */}
+      <div className="spendly-glass-card space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+              <Smartphone className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#f1f5f3]">Theme Mode</p>
+              <p className="text-[10px] text-[#9ca3af]">Currently {theme} mode</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-1.5 text-xs font-bold text-[#f1f5f3] transition active:scale-95"
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="h-3.5 w-3.5 text-amber-400" />
+                <span>Light</span>
+              </>
+            ) : (
+              <>
+                <Moon className="h-3.5 w-3.5 text-[#fbbf24]" />
+                <span>Dark</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1673,7 +3198,6 @@ function SettingsPage({
   const [month, setMonth] = useState(monthKey());
   const [salary, setSalaryValue] = useState(String(finance.store.salaries[month] ?? ''));
   const [newCategory, setNewCategory] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setSalaryValue(finance.store.salaries[month] ? String(finance.store.salaries[month]) : '');
@@ -1683,38 +3207,23 @@ function SettingsPage({
     if (Number(salary) > 0) finance.setSalary(month, Number(salary));
   };
 
-  const exportData = () => {
-    const blob = new Blob([JSON.stringify(finance.store, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `paisa-backup-${monthKey()}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target?.result as string);
-        finance.importStore(parsed);
-      } catch {
-        alert('Invalid backup file. Please provide a valid JSON backup.');
-      }
-    };
-    reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <PageIntro eyebrow="Your space" title="Settings." description="Keep your monthly context, private categories, and app preferences up to date." />
+    <div className="page-enter">
+      {/* ── SPENDLY MOBILE SETTINGS / PROFILE UI (strictly for phone users < 640px) ── */}
+      <div className="sm:hidden">
+        <SpendlyMobileSettings
+          finance={finance}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
+      </div>
 
-      {/* Account & Supabase Authentication */}
-      <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+      {/* ── DESKTOP SETTINGS UI (strictly for desktop/tablet >= 640px) ── */}
+      <div className="hidden sm:block mx-auto max-w-4xl space-y-6 sm:pb-16">
+        <PageIntro eyebrow="Your space" title="Settings." description="Keep your monthly context, private categories, and app preferences up to date." />
+
+        {/* Account & Supabase Authentication */}
+        <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
@@ -1789,38 +3298,6 @@ function SettingsPage({
             )}
           </div>
         </div>
-
-        {/* Database Tables Overview */}
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <Database className="h-3.5 w-3.5 text-primary" />
-              <span>profiles</span>
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">User personal details</p>
-          </div>
-          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <Database className="h-3.5 w-3.5 text-primary" />
-              <span>expenses</span>
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{finance.store.expenses.length} entries</p>
-          </div>
-          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <Database className="h-3.5 w-3.5 text-primary" />
-              <span>salaries</span>
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{Object.keys(finance.store.salaries).length} recorded months</p>
-          </div>
-          <div className="rounded-xl border border-border/80 bg-background/60 p-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <Database className="h-3.5 w-3.5 text-primary" />
-              <span>user_logins</span>
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">Login history & audit</p>
-          </div>
-        </div>
       </section>
 
       {/* Salary Configuration */}
@@ -1871,19 +3348,17 @@ function SettingsPage({
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
           {finance.categories.map((category) => (
-            <span key={category} className="group inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-3 py-2 text-xs font-semibold">
+            <span key={category} className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-xs font-semibold">
               {category}
-              {!BASE_CATEGORIES.includes(category) && (
-                <button
-                  type="button"
-                  aria-label={`Remove ${category}`}
-                  data-testid={`button-remove-category-${category}`}
-                  onClick={() => finance.removeCategory(category)}
-                  className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
+              <button
+                type="button"
+                aria-label={`Remove ${category}`}
+                data-testid={`button-remove-category-${category}`}
+                onClick={() => finance.removeCategory(category)}
+                className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition"
+              >
+                <X className="h-3 w-3" />
+              </button>
             </span>
           ))}
         </div>
@@ -1940,49 +3415,16 @@ function SettingsPage({
               )}
             </button>
           </div>
-
-
-        </div>
-      </section>
-
-      {/* Local Data & Backup */}
-      <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
-        <div className="flex items-start gap-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#f0e6c7] text-[#96732a] dark:bg-[#38311d] dark:text-[#f0d99d]">
-            <SlidersHorizontal className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-display text-2xl">Local data & Backups</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Everything is stored privately on this device. Export a backup anytime or transfer to another device.</p>
-          </div>
-        </div>
-
-        <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".json" className="hidden" aria-label="Upload backup JSON" />
-
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button variant="outline" onClick={exportData} testId="button-export-data">
-            <ArrowUpRight className="h-4 w-4" /> Export backup (.json)
-          </Button>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()} testId="button-import-data">
-            <Upload className="h-4 w-4" /> Restore backup
-          </Button>
-          <Button
-            variant="quiet"
-            onClick={() => {
-              if (window.confirm('Clear all local salary, expense, and category data?')) finance.reset();
-            }}
-            testId="button-reset-data"
-          >
-            <RotateCcw className="h-4 w-4" /> Reset all data
-          </Button>
         </div>
       </section>
     </div>
-  );
+  </div>
+);
 }
 
 function Router() {
   const { user, loading } = useAuth();
+  const [location] = useLocation();
   const finance = useFinance();
   const { theme, toggleTheme } = useTheme();
 
@@ -2001,8 +3443,8 @@ function Router() {
     );
   }
 
-  // If unauthenticated, show Login & Signup page on startup
-  if (!user) {
+  // If unauthenticated or navigating to login/signup in guest mode, show LoginPage
+  if (!user || location === '/login' || location === '/signup') {
     return (
       <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
         <LoginPage />
@@ -2012,7 +3454,7 @@ function Router() {
 
   return (
     <AppShell toast={finance.toast} theme={theme} toggleTheme={toggleTheme}>
-      <ErrorBoundary resetKey={location.pathname}>
+      <ErrorBoundary resetKey={location}>
         <Switch>
           <Route path="/" component={() => <HomePage finance={finance} />} />
           <Route path="/expenses" component={() => <ExpensesPage finance={finance} />} />
@@ -2020,6 +3462,8 @@ function Router() {
           <Route path="/add-expense" component={() => <ExpenseFormPage finance={finance} />} />
           <Route path="/summary" component={() => <SummaryPage finance={finance} />} />
           <Route path="/settings" component={() => <SettingsPage finance={finance} theme={theme} toggleTheme={toggleTheme} />} />
+          <Route path="/login" component={() => <LoginPage />} />
+          <Route path="/signup" component={() => <LoginPage />} />
           <Route component={NotFound} />
         </Switch>
       </ErrorBoundary>

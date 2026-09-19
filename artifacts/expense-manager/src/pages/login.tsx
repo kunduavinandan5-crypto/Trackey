@@ -13,8 +13,11 @@ import {
   CheckCircle2,
   KeyRound,
   ShieldCheck,
+  CreditCard,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { isRealSupabaseUser } from '@/lib/db-service';
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -29,14 +32,14 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // If already logged in, redirect home safely via useEffect
+  // If already logged in with a real Supabase user, redirect home
   useEffect(() => {
-    if (user) {
+    if (user && isRealSupabaseUser(user)) {
       setLocation('/');
     }
   }, [user, setLocation]);
 
-  if (user) {
+  if (user && isRealSupabaseUser(user)) {
     return null;
   }
 
@@ -78,22 +81,216 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-[85vh] flex-col items-center justify-center px-4 py-8">
-      {/* Background ambient lighting */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-35 blur-[80px]"
-        style={{
-          background: 'radial-gradient(circle, hsl(var(--primary) / 0.7) 0%, hsl(var(--accent) / 0.4) 60%, transparent 80%)',
-        }}
-        aria-hidden="true"
-      />
+    <div className="relative flex min-h-[85vh] flex-col items-center justify-center px-4 py-6">
+      {/* ── SPENDLY MOBILE LOGIN UI (strictly for phone users < 640px) ── */}
+      <div className="w-full max-w-sm sm:hidden">
+        {user && (
+          <div className="mb-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setLocation('/settings')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4ade80] bg-[#11241a] border border-[#34d399]/25 px-3 py-1.5 rounded-full transition active:scale-95"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Settings</span>
+            </button>
+          </div>
+        )}
+        {/* Top Floating Orbit App Badge */}
+        <div className="spendly-app-badge-orbit">
+          <div className="spendly-orbit-icon spendly-orbit-icon--1">
+            <CreditCard className="h-4 w-4" />
+          </div>
+          <div className="spendly-app-badge-center">
+            <ReceiptIndianRupee className="h-9 w-9 text-[#4ade80]" />
+          </div>
+          <div className="spendly-orbit-icon spendly-orbit-icon--2">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div className="spendly-orbit-icon spendly-orbit-icon--3">
+            <KeyRound className="h-3.5 w-3.5" />
+          </div>
+        </div>
 
-      {/* Main Card Container */}
-      <div className="relative w-full max-w-md">
+        {/* Brand Heading */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-display font-extrabold tracking-tight text-white">
+            Spendly<span className="text-[#4ade80]">.</span>
+          </h1>
+          <p className="text-xs text-[#7d9688] mt-1 font-medium">Smart money, smarter life</p>
+        </div>
+
+        {/* Success / Error Banners */}
+        {successMessage && (
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-950/60 p-3.5 text-xs text-emerald-300 backdrop-blur-md">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-3.5 text-xs text-rose-300 backdrop-blur-md">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Mobile Glass Card Form */}
+        <div className="spendly-glass-card p-6 shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {mode === 'signup' && (
+              <div className="relative">
+                <UserIcon className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#4ade80]/70" />
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Full Name"
+                  className="w-full rounded-2xl border border-[#22c55e]/25 bg-[#0a1610]/80 py-3 pl-11 pr-4 text-sm font-medium text-white placeholder:text-[#5a7364] outline-none transition focus:border-[#4ade80] focus:ring-2 focus:ring-[#4ade80]/20"
+                />
+              </div>
+            )}
+
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#4ade80]/70" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Alex@gmail.com"
+                className="w-full rounded-2xl border border-[#22c55e]/25 bg-[#0a1610]/80 py-3 pl-11 pr-4 text-sm font-medium text-white placeholder:text-[#5a7364] outline-none transition focus:border-[#4ade80] focus:ring-2 focus:ring-[#4ade80]/20"
+              />
+            </div>
+
+            {mode !== 'forgot' && (
+              <div>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#4ade80]/70" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full rounded-2xl border border-[#22c55e]/25 bg-[#0a1610]/80 py-3 pl-11 pr-11 text-sm font-medium text-white placeholder:text-[#5a7364] outline-none transition focus:border-[#4ade80] focus:ring-2 focus:ring-[#4ade80]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#7d9688] hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {mode === 'signin' && (
+                  <div className="mt-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot');
+                        setError(null);
+                      }}
+                      className="text-xs font-semibold text-[#4ade80] hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Neon Green Action Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="spendly-neon-btn mt-2 cursor-pointer disabled:opacity-50"
+            >
+              {loading ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#042413] border-t-transparent" />
+              ) : (
+                <span>
+                  {mode === 'signin' && 'Sign In'}
+                  {mode === 'signup' && 'Create Account'}
+                  {mode === 'forgot' && 'Send Reset Link'}
+                </span>
+              )}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="my-5 text-center">
+            <span className="text-[11px] font-semibold text-[#5a7364]">
+              • or continue with •
+            </span>
+          </div>
+
+          {/* Demo / Guest / Google Pill Button */}
+          <button
+            type="button"
+            onClick={handleGuestMode}
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-[#22c55e]/20 bg-[#0a1610]/90 py-3 text-xs font-bold text-white transition hover:bg-[#12241b] active:scale-[0.98]"
+          >
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-black font-extrabold text-[10px]">
+              G
+            </span>
+            <span>Continue with Google / Demo</span>
+          </button>
+        </div>
+
+        {/* Footer switch */}
+        <div className="mt-6 text-center text-xs text-[#7d9688]">
+          {mode === 'signin' ? (
+            <p>
+              Don't have an account?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signup');
+                  setError(null);
+                }}
+                className="font-bold text-[#4ade80] hover:underline"
+              >
+                Sign up free
+              </button>
+            </p>
+          ) : (
+            <p>
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signin');
+                  setError(null);
+                }}
+                className="font-bold text-[#4ade80] hover:underline"
+              >
+                Sign in
+              </button>
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── DESKTOP LOGIN UI (preserved for sm+ screens) ── */}
+      <div className="relative hidden w-full max-w-md sm:block">
         {/* Glow halo behind card */}
         <div className="absolute -inset-1 rounded-[2.5rem] bg-gradient-to-r from-primary/30 via-accent/20 to-primary/30 opacity-70 blur-xl transition-all duration-500" />
 
         <div className="relative rounded-[2rem] border border-border/70 bg-card/90 p-8 shadow-2xl backdrop-blur-2xl sm:p-10">
+          {user && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setLocation('/settings')}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to Settings</span>
+              </button>
+            </div>
+          )}
           {/* Header Brand */}
           <div className="flex flex-col items-center text-center">
             <Link
@@ -116,7 +313,7 @@ export default function LoginPage() {
             <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
               {mode === 'signin' && 'Sign in to access your synced personal expenses'}
               {mode === 'signup' && 'Track your monthly finances securely across devices'}
-              {mode === 'forgot' && "Enter your email to receive a password reset link"}
+              {mode === 'forgot' && 'Enter your email to receive a password reset link'}
             </p>
           </div>
 
