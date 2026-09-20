@@ -23,10 +23,11 @@ interface AuthContextType {
   isConfigured: boolean;
   isGuest: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ data: { user: User | null; session: Session | null } | null; error: Error | null }>;
   signInWithDemo: (email?: string, name?: string) => void;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
   continueAsGuest: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const parsed = JSON.parse(savedLocalUser);
           setUser(parsed);
+          setIsGuest(true);
         } catch {
           localStorage.removeItem(AUTH_USER_KEY);
           localStorage.removeItem(LEGACY_AUTH_USER_KEY);
@@ -65,53 +67,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Get initial Supabase session
+    let isMounted = true;
+
+    // 1. Initial Session Check from Supabase Client
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
-        if (session?.user) {
-          setSession(session);
-          setUser(session.user);
-          getUserProfile(session.user.id)
+      .then(({ data: { session: initialSession } }) => {
+        if (!isMounted) return;
+        if (initialSession?.user) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          setIsGuest(false);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(initialSession.user));
+          getUserProfile(initialSession.user.id)
             .then((p) => {
-              if (p) setProfile(p);
-              else upsertUserProfile(session.user!).then(setProfile);
+              if (isMounted) {
+                if (p) setProfile(p);
+                else upsertUserProfile(initialSession.user!).then((up) => isMounted && setProfile(up));
+              }
             })
             .catch(() => {});
         } else {
-          setUser(null);
-          setSession(null);
+          // Check if user was in guest mode
+          const savedLocal = localStorage.getItem(AUTH_USER_KEY) || localStorage.getItem(LEGACY_AUTH_USER_KEY);
+          if (savedLocal) {
+            try {
+              const parsed = JSON.parse(savedLocal);
+              if (parsed && !isRealSupabaseUser(parsed)) {
+                setUser(parsed);
+                setIsGuest(true);
+              }
+            } catch {}
+          }
         }
         setLoading(false);
       })
       .catch(() => {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       });
 
-    // Listen for Supabase auth state changes
+    // 2. Listen to real-time Auth State Changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      if (session?.user) {
-        setUser(session.user);
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(session.user));
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (!isMounted) return;
 
-        try {
-          if (event === 'SIGNED_IN') {
-            await recordUserLogin(session.user);
-            const p = await upsertUserProfile(session.user);
-            if (p) setProfile(p);
-          } else {
-            const p = await getUserProfile(session.user.id);
-            if (p) setProfile(p);
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          setIsGuest(false);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(currentSession.user));
+
+          try {
+            if (event === 'SIGNED_IN') {
+              await recordUserLogin(currentSession.user);
+              const p = await upsertUserProfile(currentSession.user);
+              if (isMounted && p) setProfile(p);
+            } else {
+              const p = await getUserProfile(currentSession.user.id);
+              if (isMounted && p) setProfile(p);
+            }
+          } catch (err) {
+            console.warn('[Supabase] Auth state profile/login warning:', err);
           }
-        } catch (err) {
-          console.warn('[Supabase] Auth state profile/login warning:', err);
         }
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setProfile(null);
+        setSession(null);
+        setIsGuest(false);
         localStorage.removeItem(AUTH_USER_KEY);
         localStorage.removeItem(LEGACY_AUTH_USER_KEY);
       }
@@ -119,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -128,10 +154,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithDemo(email, email.split('@')[0]);
       return { error: null };
     }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const cleanEmail = email.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     if (!error && data.user) {
       setUser(data.user);
       if (data.session) setSession(data.session);
+      setIsGuest(false);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
       try {
         await recordUserLogin(data.user);
@@ -147,12 +175,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName?: string) => {
     if (!isSupabaseConfigured) {
       signInWithDemo(email, fullName || email.split('@')[0]);
-      return { error: null };
+      return { data: null, error: null };
     }
+    const cleanEmail = email.trim().toLowerCase();
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
-      options: fullName ? { data: { full_name: fullName } } : undefined,
+      options: fullName ? { data: { full_name: fullName.trim() } } : undefined,
     });
     if (!error && data.user) {
       try {
@@ -161,12 +190,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.session) {
           setUser(data.user);
           setSession(data.session);
+          setIsGuest(false);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
           await recordUserLogin(data.user);
         }
       } catch (err) {
         console.warn('[Supabase] Signup profile tracking warning:', err);
       }
     }
+    return { data, error: error as Error | null };
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    if (!isSupabaseConfigured) return { error: null };
+    const cleanEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: cleanEmail,
+    });
     return { error: error as Error | null };
   };
 
@@ -195,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       factors: [],
     };
     setUser(mockUser);
+    setIsGuest(true);
     setProfile({
       id: mockUser.id,
       email: mockUser.email || '',
@@ -214,6 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setSession(null);
+    setIsGuest(false);
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(LEGACY_AUTH_USER_KEY);
   };
@@ -222,7 +265,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return { error: null };
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const cleanEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
       redirectTo: `${window.location.origin}/login?reset=true`,
     });
     return { error: error as Error | null };
@@ -246,6 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithDemo,
         signOut,
         resetPassword,
+        resendVerificationEmail,
         continueAsGuest,
         refreshProfile,
       }}

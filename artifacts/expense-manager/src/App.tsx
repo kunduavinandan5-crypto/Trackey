@@ -74,6 +74,7 @@ import {
   saveSalaryToDb,
   isRealSupabaseUser,
 } from '@/lib/db-service';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 type Expense = {
   id: string;

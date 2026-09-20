@@ -1,7 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useLocation, Link } from 'wouter';
 import {
-  ReceiptIndianRupee,
   Lock,
   Mail,
   User as UserIcon,
@@ -11,17 +10,23 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
-  KeyRound,
   ShieldCheck,
-  CreditCard,
   ArrowLeft,
+  RotateCw,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { isRealSupabaseUser } from '@/lib/db-service';
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
-  const { user, isConfigured, signInWithPassword, signUp, resetPassword, continueAsGuest } = useAuth();
+  const {
+    user,
+    signInWithPassword,
+    signUp,
+    resetPassword,
+    resendVerificationEmail,
+    continueAsGuest,
+  } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
@@ -29,7 +34,9 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEmailUnconfirmed, setIsEmailUnconfirmed] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // If already logged in with a real Supabase user, redirect home
@@ -46,25 +53,41 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsEmailUnconfirmed(false);
     setSuccessMessage(null);
     setLoading(true);
 
     try {
       if (mode === 'signin') {
-        const { error } = await signInWithPassword(email, password);
-        if (error) throw error;
+        const { error: signInErr } = await signInWithPassword(email, password);
+        if (signInErr) {
+          const msg = signInErr.message || '';
+          if (msg.toLowerCase().includes('email not confirmed')) {
+            setIsEmailUnconfirmed(true);
+            throw new Error('Your email address has not been confirmed yet. Please check your inbox or resend the confirmation link below.');
+          }
+          throw signInErr;
+        }
         setLocation('/');
       } else if (mode === 'signup') {
         if (password.length < 6) {
           throw new Error('Password must be at least 6 characters long');
         }
-        const { error } = await signUp(email, password, fullName);
-        if (error) throw error;
-        setSuccessMessage('Account created! Please check your email to confirm your account, or sign in.');
-        setMode('signin');
+        const { data, error: signUpErr } = await signUp(email, password, fullName);
+        if (signUpErr) throw signUpErr;
+
+        if (data?.session) {
+          // Direct login without email confirmation
+          setLocation('/');
+        } else {
+          setSuccessMessage(
+            `Account created! A confirmation link has been sent to ${email}. Please check your inbox (and spam) to activate, or sign in.`
+          );
+          setMode('signin');
+        }
       } else if (mode === 'forgot') {
-        const { error } = await resetPassword(email);
-        if (error) throw error;
+        const { error: resetErr } = await resetPassword(email);
+        if (resetErr) throw resetErr;
         setSuccessMessage('Password reset link sent to your email address.');
         setMode('signin');
       }
@@ -72,6 +95,21 @@ export default function LoginPage() {
       setError((err as Error).message || 'An unexpected authentication error occurred.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) return;
+    setResending(true);
+    try {
+      const { error: resendErr } = await resendVerificationEmail(email);
+      if (resendErr) throw resendErr;
+      setSuccessMessage(`A fresh confirmation link was sent to ${email}. Please check your inbox.`);
+      setError(null);
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to resend confirmation email.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -108,12 +146,48 @@ export default function LoginPage() {
         </div>
 
         {/* Brand Heading */}
-        <div className="text-center mb-5">
+        <div className="text-center mb-4">
           <h1 className="text-2xl font-display font-extrabold tracking-tight text-white">
             spendly<span className="text-[#4ade80]">.</span>
           </h1>
           <p className="text-xs text-[#7d9688] mt-0.5 font-medium">Smart money, smarter life</p>
         </div>
+
+        {/* Mobile Tab Switcher */}
+        {mode !== 'forgot' && (
+          <div className="mb-4 grid grid-cols-2 rounded-2xl border border-[#22c55e]/25 bg-[#0a1610]/90 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signin');
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className={`rounded-xl py-2 text-xs font-bold transition-all ${
+                mode === 'signin'
+                  ? 'bg-[#22c55e] text-[#042413] shadow-md'
+                  : 'text-[#7d9688] hover:text-white'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signup');
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className={`rounded-xl py-2 text-xs font-bold transition-all ${
+                mode === 'signup'
+                  ? 'bg-[#22c55e] text-[#042413] shadow-md'
+                  : 'text-[#7d9688] hover:text-white'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
         {/* Success / Error Banners */}
         {successMessage && (
@@ -124,9 +198,22 @@ export default function LoginPage() {
         )}
 
         {error && (
-          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-3.5 text-xs text-rose-300 backdrop-blur-md">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-            <span>{error}</span>
+          <div className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-950/60 p-3.5 text-xs text-rose-300 backdrop-blur-md space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <span>{error}</span>
+            </div>
+            {isEmailUnconfirmed && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resending}
+                className="mt-1.5 inline-flex items-center gap-1.5 rounded-xl bg-rose-900/60 border border-rose-400/40 px-3 py-1.5 text-[11px] font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                <RotateCw className={`h-3 w-3 ${resending ? 'animate-spin' : ''}`} />
+                <span>{resending ? 'Sending...' : 'Resend Confirmation Email'}</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -186,6 +273,7 @@ export default function LoginPage() {
                       onClick={() => {
                         setMode('forgot');
                         setError(null);
+                        setSuccessMessage(null);
                       }}
                       className="text-xs font-semibold text-[#4ade80] hover:underline"
                     >
@@ -244,6 +332,7 @@ export default function LoginPage() {
                 onClick={() => {
                   setMode('signup');
                   setError(null);
+                  setSuccessMessage(null);
                 }}
                 className="font-bold text-[#4ade80] hover:underline"
               >
@@ -258,6 +347,7 @@ export default function LoginPage() {
                 onClick={() => {
                   setMode('signin');
                   setError(null);
+                  setSuccessMessage(null);
                 }}
                 className="font-bold text-[#4ade80] hover:underline"
               >
@@ -324,9 +414,22 @@ export default function LoginPage() {
 
           {/* Error Banner */}
           {error && (
-            <div className="mt-6 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
+            <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+              {isEmailUnconfirmed && (
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={resending}
+                  className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-destructive/20 border border-destructive/40 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/30 transition active:scale-95 disabled:opacity-50"
+                >
+                  <RotateCw className={`h-3.5 w-3.5 ${resending ? 'animate-spin' : ''}`} />
+                  <span>{resending ? 'Sending...' : 'Resend Confirmation Email'}</span>
+                </button>
+              )}
             </div>
           )}
 
