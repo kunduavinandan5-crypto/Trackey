@@ -314,23 +314,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Setup notice if Supabase credentials are missing */}
-          {!isConfigured && (
-            <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-900 dark:text-amber-200">
-              <div className="flex items-start gap-2.5">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                <div>
-                  <p className="font-semibold">Supabase Keys Required</p>
-                  <p className="mt-1 leading-relaxed opacity-90">
-                    Add your <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">VITE_SUPABASE_URL</code> and{' '}
-                    <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">VITE_SUPABASE_ANON_KEY</code> to{' '}
-                    <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">.env</code> to connect live authentication.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Success Banner */}
           {successMessage && (
             <div className="mt-6 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-900 dark:text-emerald-200">
