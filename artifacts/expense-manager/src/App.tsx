@@ -280,7 +280,7 @@ function useFinance() {
   const categories = store.categories && store.categories.length > 0 ? store.categories : BASE_CATEGORIES;
   const notify = (message: string, kind: 'success' | 'danger' = 'success') => setToast({ message, kind });
 
-  // Sync with Supabase on login or user switch
+  // Sync with Supabase on login or user switch + Live Realtime Cross-Device Sync
   useEffect(() => {
     if (!user || !isRealSupabaseUser(user)) {
       setStore(loadStore(null));
@@ -289,7 +289,6 @@ function useFinance() {
 
     let cancelled = false;
     const loadSupabaseData = async () => {
-      setIsSyncing(true);
       try {
         const [remoteExpenses, remoteSalaries] = await Promise.all([
           fetchUserExpenses(user.id),
@@ -351,14 +350,51 @@ function useFinance() {
         });
       } catch (err) {
         console.warn('Supabase sync error:', err);
-      } finally {
-        if (!cancelled) setIsSyncing(false);
       }
     };
 
+    // 1. Initial Load
     loadSupabaseData();
+
+    // 2. Realtime WebSocket channel for instant cross-device updates
+    const channel = supabase
+      .channel(`realtime-sync-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'expenses', filter: `user_id=eq.${user.id}` },
+        () => {
+          loadSupabaseData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'salaries', filter: `user_id=eq.${user.id}` },
+        () => {
+          loadSupabaseData();
+        }
+      )
+      .subscribe();
+
+    // 3. Refetch when window/tab is focused or phone is unlocked
+    const handleFocus = () => loadSupabaseData();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadSupabaseData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // 4. Background polling interval (every 15 seconds)
+    const interval = setInterval(loadSupabaseData, 15000);
+
     return () => {
       cancelled = true;
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(interval);
     };
   }, [user?.id]);
 
