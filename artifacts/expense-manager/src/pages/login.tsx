@@ -81,9 +81,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-[85vh] flex-col items-center justify-center px-4 py-6">
+    <div className="relative flex min-h-[100dvh] w-full flex-col items-center justify-center px-4 py-8">
       {/* ── SPENDLY MOBILE LOGIN UI (strictly for phone users < 640px) ── */}
-      <div className="w-full max-w-sm sm:hidden">
+      <div className="w-full max-w-sm sm:hidden my-auto">
         {user && (
           <div className="mb-4 flex items-center justify-between">
             <button
@@ -96,28 +96,23 @@ export default function LoginPage() {
             </button>
           </div>
         )}
-        {/* Top Floating Orbit App Badge */}
-        <div className="spendly-app-badge-orbit">
-          <div className="spendly-orbit-icon spendly-orbit-icon--1">
-            <CreditCard className="h-4 w-4" />
-          </div>
-          <div className="spendly-app-badge-center">
-            <ReceiptIndianRupee className="h-9 w-9 text-[#4ade80]" />
-          </div>
-          <div className="spendly-orbit-icon spendly-orbit-icon--2">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div className="spendly-orbit-icon spendly-orbit-icon--3">
-            <KeyRound className="h-3.5 w-3.5" />
+        {/* Top App Logo Badge */}
+        <div className="flex justify-center mb-3">
+          <div className="relative grid h-16 w-16 place-items-center rounded-2xl bg-emerald-500/10 p-1.5 shadow-2xl ring-1 ring-emerald-500/25 transition-transform hover:scale-105">
+            <img
+              src="/logo.png"
+              alt="Spendly Logo"
+              className="h-full w-full rounded-xl object-contain shadow-md"
+            />
           </div>
         </div>
 
         {/* Brand Heading */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <h1 className="text-2xl font-display font-extrabold tracking-tight text-white">
-            Spendly<span className="text-[#4ade80]">.</span>
+            spendly<span className="text-[#4ade80]">.</span>
           </h1>
-          <p className="text-xs text-[#7d9688] mt-1 font-medium">Smart money, smarter life</p>
+          <p className="text-xs text-[#7d9688] mt-0.5 font-medium">Smart money, smarter life</p>
         </div>
 
         {/* Success / Error Banners */}

@@ -3508,7 +3508,7 @@ function Router() {
   // If unauthenticated or navigating to login/signup in guest mode, show LoginPage
   if (!user || location === '/login' || location === '/signup') {
     return (
-      <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
+      <div className="app-grain flex min-h-[100dvh] flex-col items-center justify-center bg-background text-foreground transition-colors duration-200">
         <LoginPage />
       </div>
     );
