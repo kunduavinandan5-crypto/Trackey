@@ -33,6 +33,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_USER_KEY = 'spendly_auth_user';
+const LEGACY_AUTH_USER_KEY = 'paisa_auth_user';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<DbProfile | null>(null);
@@ -48,13 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      const savedLocalUser = localStorage.getItem('paisa_auth_user');
+      const savedLocalUser = localStorage.getItem(AUTH_USER_KEY) || localStorage.getItem(LEGACY_AUTH_USER_KEY);
       if (savedLocalUser) {
         try {
           const parsed = JSON.parse(savedLocalUser);
           setUser(parsed);
         } catch {
-          localStorage.removeItem('paisa_auth_user');
+          localStorage.removeItem(AUTH_USER_KEY);
+          localStorage.removeItem(LEGACY_AUTH_USER_KEY);
         }
       }
       setLoading(false);
@@ -91,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       if (session?.user) {
         setUser(session.user);
-        localStorage.setItem('paisa_auth_user', JSON.stringify(session.user));
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(session.user));
 
         try {
           if (event === 'SIGNED_IN') {
@@ -108,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
         setProfile(null);
-        localStorage.removeItem('paisa_auth_user');
+        localStorage.removeItem(AUTH_USER_KEY);
+        localStorage.removeItem(LEGACY_AUTH_USER_KEY);
       }
       setLoading(false);
     });
@@ -127,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data.user) {
       setUser(data.user);
       if (data.session) setSession(data.session);
-      localStorage.setItem('paisa_auth_user', JSON.stringify(data.user));
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
       try {
         await recordUserLogin(data.user);
         const p = await upsertUserProfile(data.user);
@@ -165,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signInWithDemo = (email = 'avinandan@paisa.app', name = 'Avinandan Kundu') => {
+  const signInWithDemo = (email = 'avinandan@spendly.app', name = 'Avinandan Kundu') => {
     const mockUser: User = {
       id: 'usr_' + Math.random().toString(36).substring(2, 9),
       app_metadata: { provider: 'email' },
@@ -195,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: mockUser.email || '',
       full_name: name,
     });
-    localStorage.setItem('paisa_auth_user', JSON.stringify(mockUser));
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(mockUser));
   };
 
   const signOut = async () => {
@@ -209,7 +214,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setSession(null);
-    localStorage.removeItem('paisa_auth_user');
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(LEGACY_AUTH_USER_KEY);
   };
 
   const resetPassword = async (email: string) => {
@@ -223,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const continueAsGuest = () => {
-    signInWithDemo('guest@paisa.app', 'Guest User');
+    signInWithDemo('guest@spendly.app', 'Guest User');
   };
 
   return (

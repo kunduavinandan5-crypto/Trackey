@@ -297,11 +297,13 @@ export default function LoginPage() {
               href="/"
               className="inline-flex items-center gap-2.5 transition-transform hover:scale-105"
             >
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent text-foreground shadow-md">
-                <ReceiptIndianRupee className="h-6 w-6" />
-              </span>
+              <img
+                src="/logo.png"
+                alt="Spendly Logo"
+                className="h-14 w-14 rounded-2xl object-contain shadow-lg"
+              />
               <span className="font-display text-2xl font-bold tracking-tight">
-                paisa<span className="text-accent">.</span>
+                spendly<span className="text-accent">.</span>
               </span>
             </Link>
 

@@ -26,8 +26,8 @@ export default defineConfig({
         'maskable-icon-512x512.png',
       ],
       manifest: {
-        name: 'Paisa — Personal Expense Manager',
-        short_name: 'Paisa',
+        name: 'Spendly — Personal Expense Manager',
+        short_name: 'Spendly',
         description: 'A private, mindful personal finance and expense tracker built for everyday awareness.',
         theme_color: '#4f46e5',
         background_color: '#f8fafc',

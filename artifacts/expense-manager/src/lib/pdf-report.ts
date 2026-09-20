@@ -66,7 +66,7 @@ export function exportMonthlyExpensePdf({
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
-  doc.text('PAISA', 14, 18);
+  doc.text('SPENDLY', 14, 18);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -234,7 +234,7 @@ export function exportMonthlyExpensePdf({
       doc.setTextColor(148, 163, 184);
 
       doc.text(
-        'Paisa — Personal Expense Manager · Encrypted & Private Financial Statement',
+        'Spendly — Personal Expense Manager · Encrypted & Private Financial Statement',
         14,
         pageHeight - 8,
       );
@@ -247,6 +247,6 @@ export function exportMonthlyExpensePdf({
   });
 
   // Save the PDF file
-  const fileName = `Paisa-Expense-Report-${monthLabel.replace(/\s+/g, '-')}.pdf`;
+  const fileName = `Spendly-Expense-Report-${monthLabel.replace(/\s+/g, '-')}.pdf`;
   doc.save(fileName);
 }

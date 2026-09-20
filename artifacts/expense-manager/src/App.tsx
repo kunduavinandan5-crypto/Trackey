@@ -91,8 +91,10 @@ type FinanceStore = {
   customCategories?: string[];
 };
 
-const STORAGE_KEY = 'paisa-pocket-finance-v1';
-const THEME_KEY = 'paisa-theme-preference';
+const STORAGE_KEY = 'spendly-pocket-finance-v1';
+const LEGACY_STORAGE_KEY = 'paisa-pocket-finance-v1';
+const THEME_KEY = 'spendly-theme-preference';
+const LEGACY_THEME_KEY = 'paisa-theme-preference';
 const BASE_CATEGORIES = ['Food', 'Rent', 'Travel', 'Shopping', 'Bills', 'Education', 'Health', 'Entertainment', 'Work', 'Other'];
 const CATEGORY_COLORS = ['#6366f1', '#e18562', '#d3a53c', '#6f567a', '#4f9a9d', '#d77e99', '#739359', '#bb7650', '#53749b', '#9c8b6e'];
 
@@ -156,10 +158,15 @@ const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice
 
 const fallbackStore: FinanceStore = { expenses: [], salaries: {}, categories: [...BASE_CATEGORIES], customCategories: [] };
 
-function loadStore(): FinanceStore {
+function getStoreStorageKey(userId?: string | null): string {
+  if (userId && isRealSupabaseUser({ id: userId })) {
+    return `spendly-store-user-${userId}`;
+  }
+  return 'spendly-store-guest';
+}
+
+function parseStore(raw: string): FinanceStore {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallbackStore;
     const parsed = JSON.parse(raw) as Partial<FinanceStore>;
     let cats: string[] = [];
     if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
@@ -183,11 +190,55 @@ function loadStore(): FinanceStore {
   }
 }
 
+function findExistingLegacyStore(): FinanceStore | null {
+  const legacyKeys = [
+    'spendly-pocket-finance-v1',
+    'paisa-pocket-finance-v1',
+    'spendly-store-guest',
+    'paisa_finance_store',
+    'finance_store',
+  ];
+  for (const k of legacyKeys) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const parsed = parseStore(raw);
+        if (parsed.expenses.length > 0 || Object.keys(parsed.salaries).length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function loadStore(userId?: string | null): FinanceStore {
+  try {
+    const key = getStoreStorageKey(userId);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = parseStore(raw);
+      if (parsed.expenses.length > 0 || Object.keys(parsed.salaries).length > 0) {
+        return parsed;
+      }
+    }
+    // Check all legacy keys to recover existing records
+    const legacy = findExistingLegacyStore();
+    if (legacy) {
+      localStorage.setItem(key, JSON.stringify(legacy));
+      return legacy;
+    }
+    return fallbackStore;
+  } catch {
+    return fallbackStore;
+  }
+}
+
 // Custom hook for theme management (Light / Dark)
 function useTheme() {
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
-    const saved = localStorage.getItem(THEME_KEY);
+    const saved = localStorage.getItem(THEME_KEY) || localStorage.getItem(LEGACY_THEME_KEY);
     if (saved === 'dark' || saved === 'light') return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
@@ -209,17 +260,16 @@ function useTheme() {
   return { theme, toggleTheme };
 }
 
-
-
 function useFinance() {
   const { user } = useAuth();
-  const [store, setStore] = useState<FinanceStore>(loadStore);
+  const [store, setStore] = useState<FinanceStore>(() => loadStore(user?.id));
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'danger' } | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  }, [store]);
+    const key = getStoreStorageKey(user?.id);
+    localStorage.setItem(key, JSON.stringify(store));
+  }, [store, user?.id]);
 
   useEffect(() => {
     if (!toast) return;
@@ -232,7 +282,10 @@ function useFinance() {
 
   // Sync with Supabase on login or user switch
   useEffect(() => {
-    if (!user || !isRealSupabaseUser(user)) return;
+    if (!user || !isRealSupabaseUser(user)) {
+      setStore(loadStore(null));
+      return;
+    }
 
     let cancelled = false;
     const loadSupabaseData = async () => {
@@ -247,47 +300,54 @@ function useFinance() {
 
         setStore((current) => {
           let mergedExpenses = current.expenses;
-          if (remoteExpenses && remoteExpenses.length > 0) {
-            const remoteMap = new Map(
-              remoteExpenses.map((e) => [
-                e.id,
-                {
-                  id: e.id,
-                  amount: Number(e.amount),
-                  description: e.description,
-                  category: e.category,
-                  date: e.date,
-                  notes: e.notes || '',
-                },
-              ])
-            );
+          const remoteList = (remoteExpenses || []).map((e) => ({
+            id: e.id,
+            amount: Number(e.amount),
+            description: e.description,
+            category: e.category,
+            date: e.date,
+            notes: e.notes || '',
+          }));
 
-            // Upload any unsynced local expenses
+          if (remoteList.length > 0) {
+            const remoteMap = new Map(remoteList.map((e) => [e.id, e]));
+            // Push any unsynced local expenses to Supabase
             current.expenses.forEach((localExp) => {
               if (!remoteMap.has(localExp.id)) {
                 saveExpenseToDb(user.id, localExp);
                 remoteMap.set(localExp.id, localExp);
               }
             });
-
             mergedExpenses = Array.from(remoteMap.values()).sort((a, b) => b.date.localeCompare(a.date));
           } else if (current.expenses.length > 0) {
-            // First time user logged in with local records: push to Supabase
+            // First-time sync of existing local records to Supabase
             current.expenses.forEach((e) => saveExpenseToDb(user.id, e));
+            mergedExpenses = current.expenses;
           }
 
           let mergedSalaries = current.salaries;
-          if (remoteSalaries && Object.keys(remoteSalaries).length > 0) {
-            mergedSalaries = { ...current.salaries, ...remoteSalaries };
+          const remoteSalaryMap = remoteSalaries || {};
+          if (Object.keys(remoteSalaryMap).length > 0) {
+            mergedSalaries = { ...current.salaries, ...remoteSalaryMap };
+            Object.entries(current.salaries).forEach(([m, amt]) => {
+              if (remoteSalaryMap[m] === undefined) {
+                saveSalaryToDb(user.id, m, amt);
+              }
+            });
           } else if (Object.keys(current.salaries).length > 0) {
             Object.entries(current.salaries).forEach(([m, amt]) => saveSalaryToDb(user.id, m, amt));
           }
 
-          return {
-            ...current,
+          const finalStore: FinanceStore = {
             expenses: mergedExpenses,
             salaries: mergedSalaries,
+            categories: current.categories && current.categories.length > 0 ? current.categories : [...BASE_CATEGORIES],
+            customCategories: current.customCategories || [],
           };
+
+          const userKey = getStoreStorageKey(user.id);
+          localStorage.setItem(userKey, JSON.stringify(finalStore));
+          return finalStore;
         });
       } catch (err) {
         console.warn('Supabase sync error:', err);
@@ -300,7 +360,7 @@ function useFinance() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user?.id]);
 
   const addExpense = (expense: Omit<Expense, 'id'>) => {
     const newExpense: Expense = { ...expense, id: uid() };
@@ -456,101 +516,97 @@ function AppShell({
   const { user } = useAuth();
   const [location] = useLocation();
 
-  // Scroll-hide behaviour
-  const [navHidden, setNavHidden] = useState(false);
-  const lastScrollY = useRef(0);
-  const ticking = useRef(false);
-  useEffect(() => {
-    const onScroll = () => {
-      if (ticking.current) return;
-      ticking.current = true;
-      requestAnimationFrame(() => {
-        const current = window.scrollY;
-        if (current > lastScrollY.current + 10 && current > 60) setNavHidden(true);
-        else if (current < lastScrollY.current - 6) setNavHidden(false);
-        lastScrollY.current = current;
-        ticking.current = false;
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const leftNavItems = [
+  const navItems = [
     { href: '/', label: 'HOME', icon: Landmark },
     { href: '/summary', label: 'REPORTS', icon: TrendingUp },
-  ];
-  const rightNavItems = [
     { href: '/expenses', label: 'LEDGER', icon: ScrollText },
-    { href: '/settings', label: 'PROFILE', icon: UserCog },
+    { href: '/settings', label: 'SETTINGS', icon: UserCog },
   ];
 
   return (
     <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
 
-      {/* ── Desktop Floating Navbar (hidden on mobile) ── */}
-      <header className={`floating-nav-top hidden sm:flex${navHidden ? ' floating-nav-top--hidden' : ''}`}>
-        <div className="floating-nav-glow" aria-hidden="true" />
-        <nav className="floating-nav-pill" aria-label="Primary navigation">
-          <Brand compact />
-          <div className="floating-nav-divider" />
-          {leftNavItems.map((item) => (
-            <FloatingNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} active={location === item.href} />
-          ))}
+      {/* ── Top Header Navigation Bar (Desktop only, hidden on mobile) ── */}
+      <header className="sticky top-0 z-50 hidden w-full border-b border-border/40 bg-background/85 backdrop-blur-xl transition-colors sm:block">
+        <div className="mx-auto flex h-16 max-w-[1420px] items-center justify-between px-3.5 sm:px-8 lg:px-12">
+          {/* Brand Logo & Name */}
+          <Brand />
 
-          {/* Add button in the middle */}
-          <Link
-            href="/add-expense"
-            data-testid="link-nav-add"
-            aria-label="Add expense"
-            className="floating-nav-add-btn mx-1"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add</span>
-          </Link>
+          {/* Desktop Navigation Links */}
+          <nav className="hidden items-center gap-1.5 rounded-full border border-border/70 bg-card/70 p-1 shadow-sm backdrop-blur-md sm:flex" aria-label="Primary navigation">
+            {navItems.map((item) => {
+              const active = location === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  data-testid={`link-nav-${item.label.toLowerCase()}`}
+                  className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold tracking-wider transition-all duration-200 ${
+                    active
+                      ? 'bg-accent text-accent-foreground shadow-sm shadow-accent/20'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
-          {rightNavItems.map((item) => (
-            <FloatingNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} active={location === item.href} />
-          ))}
-          <div className="floating-nav-divider" />
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            className="floating-nav-theme-btn"
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4" />}
-          </button>
-
-          {/* User Account or Sign In */}
-          {user ? (
+          {/* Right Action Controls */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Add Expense Button */}
             <Link
-              href="/settings"
-              data-testid="link-nav-profile"
-              className="ml-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary transition hover:bg-primary/30"
-              title={`Logged in as ${user.email}`}
+              href="/add-expense"
+              data-testid="link-nav-add"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground shadow-md shadow-accent/25 transition-all hover:scale-105 active:scale-95 sm:px-4 sm:py-2 sm:text-sm"
             >
-              {user.email ? user.email[0].toUpperCase() : 'U'}
+              <Plus className="h-4 w-4" />
+              <span>Add Expense</span>
             </Link>
-          ) : (
-            <Link
-              href="/login"
-              data-testid="link-nav-login"
-              className="ml-0.5 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:bg-muted/70 hover:text-foreground"
-              title="Sign In"
+
+            {/* Theme Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              className="grid h-9 w-9 place-items-center rounded-full border border-border/60 bg-card/60 text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
-              <LogIn className="h-3.5 w-3.5" />
-              <span>Sign In</span>
-            </Link>
-          )}
-        </nav>
+              {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-slate-700" />}
+            </button>
+
+            {/* User Account or Sign In */}
+            {user ? (
+              <Link
+                href="/settings"
+                data-testid="link-nav-profile"
+                className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-xs font-bold text-primary ring-2 ring-primary/20 transition hover:bg-primary/25 hover:ring-primary/40"
+                title={`Logged in as ${user.email}`}
+              >
+                {user.email ? user.email[0].toUpperCase() : 'U'}
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                data-testid="link-nav-login"
+                className="hidden items-center gap-1.5 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground sm:inline-flex"
+                title="Sign In"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span>Sign In</span>
+              </Link>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* ── Mobile Bottom Navigation (hidden on sm+) ── */}
       <MobileBottomNav location={location} theme={theme} toggleTheme={toggleTheme} />
 
       {/* ── Main Content ── */}
-      <main className="mx-auto min-h-[100dvh] max-w-[1420px] px-3.5 pb-24 pt-2.5 sm:px-8 sm:pb-16 sm:pt-28 lg:px-12">
+      <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-[1420px] px-3.5 pb-24 pt-4 sm:px-8 sm:pb-16 sm:pt-6 lg:px-12">
         {children}
       </main>
 
@@ -573,11 +629,15 @@ function AppShell({
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" data-testid="link-brand" className="flex items-center gap-2">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-accent text-foreground shadow-sm sm:h-9 sm:w-9 sm:rounded-[11px]">
-        <ReceiptIndianRupee className="h-4 w-4 sm:h-5 sm:w-5" />
-      </span>
-      <span className={`hidden sm:inline ${compact ? 'text-lg' : 'text-xl'} font-display font-semibold tracking-tight`}>
+    <Link href="/" data-testid="link-brand" className="group flex items-center gap-2.5 transition-transform hover:scale-[1.02]">
+      <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-xl bg-accent/10 shadow-md ring-1 ring-border sm:h-10 sm:w-10 sm:rounded-2xl">
+        <img
+          src="/logo.png"
+          alt="Spendly Logo"
+          className="h-full w-full object-cover transition-transform group-hover:scale-110"
+        />
+      </div>
+      <span className={`inline ${compact ? 'text-lg' : 'text-xl sm:text-2xl'} font-display font-bold tracking-tight text-foreground`}>
         spendly<span className="text-accent">.</span>
       </span>
     </Link>
@@ -2755,7 +2815,7 @@ function SummaryPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
     profile?.full_name ||
     user?.user_metadata?.full_name ||
     (user?.email ? user.email.split('@')[0] : 'Valued User');
-  const userEmail = user?.email || 'private@paisa.local';
+  const userEmail = user?.email || 'private@spendly.local';
 
   const handleDownloadPdf = () => {
     try {
@@ -3389,7 +3449,7 @@ function SettingsPage({
           </div>
           <div>
             <h2 className="font-display text-2xl">App & Display</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Customize appearance and install Paisa on your device.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Customize appearance and install Spendly on your device.</p>
           </div>
         </div>
 
@@ -3432,11 +3492,13 @@ function Router() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg animate-pulse">
-            <ReceiptIndianRupee className="h-6 w-6" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Spendly Logo"
+            className="h-16 w-16 rounded-2xl object-contain shadow-xl animate-pulse"
+          />
           <span className="font-display text-xl font-bold tracking-tight">
-            paisa<span className="text-accent">.</span>
+            spendly<span className="text-accent">.</span>
           </span>
         </div>
       </div>

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- TRACKEY / PAISA EXPENSE MANAGER - SUPABASE DATABASE SCHEMA
+-- SPENDLY EXPENSE MANAGER - SUPABASE DATABASE SCHEMA
 -- Separate tables for: Profiles, Expenses, Salaries, User Logins
 -- Run this SQL in your Supabase SQL Editor (Dashboard -> SQL Editor -> New Query)
 -- ==============================================================================

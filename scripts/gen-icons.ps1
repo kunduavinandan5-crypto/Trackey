@@ -1,6 +1,6 @@
 Add-Type -AssemblyName System.Drawing
 
-function Render-PaisaIcon([int]$size, [string]$outputPath, [bool]$isMaskable) {
+function Render-SpendlyIcon([int]$size, [string]$outputPath, [bool]$isMaskable) {
     $bmp = New-Object System.Drawing.Bitmap($size, $size)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
@@ -65,9 +65,9 @@ function Render-PaisaIcon([int]$size, [string]$outputPath, [bool]$isMaskable) {
     $bmp.Dispose()
 }
 
-$pub = "d:\Expense\Expense-Manager-main\artifacts\expense-manager\public"
-Render-PaisaIcon 192 "$pub\pwa-192x192.png" $false
-Render-PaisaIcon 512 "$pub\pwa-512x512.png" $false
-Render-PaisaIcon 512 "$pub\maskable-icon-512x512.png" $true
-Render-PaisaIcon 180 "$pub\apple-touch-icon.png" $false
+$pub = "d:\Expense\artifacts\expense-manager\public"
+Render-SpendlyIcon 192 "$pub\pwa-192x192.png" $false
+Render-SpendlyIcon 512 "$pub\pwa-512x512.png" $false
+Render-SpendlyIcon 512 "$pub\maskable-icon-512x512.png" $true
+Render-SpendlyIcon 180 "$pub\apple-touch-icon.png" $false
 Write-Output "ALL_ICONS_SUCCESS"

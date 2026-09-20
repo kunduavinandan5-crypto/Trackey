@@ -140,14 +140,31 @@
   50% { transform: scale(1.04); opacity: 1; }
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+.app-grain {
+  position: relative;
+}
+
 .app-grain::after {
   content: '';
   pointer-events: none;
   position: fixed;
-  z-index: 30;
+  z-index: 1;
   inset: 0;
-  opacity: .035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  opacity: .018;
+  background-image: radial-gradient(hsl(var(--foreground) / 0.12) 1px, transparent 0);
+  background-size: 24px 24px;
 }
 
 .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
