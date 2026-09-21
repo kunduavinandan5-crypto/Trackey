@@ -263,7 +263,8 @@ function useTheme() {
 
 function useFinance() {
   const { user } = useAuth();
-  const [store, setStore] = useState<FinanceStore>(() => loadStore(user?.id));
+  // Start with empty store — real data loaded via Supabase or localStorage after auth resolves
+  const [store, setStore] = useState<FinanceStore>(fallbackStore);
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'danger' } | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
@@ -284,7 +285,15 @@ function useFinance() {
   // Sync with Supabase on login or user switch + Live Realtime Cross-Device Sync
   useEffect(() => {
     if (!user || !isRealSupabaseUser(user)) {
-      setStore(loadStore(null));
+      // Guest mode: load guest-specific local store (never inherit old user data)
+      const guestStore = (() => {
+        try {
+          const raw = localStorage.getItem('spendly-store-guest');
+          if (raw) return parseStore(raw);
+        } catch {}
+        return fallbackStore;
+      })();
+      setStore(guestStore);
       return;
     }
 
@@ -298,8 +307,12 @@ function useFinance() {
 
         if (cancelled) return;
 
-        setStore((current) => {
-          let mergedExpenses = current.expenses;
+        setStore(() => {
+          // For a cloud user: authoritative source is ALWAYS Supabase.
+          // Only check local data saved under THIS user's own key (not guest store).
+          const userLocalRaw = localStorage.getItem(getStoreStorageKey(user.id));
+          const userLocal = userLocalRaw ? parseStore(userLocalRaw) : null;
+
           const remoteList = (remoteExpenses || []).map((e) => ({
             id: e.id,
             amount: Number(e.amount),
@@ -309,40 +322,42 @@ function useFinance() {
             notes: e.notes || '',
           }));
 
+          let mergedExpenses: typeof remoteList = [];
           if (remoteList.length > 0) {
             const remoteMap = new Map(remoteList.map((e) => [e.id, e]));
-            // Push any unsynced local expenses to Supabase
-            current.expenses.forEach((localExp) => {
+            // Only push local expenses that belong to THIS user's local key
+            (userLocal?.expenses || []).forEach((localExp) => {
               if (!remoteMap.has(localExp.id)) {
                 saveExpenseToDb(user.id, localExp);
                 remoteMap.set(localExp.id, localExp);
               }
             });
             mergedExpenses = Array.from(remoteMap.values()).sort((a, b) => b.date.localeCompare(a.date));
-          } else if (current.expenses.length > 0) {
-            // First-time sync of existing local records to Supabase
-            current.expenses.forEach((e) => saveExpenseToDb(user.id, e));
-            mergedExpenses = current.expenses;
+          } else if (userLocal && userLocal.expenses.length > 0) {
+            // Only sync local-only data that was saved under THIS user's key
+            userLocal.expenses.forEach((e) => saveExpenseToDb(user.id, e));
+            mergedExpenses = userLocal.expenses;
           }
 
-          let mergedSalaries = current.salaries;
           const remoteSalaryMap = remoteSalaries || {};
+          let mergedSalaries: Record<string, number> = {};
           if (Object.keys(remoteSalaryMap).length > 0) {
-            mergedSalaries = { ...current.salaries, ...remoteSalaryMap };
-            Object.entries(current.salaries).forEach(([m, amt]) => {
+            mergedSalaries = { ...(userLocal?.salaries || {}), ...remoteSalaryMap };
+            Object.entries(userLocal?.salaries || {}).forEach(([m, amt]) => {
               if (remoteSalaryMap[m] === undefined) {
                 saveSalaryToDb(user.id, m, amt);
               }
             });
-          } else if (Object.keys(current.salaries).length > 0) {
-            Object.entries(current.salaries).forEach(([m, amt]) => saveSalaryToDb(user.id, m, amt));
+          } else if (userLocal && Object.keys(userLocal.salaries).length > 0) {
+            Object.entries(userLocal.salaries).forEach(([m, amt]) => saveSalaryToDb(user.id, m, amt));
+            mergedSalaries = userLocal.salaries;
           }
 
           const finalStore: FinanceStore = {
             expenses: mergedExpenses,
             salaries: mergedSalaries,
-            categories: current.categories && current.categories.length > 0 ? current.categories : [...BASE_CATEGORIES],
-            customCategories: current.customCategories || [],
+            categories: userLocal?.categories && userLocal.categories.length > 0 ? userLocal.categories : [...BASE_CATEGORIES],
+            customCategories: userLocal?.customCategories || [],
           };
 
           const userKey = getStoreStorageKey(user.id);
@@ -354,7 +369,8 @@ function useFinance() {
       }
     };
 
-    // 1. Initial Load
+    // 1. Initial Load: reset store first then fetch cloud data
+    setStore(fallbackStore);
     loadSupabaseData();
 
     // 2. Realtime WebSocket channel for instant cross-device updates
@@ -376,26 +392,27 @@ function useFinance() {
       )
       .subscribe();
 
-    // 3. Refetch when window/tab is focused or phone is unlocked
-    const handleFocus = () => loadSupabaseData();
+    // 3. Refetch when window/tab is focused after being hidden (e.g. phone unlock)
+    // Throttled: only refetch if hidden for more than 30 seconds to avoid constant refreshing
+    let hiddenAt: number | null = null;
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        loadSupabaseData();
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+      } else if (document.visibilityState === 'visible' && hiddenAt !== null) {
+        const hiddenForMs = Date.now() - hiddenAt;
+        hiddenAt = null;
+        if (hiddenForMs > 30000) {
+          loadSupabaseData();
+        }
       }
     };
 
-    window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibility);
-
-    // 4. Background polling interval (every 15 seconds)
-    const interval = setInterval(loadSupabaseData, 15000);
 
     return () => {
       cancelled = true;
       supabase.removeChannel(channel);
-      window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibility);
-      clearInterval(interval);
     };
   }, [user?.id]);
 
