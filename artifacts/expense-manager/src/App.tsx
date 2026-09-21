@@ -263,10 +263,25 @@ function useTheme() {
 
 function useFinance() {
   const { user } = useAuth();
-  // Start with empty store — real data loaded via Supabase or localStorage after auth resolves
-  const [store, setStore] = useState<FinanceStore>(fallbackStore);
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+
+  // Initialize from user-specific localStorage immediately to avoid blank flicker
+  const [store, setStore] = useState<FinanceStore>(() => {
+    if (typeof window === 'undefined') return fallbackStore;
+    try {
+      const raw = localStorage.getItem('spendly-store-guest');
+      if (raw) return parseStore(raw);
+    } catch {}
+    return fallbackStore;
+  });
+
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'danger' } | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // Ref to suppress realtime events triggered by our OWN local writes
+  const localChangePendingRef = useRef<number>(0);
+  // Debounce timer for realtime events
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const key = getStoreStorageKey(user?.id);
@@ -282,35 +297,45 @@ function useFinance() {
   const categories = store.categories && store.categories.length > 0 ? store.categories : BASE_CATEGORIES;
   const notify = (message: string, kind: 'success' | 'danger' = 'success') => setToast({ message, kind });
 
-  // Sync with Supabase on login or user switch + Live Realtime Cross-Device Sync
+  // Sync with Supabase on login or user switch
   useEffect(() => {
     if (!user || !isRealSupabaseUser(user)) {
-      // Guest mode: load guest-specific local store (never inherit old user data)
-      const guestStore = (() => {
-        try {
-          const raw = localStorage.getItem('spendly-store-guest');
-          if (raw) return parseStore(raw);
-        } catch {}
-        return fallbackStore;
-      })();
-      setStore(guestStore);
+      // Guest mode: load guest-specific local store
+      try {
+        const raw = localStorage.getItem('spendly-store-guest');
+        if (raw) setStore(parseStore(raw));
+        else setStore(fallbackStore);
+      } catch {
+        setStore(fallbackStore);
+      }
+      prevUserIdRef.current = null;
       return;
     }
 
+    const userId = user.id;
+    const userChanged = prevUserIdRef.current !== userId;
+    prevUserIdRef.current = userId;
+
     let cancelled = false;
-    const loadSupabaseData = async () => {
+
+    const loadSupabaseData = async (source: 'initial' | 'realtime' = 'realtime') => {
+      // Skip realtime-triggered refetch if we just made a local change (within 4 seconds)
+      if (source === 'realtime') {
+        const timeSinceLocal = Date.now() - localChangePendingRef.current;
+        if (timeSinceLocal < 4000) return;
+      }
+
       try {
         const [remoteExpenses, remoteSalaries] = await Promise.all([
-          fetchUserExpenses(user.id),
-          fetchUserSalaries(user.id),
+          fetchUserExpenses(userId),
+          fetchUserSalaries(userId),
         ]);
 
         if (cancelled) return;
 
         setStore(() => {
-          // For a cloud user: authoritative source is ALWAYS Supabase.
-          // Only check local data saved under THIS user's own key (not guest store).
-          const userLocalRaw = localStorage.getItem(getStoreStorageKey(user.id));
+          // Read THIS user's cached local store (not guest)
+          const userLocalRaw = localStorage.getItem(getStoreStorageKey(userId));
           const userLocal = userLocalRaw ? parseStore(userLocalRaw) : null;
 
           const remoteList = (remoteExpenses || []).map((e) => ({
@@ -325,17 +350,16 @@ function useFinance() {
           let mergedExpenses: typeof remoteList = [];
           if (remoteList.length > 0) {
             const remoteMap = new Map(remoteList.map((e) => [e.id, e]));
-            // Only push local expenses that belong to THIS user's local key
+            // Push any local-only expenses (from this user's key only) to Supabase
             (userLocal?.expenses || []).forEach((localExp) => {
               if (!remoteMap.has(localExp.id)) {
-                saveExpenseToDb(user.id, localExp);
+                saveExpenseToDb(userId, localExp);
                 remoteMap.set(localExp.id, localExp);
               }
             });
             mergedExpenses = Array.from(remoteMap.values()).sort((a, b) => b.date.localeCompare(a.date));
           } else if (userLocal && userLocal.expenses.length > 0) {
-            // Only sync local-only data that was saved under THIS user's key
-            userLocal.expenses.forEach((e) => saveExpenseToDb(user.id, e));
+            userLocal.expenses.forEach((e) => saveExpenseToDb(userId, e));
             mergedExpenses = userLocal.expenses;
           }
 
@@ -344,12 +368,10 @@ function useFinance() {
           if (Object.keys(remoteSalaryMap).length > 0) {
             mergedSalaries = { ...(userLocal?.salaries || {}), ...remoteSalaryMap };
             Object.entries(userLocal?.salaries || {}).forEach(([m, amt]) => {
-              if (remoteSalaryMap[m] === undefined) {
-                saveSalaryToDb(user.id, m, amt);
-              }
+              if (remoteSalaryMap[m] === undefined) saveSalaryToDb(userId, m, amt);
             });
           } else if (userLocal && Object.keys(userLocal.salaries).length > 0) {
-            Object.entries(userLocal.salaries).forEach(([m, amt]) => saveSalaryToDb(user.id, m, amt));
+            Object.entries(userLocal.salaries).forEach(([m, amt]) => saveSalaryToDb(userId, m, amt));
             mergedSalaries = userLocal.salaries;
           }
 
@@ -360,8 +382,7 @@ function useFinance() {
             customCategories: userLocal?.customCategories || [],
           };
 
-          const userKey = getStoreStorageKey(user.id);
-          localStorage.setItem(userKey, JSON.stringify(finalStore));
+          localStorage.setItem(getStoreStorageKey(userId), JSON.stringify(finalStore));
           return finalStore;
         });
       } catch (err) {
@@ -369,31 +390,30 @@ function useFinance() {
       }
     };
 
-    // 1. Initial Load: reset store first then fetch cloud data
-    setStore(fallbackStore);
-    loadSupabaseData();
+    // 1. If user switched, reset to empty first; otherwise keep cached data visible during refresh
+    if (userChanged) {
+      const cachedRaw = localStorage.getItem(getStoreStorageKey(userId));
+      setStore(cachedRaw ? parseStore(cachedRaw) : fallbackStore);
+    }
 
-    // 2. Realtime WebSocket channel for instant cross-device updates
+    // 2. Initial fetch from Supabase
+    loadSupabaseData('initial');
+
+    // 3. Realtime channel — debounced + suppressed for own writes
+    const handleRealtimeEvent = () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      realtimeDebounceRef.current = setTimeout(() => {
+        loadSupabaseData('realtime');
+      }, 1500);
+    };
+
     const channel = supabase
-      .channel(`realtime-sync-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'expenses', filter: `user_id=eq.${user.id}` },
-        () => {
-          loadSupabaseData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'salaries', filter: `user_id=eq.${user.id}` },
-        () => {
-          loadSupabaseData();
-        }
-      )
+      .channel(`realtime-sync-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `user_id=eq.${userId}` }, handleRealtimeEvent)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'salaries', filter: `user_id=eq.${userId}` }, handleRealtimeEvent)
       .subscribe();
 
-    // 3. Refetch when window/tab is focused after being hidden (e.g. phone unlock)
-    // Throttled: only refetch if hidden for more than 30 seconds to avoid constant refreshing
+    // 4. Refetch on visibility change — only if hidden for >60 seconds
     let hiddenAt: number | null = null;
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') {
@@ -401,16 +421,16 @@ function useFinance() {
       } else if (document.visibilityState === 'visible' && hiddenAt !== null) {
         const hiddenForMs = Date.now() - hiddenAt;
         hiddenAt = null;
-        if (hiddenForMs > 30000) {
-          loadSupabaseData();
+        if (hiddenForMs > 60000) {
+          loadSupabaseData('realtime');
         }
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       cancelled = true;
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
@@ -422,6 +442,7 @@ function useFinance() {
     notify('Expense tucked away.');
 
     if (user && isRealSupabaseUser(user)) {
+      localChangePendingRef.current = Date.now();
       saveExpenseToDb(user.id, newExpense);
     }
   };
@@ -435,6 +456,7 @@ function useFinance() {
     notify('Expense updated.');
 
     if (user && isRealSupabaseUser(user)) {
+      localChangePendingRef.current = Date.now();
       saveExpenseToDb(user.id, updated);
     }
   };
@@ -444,6 +466,7 @@ function useFinance() {
     notify('Expense removed.', 'danger');
 
     if (user && isRealSupabaseUser(user)) {
+      localChangePendingRef.current = Date.now();
       deleteExpenseFromDb(user.id, id);
     }
   };
@@ -453,6 +476,7 @@ function useFinance() {
     notify(`${monthLabel(month)} salary saved.`);
 
     if (user && isRealSupabaseUser(user)) {
+      localChangePendingRef.current = Date.now();
       saveSalaryToDb(user.id, month, salary);
     }
   };
