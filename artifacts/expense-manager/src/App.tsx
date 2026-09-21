@@ -2638,52 +2638,13 @@ function SpendlyMobileSummary({
 
         {/* Center Editorial Title */}
         <div className="text-center">
-          <p className="text-[8.5px] font-extrabold uppercase tracking-[0.2em] text-[#fbbf24]/90">
-            SPENDLY PRIVATE WEALTH
-          </p>
           <h1 className="text-lg sm:text-xl font-serif font-extrabold text-white tracking-tight leading-tight">
             Financial Reports<span className="text-[#fbbf24]">.</span>
           </h1>
         </div>
 
-        {/* Right Status Actions */}
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            className="relative grid h-8 w-8 place-items-center rounded-full bg-[#101626] border border-[#fbbf24]/25 text-[#9ca3af] hover:text-[#fbbf24] transition"
-            title="Notifications"
-          >
-            <Bell className="h-3.5 w-3.5" />
-            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#fbbf24] shadow-[0_0_6px_#fbbf24]" />
-          </button>
-          <div
-            className="grid h-8 w-8 place-items-center rounded-full bg-[#101626] border border-[#fbbf24]/40 text-[#fbbf24] shadow-[0_0_10px_rgba(245,158,11,0.25)]"
-            title="Verified Wealth Intelligence"
-          >
-            <ShieldCheck className="h-4 w-4" />
-          </div>
-        </div>
+
       </div>
-
-      {/* ── Subheader row: INTELLIGENCE & FLOW + Private Vault ── */}
-      <div className="flex items-center justify-between pt-0.5 px-0.5">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-[#fbbf24] shadow-[0_0_8px_#fbbf24] animate-pulse" />
-          <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#fbbf24]">
-            INTELLIGENCE & FLOW
-          </span>
-        </div>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#101626] border border-[#fbbf24]/25 px-2.5 py-1 text-[10px] font-bold text-[#fde68a] shadow-sm transition active:scale-95"
-        >
-          <Lock className="h-3 w-3 text-[#fbbf24]" />
-          <span>Private Vault</span>
-          <ChevronDown className="h-2.5 w-2.5 text-[#fbbf24]/70" />
-        </button>
-      </div>
-
       {/* ── Monthly Budget Velocity Card ── */}
       <div className="spendly-glass-card !p-4 space-y-3.5">
         <div className="flex items-start justify-between">
