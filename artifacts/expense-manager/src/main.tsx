@@ -8,7 +8,28 @@ import './index.css';
 
 // Register PWA Service Worker in production only (avoids dev reload loops)
 if (import.meta.env.PROD && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  registerSW({ immediate: true });
+  // autoUpdate: vite-plugin-pwa will call skipWaiting() automatically.
+  // When the new SW takes control (controllerchange), reload all tabs so
+  // users instantly get the latest version without manually refreshing.
+  let reloadPending = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!reloadPending) {
+      reloadPending = true;
+      window.location.reload();
+    }
+  });
+
+  registerSW({
+    immediate: true,
+    onRegisteredSW(swUrl, r) {
+      // Check for updates every 60 seconds while the app is open
+      if (r) {
+        setInterval(() => {
+          r.update();
+        }, 60 * 1000);
+      }
+    },
+  });
 } else if (import.meta.env.DEV && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {
