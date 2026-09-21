@@ -2,6 +2,7 @@
 -- SPENDLY EXPENSE MANAGER - SUPABASE DATABASE SCHEMA
 -- Separate tables for: Profiles, Expenses, Salaries, User Logins
 -- Run this SQL in your Supabase SQL Editor (Dashboard -> SQL Editor -> New Query)
+-- This script is IDEMPOTENT — safe to re-run multiple times without errors.
 -- ==============================================================================
 
 -- 1. PROFILES TABLE
@@ -17,6 +18,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- Enable RLS for profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies first (idempotent)
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 
 CREATE POLICY "Users can view own profile"
   ON public.profiles FOR SELECT
@@ -49,6 +55,12 @@ CREATE INDEX IF NOT EXISTS idx_expenses_date ON public.expenses(date);
 
 -- Enable RLS for expenses
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies first (idempotent)
+DROP POLICY IF EXISTS "Users can view own expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Users can insert own expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Users can update own expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Users can delete own expenses" ON public.expenses;
 
 CREATE POLICY "Users can view own expenses"
   ON public.expenses FOR SELECT
@@ -83,6 +95,12 @@ CREATE INDEX IF NOT EXISTS idx_salaries_user_id ON public.salaries(user_id);
 -- Enable RLS for salaries
 ALTER TABLE public.salaries ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies first (idempotent)
+DROP POLICY IF EXISTS "Users can view own salaries" ON public.salaries;
+DROP POLICY IF EXISTS "Users can insert own salaries" ON public.salaries;
+DROP POLICY IF EXISTS "Users can update own salaries" ON public.salaries;
+DROP POLICY IF EXISTS "Users can delete own salaries" ON public.salaries;
+
 CREATE POLICY "Users can view own salaries"
   ON public.salaries FOR SELECT
   USING (auth.uid() = user_id);
@@ -114,6 +132,10 @@ CREATE INDEX IF NOT EXISTS idx_user_logins_login_at ON public.user_logins(login_
 
 -- Enable RLS for user_logins
 ALTER TABLE public.user_logins ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies first (idempotent)
+DROP POLICY IF EXISTS "Users can view own login events" ON public.user_logins;
+DROP POLICY IF EXISTS "Users can insert own login event" ON public.user_logins;
 
 CREATE POLICY "Users can view own login events"
   ON public.user_logins FOR SELECT

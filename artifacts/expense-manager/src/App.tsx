@@ -3098,8 +3098,8 @@ function SpendlyMobileSettings({
         {/* Database & Session Status Row */}
         <div className="relative z-10 mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 rounded-full ${isRealSupabaseUser(user) ? 'bg-[#fbbf24] animate-pulse shadow-[0_0_6px_#fbbf24]' : 'bg-[#fbbf24]'}`} />
-            <span className="text-[10.5px] font-semibold text-[#fde68a]/90">
+            <span className={`h-2 w-2 rounded-full ${isRealSupabaseUser(user) ? 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]' : 'bg-amber-400'}`} />
+            <span className={`text-[10.5px] font-semibold ${isRealSupabaseUser(user) ? 'text-emerald-300' : 'text-amber-200/90'}`}>
               {isRealSupabaseUser(user) ? 'Cloud Synced' : 'Private (Offline)'}
             </span>
           </div>
@@ -3126,13 +3126,24 @@ function SpendlyMobileSettings({
                 </button>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="rounded-lg bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-2.5 py-1 text-[10px] font-bold text-[#080c14] flex items-center gap-1 shadow-[0_0_10px_rgba(245,158,11,0.35)] transition active:scale-95"
-              >
-                <LogIn className="h-3 w-3" />
-                <span>Connect Account</span>
-              </Link>
+              <>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  title="Reset local guest data and return to login"
+                  className="rounded-lg bg-[#182033] border border-white/15 px-2.5 py-1 text-[10px] font-bold text-neutral-300 flex items-center gap-1 transition active:scale-95 hover:bg-rose-950/50 hover:text-rose-300 hover:border-rose-400/30"
+                >
+                  <LogOut className="h-3 w-3" />
+                  <span>Sign Out</span>
+                </button>
+                <Link
+                  href="/login"
+                  className="rounded-lg bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-2.5 py-1 text-[10px] font-bold text-[#080c14] flex items-center gap-1 shadow-[0_0_10px_rgba(245,158,11,0.35)] transition active:scale-95"
+                >
+                  <LogIn className="h-3 w-3" />
+                  <span>Sign In</span>
+                </Link>
+              </>
             )}
           </div>
         </div>
