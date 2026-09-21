@@ -265,12 +265,25 @@ function useFinance() {
   const { user } = useAuth();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
-  // Initialize from user-specific localStorage immediately to avoid blank flicker
+  // Initialize from user-specific localStorage immediately to avoid blank flicker on refresh.
+  // We read the persisted auth user key directly so we don't have to wait for auth to resolve.
   const [store, setStore] = useState<FinanceStore>(() => {
     if (typeof window === 'undefined') return fallbackStore;
     try {
-      const raw = localStorage.getItem('spendly-store-guest');
-      if (raw) return parseStore(raw);
+      // Try to read the saved auth user (set by auth-context on every login)
+      const savedUserRaw = localStorage.getItem('spendly_auth_user');
+      if (savedUserRaw) {
+        const savedUser = JSON.parse(savedUserRaw) as { id?: string };
+        if (savedUser?.id && isRealSupabaseUser(savedUser as { id: string })) {
+          // Real Supabase user — load their own store
+          const userRaw = localStorage.getItem(`spendly-store-user-${savedUser.id}`);
+          if (userRaw) return parseStore(userRaw);
+          return fallbackStore;
+        }
+      }
+      // Guest / no user — load guest store
+      const guestRaw = localStorage.getItem('spendly-store-guest');
+      if (guestRaw) return parseStore(guestRaw);
     } catch {}
     return fallbackStore;
   });
