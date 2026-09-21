@@ -192,10 +192,10 @@ function parseStore(raw: string): FinanceStore {
 }
 
 function findExistingLegacyStore(): FinanceStore | null {
+  // Only migrate from truly legacy app keys — never from guest store
   const legacyKeys = [
     'spendly-pocket-finance-v1',
     'paisa-pocket-finance-v1',
-    'spendly-store-guest',
     'paisa_finance_store',
     'finance_store',
   ];
