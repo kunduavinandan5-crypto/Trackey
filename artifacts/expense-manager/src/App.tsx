@@ -293,6 +293,15 @@ function useFinance() {
 
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'danger' } | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const isSyncingRef = useRef<boolean>(false);
+
+  // Helper to set isSyncing without causing redundant re-renders
+  const setSyncState = (val: boolean) => {
+    if (isSyncingRef.current !== val) {
+      isSyncingRef.current = val;
+      setIsSyncing(val);
+    }
+  };
 
   // Ref to suppress realtime events triggered by our OWN local writes
   const localChangePendingRef = useRef<number>(0);
@@ -341,7 +350,7 @@ function useFinance() {
         if (timeSinceLocal < 4000) return;
       }
 
-      setIsSyncing(true);
+      setSyncState(true);
       try {
         // 1. Check if there are any offline/guest expenses to migrate to this Supabase account
         const guestRaw = localStorage.getItem('spendly-store-guest');
@@ -419,7 +428,7 @@ function useFinance() {
       } catch (err) {
         console.warn('[Supabase] Sync exception:', err);
       } finally {
-        if (!cancelled) setIsSyncing(false);
+        if (!cancelled) setSyncState(false);
       }
     };
 
@@ -546,7 +555,7 @@ function useFinance() {
       notify('Please sign in with a Supabase account to sync.', 'danger');
       return;
     }
-    setIsSyncing(true);
+    setSyncState(true);
     notify('Syncing data with Supabase...');
     try {
       // 1. Push all local expenses and salaries to Supabase
@@ -589,7 +598,7 @@ function useFinance() {
       console.warn('[Supabase] Sync error:', err);
       notify('Failed to complete cloud sync.', 'danger');
     } finally {
-      setIsSyncing(false);
+      setSyncState(false);
     }
   };
 
@@ -3702,15 +3711,15 @@ function Router() {
     <AppShell toast={finance.toast} theme={theme} toggleTheme={toggleTheme}>
       <ErrorBoundary resetKey={location}>
         <Switch>
-          <Route path="/" component={() => <HomePage finance={finance} />} />
-          <Route path="/expenses" component={() => <ExpensesPage finance={finance} />} />
-          <Route path="/add-expense/:id" component={() => <ExpenseFormPage finance={finance} />} />
-          <Route path="/add-expense" component={() => <ExpenseFormPage finance={finance} />} />
-          <Route path="/summary" component={() => <SummaryPage finance={finance} />} />
-          <Route path="/settings" component={() => <SettingsPage finance={finance} theme={theme} toggleTheme={toggleTheme} />} />
-          <Route path="/login" component={() => <LoginPage />} />
-          <Route path="/signup" component={() => <LoginPage />} />
-          <Route component={NotFound} />
+          <Route path="/"><HomePage finance={finance} /></Route>
+          <Route path="/expenses"><ExpensesPage finance={finance} /></Route>
+          <Route path="/add-expense/:id"><ExpenseFormPage finance={finance} /></Route>
+          <Route path="/add-expense"><ExpenseFormPage finance={finance} /></Route>
+          <Route path="/summary"><SummaryPage finance={finance} /></Route>
+          <Route path="/settings"><SettingsPage finance={finance} theme={theme} toggleTheme={toggleTheme} /></Route>
+          <Route path="/login"><LoginPage /></Route>
+          <Route path="/signup"><LoginPage /></Route>
+          <Route><NotFound /></Route>
         </Switch>
       </ErrorBoundary>
     </AppShell>
