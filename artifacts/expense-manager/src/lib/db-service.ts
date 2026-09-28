@@ -130,24 +130,37 @@ export async function getUserProfile(userId: string): Promise<DbProfile | null> 
 // -----------------------------------------------------------------------------
 // 3. EXPENSES (Separate table: public.expenses)
 // -----------------------------------------------------------------------------
-export async function fetchUserExpenses(userId: string) {
-  if (!isSupabaseConfigured) return [];
-  try {
-    const { data, error } = await supabase
-      .from('expenses')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: false });
+export async function fetchUserExpenses(userId: string): Promise<DbExpense[] | null> {
+  if (!isSupabaseConfigured || !isRealSupabaseUser({ id: userId })) return [];
+  
+  // Try up to 2 times with a slight delay in case auth token is in flight
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false });
 
-    if (error) {
-      console.warn('[Supabase] Error fetching expenses:', error.message);
+      if (error) {
+        console.warn(`[Supabase] Error fetching expenses (attempt ${attempt}):`, error.message);
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 300));
+          continue;
+        }
+        return null;
+      }
+      return (data as DbExpense[]) || [];
+    } catch (err) {
+      console.warn(`[Supabase] Exception fetching expenses (attempt ${attempt}):`, err);
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 300));
+        continue;
+      }
       return null;
     }
-    return data || [];
-  } catch (err) {
-    console.warn('[Supabase] Exception fetching expenses:', err);
-    return null;
   }
+  return null;
 }
 
 export async function saveExpenseToDb(
@@ -204,27 +217,39 @@ export async function deleteExpenseFromDb(userId: string, expenseId: string): Pr
 // 4. SALARIES (Separate table: public.salaries)
 // -----------------------------------------------------------------------------
 export async function fetchUserSalaries(userId: string): Promise<Record<string, number> | null> {
-  if (!isSupabaseConfigured) return null;
-  try {
-    const { data, error } = await supabase
-      .from('salaries')
-      .select('month, amount')
-      .eq('user_id', userId);
+  if (!isSupabaseConfigured || !isRealSupabaseUser({ id: userId })) return null;
+  
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const { data, error } = await supabase
+        .from('salaries')
+        .select('month, amount')
+        .eq('user_id', userId);
 
-    if (error) {
-      console.warn('[Supabase] Error fetching salaries:', error.message);
+      if (error) {
+        console.warn(`[Supabase] Error fetching salaries (attempt ${attempt}):`, error.message);
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 300));
+          continue;
+        }
+        return null;
+      }
+
+      const salaryMap: Record<string, number> = {};
+      for (const item of data || []) {
+        salaryMap[item.month] = Number(item.amount);
+      }
+      return salaryMap;
+    } catch (err) {
+      console.warn(`[Supabase] Exception fetching salaries (attempt ${attempt}):`, err);
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 300));
+        continue;
+      }
       return null;
     }
-
-    const salaryMap: Record<string, number> = {};
-    for (const item of data || []) {
-      salaryMap[item.month] = Number(item.amount);
-    }
-    return salaryMap;
-  } catch (err) {
-    console.warn('[Supabase] Exception fetching salaries:', err);
-    return null;
   }
+  return null;
 }
 
 export async function saveSalaryToDb(userId: string, month: string, amount: number): Promise<boolean> {

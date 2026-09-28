@@ -106,7 +106,10 @@ const monthKey = (date = new Date()) => {
 };
 
 const monthLabel = (key: string) => {
-  const [year, month] = key.split('-').map(Number);
+  if (!key || key === 'ALL' || key === 'all') return 'All Months';
+  const parts = key.split('-').map(Number);
+  if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return key;
+  const [year, month] = parts;
   return new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
 };
 
@@ -266,7 +269,6 @@ function useFinance() {
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
   // Initialize from user-specific localStorage immediately to avoid blank flicker on refresh.
-  // We read the persisted auth user key directly so we don't have to wait for auth to resolve.
   const [store, setStore] = useState<FinanceStore>(() => {
     if (typeof window === 'undefined') return fallbackStore;
     try {
@@ -278,12 +280,13 @@ function useFinance() {
           // Real Supabase user — load their own store
           const userRaw = localStorage.getItem(`spendly-store-user-${savedUser.id}`);
           if (userRaw) return parseStore(userRaw);
-          return fallbackStore;
         }
       }
-      // Guest / no user — load guest store
+      // Guest / fallback store
       const guestRaw = localStorage.getItem('spendly-store-guest');
       if (guestRaw) return parseStore(guestRaw);
+      const legacy = findExistingLegacyStore();
+      if (legacy) return legacy;
     } catch {}
     return fallbackStore;
   });
@@ -338,7 +341,24 @@ function useFinance() {
         if (timeSinceLocal < 4000) return;
       }
 
+      setIsSyncing(true);
       try {
+        // 1. Check if there are any offline/guest expenses to migrate to this Supabase account
+        const guestRaw = localStorage.getItem('spendly-store-guest');
+        if (guestRaw) {
+          const guestStore = parseStore(guestRaw);
+          if (guestStore.expenses.length > 0 || Object.keys(guestStore.salaries).length > 0) {
+            for (const exp of guestStore.expenses) {
+              await saveExpenseToDb(userId, exp);
+            }
+            for (const [m, amt] of Object.entries(guestStore.salaries)) {
+              await saveSalaryToDb(userId, m, amt);
+            }
+            localStorage.removeItem('spendly-store-guest');
+          }
+        }
+
+        // 2. Fetch remote expenses & salaries from Supabase
         const [remoteExpenses, remoteSalaries] = await Promise.all([
           fetchUserExpenses(userId),
           fetchUserSalaries(userId),
@@ -346,12 +366,18 @@ function useFinance() {
 
         if (cancelled) return;
 
-        setStore(() => {
-          // Read THIS user's cached local store (not guest)
-          const userLocalRaw = localStorage.getItem(getStoreStorageKey(userId));
-          const userLocal = userLocalRaw ? parseStore(userLocalRaw) : null;
+        // If remote query failed completely (network / RLS error), DO NOT wipe local store!
+        if (remoteExpenses === null) {
+          console.warn('[Supabase] Could not fetch remote expenses; retaining local cache.');
+          return;
+        }
 
-          const remoteList = (remoteExpenses || []).map((e) => ({
+        setStore((currentStore) => {
+          // Read cached local store for this user
+          const userLocalRaw = localStorage.getItem(getStoreStorageKey(userId));
+          const userLocal = userLocalRaw ? parseStore(userLocalRaw) : currentStore;
+
+          const remoteList: Expense[] = remoteExpenses.map((e) => ({
             id: e.id,
             amount: Number(e.amount),
             description: e.description,
@@ -360,33 +386,25 @@ function useFinance() {
             notes: e.notes || '',
           }));
 
-          let mergedExpenses: typeof remoteList = [];
-          if (remoteList.length > 0) {
-            const remoteMap = new Map(remoteList.map((e) => [e.id, e]));
-            // Push any local-only expenses (from this user's key only) to Supabase
-            (userLocal?.expenses || []).forEach((localExp) => {
-              if (!remoteMap.has(localExp.id)) {
-                saveExpenseToDb(userId, localExp);
-                remoteMap.set(localExp.id, localExp);
-              }
-            });
-            mergedExpenses = Array.from(remoteMap.values()).sort((a, b) => b.date.localeCompare(a.date));
-          } else if (userLocal && userLocal.expenses.length > 0) {
-            userLocal.expenses.forEach((e) => saveExpenseToDb(userId, e));
-            mergedExpenses = userLocal.expenses;
-          }
+          const remoteMap = new Map(remoteList.map((e) => [e.id, e]));
+
+          // Push any local-only expenses to Supabase if not yet on remote
+          (userLocal?.expenses || []).forEach((localExp) => {
+            if (!remoteMap.has(localExp.id)) {
+              saveExpenseToDb(userId, localExp);
+              remoteMap.set(localExp.id, localExp);
+            }
+          });
+
+          const mergedExpenses = Array.from(remoteMap.values()).sort((a, b) => b.date.localeCompare(a.date));
 
           const remoteSalaryMap = remoteSalaries || {};
-          let mergedSalaries: Record<string, number> = {};
-          if (Object.keys(remoteSalaryMap).length > 0) {
-            mergedSalaries = { ...(userLocal?.salaries || {}), ...remoteSalaryMap };
-            Object.entries(userLocal?.salaries || {}).forEach(([m, amt]) => {
-              if (remoteSalaryMap[m] === undefined) saveSalaryToDb(userId, m, amt);
-            });
-          } else if (userLocal && Object.keys(userLocal.salaries).length > 0) {
-            Object.entries(userLocal.salaries).forEach(([m, amt]) => saveSalaryToDb(userId, m, amt));
-            mergedSalaries = userLocal.salaries;
-          }
+          const mergedSalaries: Record<string, number> = { ...(userLocal?.salaries || {}), ...remoteSalaryMap };
+          Object.entries(userLocal?.salaries || {}).forEach(([m, amt]) => {
+            if (remoteSalaryMap[m] === undefined) {
+              saveSalaryToDb(userId, m, amt);
+            }
+          });
 
           const finalStore: FinanceStore = {
             expenses: mergedExpenses,
@@ -399,20 +417,24 @@ function useFinance() {
           return finalStore;
         });
       } catch (err) {
-        console.warn('Supabase sync error:', err);
+        console.warn('[Supabase] Sync exception:', err);
+      } finally {
+        if (!cancelled) setIsSyncing(false);
       }
     };
 
-    // 1. If user switched, reset to empty first; otherwise keep cached data visible during refresh
+    // 1. If user switched, load their cached data if present
     if (userChanged) {
       const cachedRaw = localStorage.getItem(getStoreStorageKey(userId));
-      setStore(cachedRaw ? parseStore(cachedRaw) : fallbackStore);
+      if (cachedRaw) {
+        setStore(parseStore(cachedRaw));
+      }
     }
 
-    // 2. Initial fetch from Supabase
+    // 2. Fetch latest data from Supabase
     loadSupabaseData('initial');
 
-    // 3. Realtime channel — debounced + suppressed for own writes
+    // 3. Realtime channel — debounced
     const handleRealtimeEvent = () => {
       if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
       realtimeDebounceRef.current = setTimeout(() => {
@@ -451,46 +473,71 @@ function useFinance() {
 
   const addExpense = (expense: Omit<Expense, 'id'>) => {
     const newExpense: Expense = { ...expense, id: uid() };
-    setStore((current) => ({ ...current, expenses: [newExpense, ...current.expenses] }));
-    notify('Expense tucked away.');
+    setStore((current) => {
+      const nextExpenses = [newExpense, ...current.expenses];
+      const nextStore = { ...current, expenses: nextExpenses };
+      localStorage.setItem(getStoreStorageKey(user?.id), JSON.stringify(nextStore));
+      return nextStore;
+    });
+    notify('Expense saved.');
 
     if (user && isRealSupabaseUser(user)) {
       localChangePendingRef.current = Date.now();
-      saveExpenseToDb(user.id, newExpense);
+      saveExpenseToDb(user.id, newExpense).then((ok) => {
+        if (!ok) console.warn('[Supabase] Failed to save expense to database:', newExpense.id);
+      });
     }
   };
 
   const updateExpense = (id: string, changes: Omit<Expense, 'id'>) => {
     const updated: Expense = { ...changes, id };
-    setStore((current) => ({
-      ...current,
-      expenses: current.expenses.map((expense) => (expense.id === id ? updated : expense)),
-    }));
+    setStore((current) => {
+      const nextExpenses = current.expenses.map((expense) => (expense.id === id ? updated : expense));
+      const nextStore = { ...current, expenses: nextExpenses };
+      localStorage.setItem(getStoreStorageKey(user?.id), JSON.stringify(nextStore));
+      return nextStore;
+    });
     notify('Expense updated.');
 
     if (user && isRealSupabaseUser(user)) {
       localChangePendingRef.current = Date.now();
-      saveExpenseToDb(user.id, updated);
+      saveExpenseToDb(user.id, updated).then((ok) => {
+        if (!ok) console.warn('[Supabase] Failed to update expense in database:', id);
+      });
     }
   };
 
   const deleteExpense = (id: string) => {
-    setStore((current) => ({ ...current, expenses: current.expenses.filter((expense) => expense.id !== id) }));
+    setStore((current) => {
+      const nextExpenses = current.expenses.filter((expense) => expense.id !== id);
+      const nextStore = { ...current, expenses: nextExpenses };
+      localStorage.setItem(getStoreStorageKey(user?.id), JSON.stringify(nextStore));
+      return nextStore;
+    });
     notify('Expense removed.', 'danger');
 
     if (user && isRealSupabaseUser(user)) {
       localChangePendingRef.current = Date.now();
-      deleteExpenseFromDb(user.id, id);
+      deleteExpenseFromDb(user.id, id).then((ok) => {
+        if (!ok) console.warn('[Supabase] Failed to delete expense from database:', id);
+      });
     }
   };
 
   const setSalary = (month: string, salary: number) => {
-    setStore((current) => ({ ...current, salaries: { ...current.salaries, [month]: salary } }));
+    setStore((current) => {
+      const nextSalaries = { ...current.salaries, [month]: salary };
+      const nextStore = { ...current, salaries: nextSalaries };
+      localStorage.setItem(getStoreStorageKey(user?.id), JSON.stringify(nextStore));
+      return nextStore;
+    });
     notify(`${monthLabel(month)} salary saved.`);
 
     if (user && isRealSupabaseUser(user)) {
       localChangePendingRef.current = Date.now();
-      saveSalaryToDb(user.id, month, salary);
+      saveSalaryToDb(user.id, month, salary).then((ok) => {
+        if (!ok) console.warn('[Supabase] Failed to save salary to database:', month);
+      });
     }
   };
 
@@ -500,17 +547,47 @@ function useFinance() {
       return;
     }
     setIsSyncing(true);
-    notify('Syncing all data to Supabase...');
+    notify('Syncing data with Supabase...');
     try {
+      // 1. Push all local expenses and salaries to Supabase
       for (const exp of store.expenses) {
         await saveExpenseToDb(user.id, exp);
       }
       for (const [m, amt] of Object.entries(store.salaries)) {
         await saveSalaryToDb(user.id, m, amt);
       }
-      notify('Supabase database is fully up to date!');
-    } catch {
-      notify('Failed to complete sync.', 'danger');
+      // 2. Fetch fresh remote data from Supabase
+      const [remoteExpenses, remoteSalaries] = await Promise.all([
+        fetchUserExpenses(user.id),
+        fetchUserSalaries(user.id),
+      ]);
+
+      if (remoteExpenses !== null) {
+        const remoteList: Expense[] = remoteExpenses.map((e) => ({
+          id: e.id,
+          amount: Number(e.amount),
+          description: e.description,
+          category: e.category,
+          date: e.date,
+          notes: e.notes || '',
+        }));
+        const remoteMap = new Map(remoteList.map((e) => [e.id, e]));
+        store.expenses.forEach((e) => remoteMap.set(e.id, e));
+        const mergedExpenses = Array.from(remoteMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+        
+        const finalStore: FinanceStore = {
+          expenses: mergedExpenses,
+          salaries: { ...store.salaries, ...(remoteSalaries || {}) },
+          categories: store.categories && store.categories.length > 0 ? store.categories : [...BASE_CATEGORIES],
+          customCategories: store.customCategories || [],
+        };
+        setStore(finalStore);
+        localStorage.setItem(getStoreStorageKey(user.id), JSON.stringify(finalStore));
+      }
+      notify('Supabase database is fully synced and up to date!');
+    } catch (err) {
+      console.warn('[Supabase] Sync error:', err);
+      notify('Failed to complete cloud sync.', 'danger');
     } finally {
       setIsSyncing(false);
     }
@@ -949,7 +1026,19 @@ function Select({ className = '', ...props }: SelectHTMLAttributes<HTMLSelectEle
   );
 }
 
-function MonthPicker({ value, onChange, compact = false }: { value: string; onChange: (value: string) => void; compact?: boolean }) {
+function MonthPicker({
+  value,
+  onChange,
+  compact = false,
+  expenses,
+  allowAll = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  compact?: boolean;
+  expenses?: Expense[];
+  allowAll?: boolean;
+}) {
   return (
     <label className={`relative inline-flex items-center ${compact ? 'min-w-[160px]' : 'min-w-[200px]'}`}>
       <CalendarDays className="pointer-events-none absolute left-3 h-4 w-4 text-primary" />
@@ -959,7 +1048,7 @@ function MonthPicker({ value, onChange, compact = false }: { value: string; onCh
         data-testid="select-month"
         className="w-full appearance-none rounded-xl border border-border bg-card py-2.5 pl-9 pr-9 text-sm font-bold text-foreground outline-none transition hover:border-primary focus:border-primary"
       >
-        {getMonthOptions(value).map((month) => (
+        {getMonthOptions(value, expenses, allowAll).map((month) => (
           <option key={month} value={month}>
             {monthLabel(month)}
           </option>
@@ -970,12 +1059,22 @@ function MonthPicker({ value, onChange, compact = false }: { value: string; onCh
   );
 }
 
-function getMonthOptions(selected: string) {
+function getMonthOptions(selected: string, expenses?: Expense[], allowAll: boolean = false) {
   const options = new Set<string>();
   const current = new Date();
-  for (let i = -8; i <= 4; i++) options.add(monthKey(new Date(current.getFullYear(), current.getMonth() + i, 1)));
-  options.add(selected);
-  return Array.from(options).sort().reverse();
+  for (let i = -12; i <= 6; i++) {
+    options.add(monthKey(new Date(current.getFullYear(), current.getMonth() + i, 1)));
+  }
+  if (selected && selected !== 'ALL') options.add(selected);
+  if (expenses) {
+    expenses.forEach((e) => {
+      if (e.date && e.date.length >= 7) {
+        options.add(e.date.slice(0, 7));
+      }
+    });
+  }
+  const sorted = Array.from(options).sort().reverse();
+  return allowAll ? ['ALL', ...sorted] : sorted;
 }
 
 function MetricCard({
@@ -1086,7 +1185,7 @@ function SpendlyMobileHome({
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/30 px-3 py-1.5 pr-7 text-[11px] font-bold text-[#fde68a] outline-none"
             >
-              {getMonthOptions(selectedMonth).map((m) => (
+              {getMonthOptions(selectedMonth, finance.store.expenses).map((m) => (
                 <option key={m} value={m} className="bg-[#0b0f19] text-[#f3f4f6]">
                   {monthLabel(m)}
                 </option>
@@ -1309,16 +1408,34 @@ function SpendlyMobileHome({
               <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20 shadow-inner">
                 <ReceiptIndianRupee className="h-5 w-5" />
               </div>
-              <p className="mt-2.5 text-xs font-bold text-[#e2e8f0]">No transactions in this category</p>
-              <p className="mt-0.5 text-[11px] text-[#9ca3af]">Tap the '+' button to record an expense.</p>
-              <button
-                type="button"
-                onClick={() => setLocation('/add-expense')}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-1.5 text-xs font-bold text-[#080c14] shadow-[0_0_14px_rgba(245,158,11,0.35)] transition active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                <span>Add expense</span>
-              </button>
+              <p className="mt-2.5 text-xs font-bold text-[#e2e8f0]">
+                {finance.store.expenses.length > 0
+                  ? `No records for ${monthLabel(selectedMonth)}`
+                  : 'No transactions recorded yet'}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[#9ca3af]">
+                {finance.store.expenses.length > 0
+                  ? `You have ${finance.store.expenses.length} record${finance.store.expenses.length === 1 ? '' : 's'} saved across all months.`
+                  : 'Tap the "+" button to record an expense.'}
+              </p>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                {finance.store.expenses.length > 0 && (
+                  <Link
+                    href="/expenses"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/30 px-3 py-1.5 text-xs font-bold text-[#fde68a] transition active:scale-95"
+                  >
+                    <span>View All ({finance.store.expenses.length})</span>
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setLocation('/add-expense')}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-1.5 text-xs font-bold text-[#080c14] shadow-[0_0_14px_rgba(245,158,11,0.35)] transition active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5 stroke-[3]" />
+                  <span>Add expense</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1396,7 +1513,7 @@ function HomePage({ finance }: { finance: ReturnType<typeof useFinance> }) {
           }
           action={
             <div className="flex items-center gap-2">
-              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} expenses={finance.store.expenses} />
               <Link href="/add-expense" data-testid="link-add-expense-header" className="hidden sm:inline-flex">
                 <Button>
                   <Plus className="h-4 w-4" /> Add expense
@@ -1794,7 +1911,7 @@ function SpendlyMobileExpenses({
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/30 px-3 py-1.5 pr-7 text-[11px] font-bold text-[#fde68a] outline-none"
           >
-            {getMonthOptions(selectedMonth).map((m) => (
+            {getMonthOptions(selectedMonth, finance.store.expenses, true).map((m) => (
               <option key={m} value={m} className="bg-[#0b0f19] text-[#f3f4f6]">
                 {monthLabel(m)}
               </option>
@@ -1937,7 +2054,11 @@ function ExpensesPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
   const [dateFilter, setDateFilter] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const monthExpenses = finance.store.expenses.filter((expense) => expense.date.slice(0, 7) === selectedMonth);
+  const monthExpenses =
+    selectedMonth === 'ALL'
+      ? finance.store.expenses
+      : finance.store.expenses.filter((expense) => expense.date.slice(0, 7) === selectedMonth);
+
   const expenses = monthExpenses
     .filter(
       (expense) =>
@@ -2014,7 +2135,7 @@ function ExpensesPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
                   ))}
                 </Select>
               </div>
-              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} compact />
+              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} compact expenses={finance.store.expenses} allowAll />
             </div>
           </div>
 
@@ -2663,7 +2784,7 @@ function SpendlyMobileSummary({
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/30 px-3 py-1.5 pl-8 pr-7 text-[11px] font-extrabold tracking-wider text-[#fde68a] outline-none shadow-sm"
           >
-            {getMonthOptions(selectedMonth).map((m) => (
+            {getMonthOptions(selectedMonth, finance.store.expenses).map((m) => (
               <option key={m} value={m} className="bg-[#0b0f19] text-[#f3f4f6]">
                 {monthLabel(m).toUpperCase()}
               </option>
@@ -2916,7 +3037,7 @@ function SummaryPage({ finance }: { finance: ReturnType<typeof useFinance> }) {
           description="Interactive charts, daily spending flows, category allocations, and PDF statements."
           action={
             <div className="flex flex-wrap items-center gap-2">
-              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+              <MonthPicker value={selectedMonth} onChange={setSelectedMonth} expenses={finance.store.expenses} />
               <button
                 type="button"
                 onClick={handleDownloadPdf}
