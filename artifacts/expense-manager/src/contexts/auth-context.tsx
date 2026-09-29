@@ -37,6 +37,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_USER_KEY = 'spendly_auth_user';
 const LEGACY_AUTH_USER_KEY = 'paisa_auth_user';
 
+// Only the id is needed to pick the right local cache on reload; don't persist
+// the full Supabase user object (metadata, identities, etc.) in localStorage.
+const rememberAuthUser = (u: User) =>
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ id: u.id }));
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<DbProfile | null>(null);
@@ -78,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(initialSession);
           setUser(initialSession.user);
           setIsGuest(false);
-          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(initialSession.user));
+          rememberAuthUser(initialSession.user);
           getUserProfile(initialSession.user.id)
             .then((p) => {
               if (isMounted) {
@@ -117,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           setIsGuest(false);
-          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(currentSession.user));
+          rememberAuthUser(currentSession.user);
 
           try {
             if (event === 'SIGNED_IN') {
@@ -140,7 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(AUTH_USER_KEY);
         localStorage.removeItem(LEGACY_AUTH_USER_KEY);
       }
-      setLoading(false);
+      // The initial session (incl. guest restore) is resolved by getSession()
+      // above; ending the loading state here too would race it.
+      if (event !== 'INITIAL_SESSION') setLoading(false);
     });
 
     return () => {
@@ -160,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       if (data.session) setSession(data.session);
       setIsGuest(false);
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+      rememberAuthUser(data.user);
       try {
         await recordUserLogin(data.user);
         const p = await upsertUserProfile(data.user);
@@ -191,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(data.user);
           setSession(data.session);
           setIsGuest(false);
-          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+          rememberAuthUser(data.user);
           await recordUserLogin(data.user);
         }
       } catch (err) {
@@ -211,9 +218,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signInWithDemo = (email = 'avinandan@spendly.app', name = 'Avinandan Kundu') => {
+  const signInWithDemo = (email = 'guest@spendly.app', name = 'Guest User') => {
     const mockUser: User = {
-      id: 'usr_' + Math.random().toString(36).substring(2, 9),
+      id: 'usr_' + crypto.getRandomValues(new Uint32Array(2)).join('').slice(0, 12),
       app_metadata: { provider: 'email' },
       user_metadata: { full_name: name },
       aud: 'authenticated',

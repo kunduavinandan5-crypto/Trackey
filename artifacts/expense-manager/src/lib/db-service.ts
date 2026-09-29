@@ -58,7 +58,7 @@ export async function recordUserLogin(user: User): Promise<void> {
       {
         user_id: user.id,
         email: user.email || '',
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
+        user_agent: (typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown').slice(0, 512),
         login_at: new Date().toISOString(),
       },
     ]);
@@ -85,7 +85,7 @@ export async function upsertUserProfile(user: User, customName?: string): Promis
     const profileData = {
       id: user.id,
       email: user.email || '',
-      full_name: fullName,
+      full_name: String(fullName).trim().slice(0, 120),
       avatar_url: user.user_metadata?.avatar_url || '',
       updated_at: new Date().toISOString(),
     };

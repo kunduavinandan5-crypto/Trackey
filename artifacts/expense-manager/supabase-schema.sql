@@ -34,7 +34,8 @@ CREATE POLICY "Users can insert own profile"
 
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 -- 2. EXPENSES TABLE
 -- Stores each user's expense entries
@@ -72,7 +73,8 @@ CREATE POLICY "Users can insert own expenses"
 
 CREATE POLICY "Users can update own expenses"
   ON public.expenses FOR UPDATE
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own expenses"
   ON public.expenses FOR DELETE
@@ -111,7 +113,8 @@ CREATE POLICY "Users can insert own salaries"
 
 CREATE POLICY "Users can update own salaries"
   ON public.salaries FOR UPDATE
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own salaries"
   ON public.salaries FOR DELETE
@@ -149,7 +152,7 @@ CREATE POLICY "Users can insert own login event"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  INSERT INTO public.profiles AS p (id, email, full_name, avatar_url)
   VALUES (
     NEW.id,
     NEW.email,
@@ -158,14 +161,65 @@ BEGIN
   )
   ON CONFLICT (id) DO UPDATE
   SET email = EXCLUDED.email,
-      full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
+      full_name = COALESCE(EXCLUDED.full_name, p.full_name),
       updated_at = timezone('utc'::text, now());
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+-- Trigger-only function: must not be callable through the API
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
 
 -- Drop trigger if already exists and recreate cleanly
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- 6. DATA INTEGRITY CONSTRAINTS
+-- The anon key is public, so any signed-in user can write to these tables
+-- directly. Bound sizes/formats so rows can't be oversized or malformed.
+-- NOT VALID: enforced on new/updated rows without failing on existing data.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_description_len') THEN
+    ALTER TABLE public.expenses ADD CONSTRAINT expenses_description_len
+      CHECK (char_length(description) BETWEEN 1 AND 200) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_category_len') THEN
+    ALTER TABLE public.expenses ADD CONSTRAINT expenses_category_len
+      CHECK (char_length(category) BETWEEN 1 AND 60) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_notes_len') THEN
+    ALTER TABLE public.expenses ADD CONSTRAINT expenses_notes_len
+      CHECK (char_length(notes) <= 1000) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_id_len') THEN
+    ALTER TABLE public.expenses ADD CONSTRAINT expenses_id_len
+      CHECK (char_length(id) BETWEEN 1 AND 64) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_date_format') THEN
+    ALTER TABLE public.expenses ADD CONSTRAINT expenses_date_format
+      CHECK (date ~ '^\d{4}-\d{2}-\d{2}$') NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expenses_amount_max') THEN
+    ALTER TABLE public.expenses ADD CONSTRAINT expenses_amount_max
+      CHECK (amount <= 1000000000) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'salaries_month_format') THEN
+    ALTER TABLE public.salaries ADD CONSTRAINT salaries_month_format
+      CHECK (month ~ '^\d{4}-\d{2}$') NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'salaries_amount_max') THEN
+    ALTER TABLE public.salaries ADD CONSTRAINT salaries_amount_max
+      CHECK (amount <= 1000000000) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_full_name_len') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT profiles_full_name_len
+      CHECK (char_length(full_name) <= 120) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_logins_user_agent_len') THEN
+    ALTER TABLE public.user_logins ADD CONSTRAINT user_logins_user_agent_len
+      CHECK (char_length(user_agent) <= 512) NOT VALID;
+  END IF;
+END $$;

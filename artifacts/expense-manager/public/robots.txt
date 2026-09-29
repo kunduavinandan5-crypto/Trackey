@@ -1,2 +1,7 @@
 User-agent: *
+Allow: /$
+Disallow: /expenses
+Disallow: /add-expense
+Disallow: /summary
+Disallow: /settings
 Allow: /

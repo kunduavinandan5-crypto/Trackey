@@ -158,7 +158,15 @@ function getCategoryIcon(category: string) {
   return CreditCard;
 }
 
-const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+// Expense ids are a global primary key in Supabase, so they must be unguessable.
+const uid = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('')}`;
+
+// Must stay in sync with the CHECK constraints in supabase-schema.sql
+const LIMITS ={ description: 200, category: 60, notes: 1000, amount: 1_000_000_000 } as const;
+const isValidAmount = (n: number) => Number.isFinite(n) && n >= 0 && n <= LIMITS.amount;
 
 const fallbackStore: FinanceStore = { expenses: [], salaries: {}, categories: [...BASE_CATEGORIES], customCategories: [] };
 
@@ -265,8 +273,12 @@ function useTheme() {
 }
 
 function useFinance() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  // Storage key the in-memory `store` belongs to. The persist effect only writes
+  // when this matches the current user's key, so one account's data is never
+  // written under another account's (or the guest) key during a user switch.
+  const storeKeyRef = useRef<string>(getStoreStorageKey(null));
 
   // Initialize from user-specific localStorage immediately to avoid blank flicker on refresh.
   const [store, setStore] = useState<FinanceStore>(() => {
@@ -278,8 +290,12 @@ function useFinance() {
         const savedUser = JSON.parse(savedUserRaw) as { id?: string };
         if (savedUser?.id && isRealSupabaseUser(savedUser as { id: string })) {
           // Real Supabase user — load their own store
-          const userRaw = localStorage.getItem(`spendly-store-user-${savedUser.id}`);
-          if (userRaw) return parseStore(userRaw);
+          const userKey = getStoreStorageKey(savedUser.id);
+          const userRaw = localStorage.getItem(userKey);
+          if (userRaw) {
+            storeKeyRef.current = userKey;
+            return parseStore(userRaw);
+          }
         }
       }
       // Guest / fallback store
@@ -310,6 +326,7 @@ function useFinance() {
 
   useEffect(() => {
     const key = getStoreStorageKey(user?.id);
+    if (key !== storeKeyRef.current) return;
     localStorage.setItem(key, JSON.stringify(store));
   }, [store, user?.id]);
 
@@ -324,8 +341,13 @@ function useFinance() {
 
   // Sync with Supabase on login or user switch
   useEffect(() => {
+    // Don't swap stores while the session is still being restored — the cached
+    // user store loaded at init is correct and switching to guest would flicker.
+    if (authLoading) return;
+
     if (!user || !isRealSupabaseUser(user)) {
       // Guest mode: load guest-specific local store
+      storeKeyRef.current = getStoreStorageKey(null);
       try {
         const raw = localStorage.getItem('spendly-store-guest');
         if (raw) setStore(parseStore(raw));
@@ -357,13 +379,15 @@ function useFinance() {
         if (guestRaw) {
           const guestStore = parseStore(guestRaw);
           if (guestStore.expenses.length > 0 || Object.keys(guestStore.salaries).length > 0) {
+            let allSaved = true;
             for (const exp of guestStore.expenses) {
-              await saveExpenseToDb(userId, exp);
+              if (!(await saveExpenseToDb(userId, exp))) allSaved = false;
             }
             for (const [m, amt] of Object.entries(guestStore.salaries)) {
-              await saveSalaryToDb(userId, m, amt);
+              if (!(await saveSalaryToDb(userId, m, amt))) allSaved = false;
             }
-            localStorage.removeItem('spendly-store-guest');
+            // Keep the guest data if anything failed so it isn't silently lost
+            if (allSaved) localStorage.removeItem('spendly-store-guest');
           }
         }
 
@@ -384,7 +408,12 @@ function useFinance() {
         setStore((currentStore) => {
           // Read cached local store for this user
           const userLocalRaw = localStorage.getItem(getStoreStorageKey(userId));
-          const userLocal = userLocalRaw ? parseStore(userLocalRaw) : currentStore;
+          // Only fall back to the in-memory store if it actually belongs to this user
+          const userLocal = userLocalRaw
+            ? parseStore(userLocalRaw)
+            : storeKeyRef.current === getStoreStorageKey(userId)
+              ? currentStore
+              : null;
 
           const remoteList: Expense[] = remoteExpenses.map((e) => ({
             id: e.id,
@@ -422,7 +451,8 @@ function useFinance() {
             customCategories: userLocal?.customCategories || [],
           };
 
-          localStorage.setItem(getStoreStorageKey(userId), JSON.stringify(finalStore));
+          storeKeyRef.current = getStoreStorageKey(userId);
+          localStorage.setItem(storeKeyRef.current, JSON.stringify(finalStore));
           return finalStore;
         });
       } catch (err) {
@@ -432,12 +462,11 @@ function useFinance() {
       }
     };
 
-    // 1. If user switched, load their cached data if present
-    if (userChanged) {
+    // 1. If user switched, load their cached data — never keep showing the previous user's store
+    if (userChanged && storeKeyRef.current !== getStoreStorageKey(userId)) {
       const cachedRaw = localStorage.getItem(getStoreStorageKey(userId));
-      if (cachedRaw) {
-        setStore(parseStore(cachedRaw));
-      }
+      storeKeyRef.current = getStoreStorageKey(userId);
+      setStore(cachedRaw ? parseStore(cachedRaw) : fallbackStore);
     }
 
     // 2. Fetch latest data from Supabase
@@ -478,7 +507,7 @@ function useFinance() {
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
 
   const addExpense = (expense: Omit<Expense, 'id'>) => {
     const newExpense: Expense = { ...expense, id: uid() };
@@ -534,6 +563,10 @@ function useFinance() {
   };
 
   const setSalary = (month: string, salary: number) => {
+    if (!isValidAmount(salary) || !/^\d{4}-\d{2}$/.test(month)) {
+      notify('Please enter a valid salary amount.', 'danger');
+      return;
+    }
     setStore((current) => {
       const nextSalaries = { ...current.salaries, [month]: salary };
       const nextStore = { ...current, salaries: nextSalaries };
@@ -603,7 +636,7 @@ function useFinance() {
   };
 
   const addCategory = (category: string) => {
-    const clean = category.trim();
+    const clean = category.trim().slice(0, LIMITS.category);
     if (!clean) return false;
     if (categories.some((c) => c.toLowerCase() === clean.toLowerCase())) {
       notify('Category already exists.', 'danger');
@@ -2410,6 +2443,7 @@ function SpendlyMobileAddTransaction({
               <input
                 type="text"
                 value={description}
+                maxLength={LIMITS.description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g. Netflix subscription"
                 className="w-full rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-4 py-3 text-sm font-medium text-[#f1f5f3] placeholder:text-[#9ca3af]/50 outline-none focus:border-[#fbbf24] focus:ring-2 focus:ring-[#fbbf24]/20"
@@ -2469,6 +2503,7 @@ function SpendlyMobileAddTransaction({
                   <input
                     type="text"
                     value={customCategory}
+                    maxLength={LIMITS.category}
                     onChange={(e) => setCustomCategory(e.target.value)}
                     placeholder="Enter category name..."
                     autoFocus
@@ -2525,6 +2560,7 @@ function SpendlyMobileAddTransaction({
               </label>
               <textarea
                 value={notes}
+                maxLength={LIMITS.notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add a note..."
                 rows={2}
@@ -2564,12 +2600,20 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
   const todayStr = new Date().toISOString().slice(0, 10);
   const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  const valid = Boolean(Number(amount) > 0 && description.trim().length > 0 && date);
+  const valid = Boolean(
+    Number(amount) > 0 && isValidAmount(Number(amount)) && description.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date),
+  );
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!valid) return;
-    const payload = { amount: Number(amount), description: description.trim(), category, date, notes: notes.trim() };
+    const payload = {
+      amount: Number(amount),
+      description: description.trim().slice(0, LIMITS.description),
+      category: category.slice(0, LIMITS.category),
+      date,
+      notes: notes.trim().slice(0, LIMITS.notes),
+    };
     if (editing && existing) finance.updateExpense(existing.id, payload);
     else finance.addExpense(payload);
     setLocation('/expenses');
@@ -2648,6 +2692,7 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
             <Field label="What was it?">
               <Input
                 value={description}
+                maxLength={LIMITS.description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g. Evening chai with friends"
                 data-testid="input-expense-description"
@@ -2701,6 +2746,7 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
                 <div className="mt-2 flex gap-2">
                   <Input
                     value={customCategory}
+                    maxLength={LIMITS.category}
                     onChange={(e) => setCustomCategory(e.target.value)}
                     placeholder="Category name"
                     data-testid="input-custom-category"
@@ -2716,6 +2762,7 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
               <Field label="Notes" hint="Optional — a little context makes the pattern more useful.">
                 <textarea
                   value={notes}
+                  maxLength={LIMITS.notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="What do you want to remember about this?"
                   rows={4}
@@ -3388,6 +3435,7 @@ function SpendlyMobileSettings({
           <input
             type="text"
             value={newCategory}
+            maxLength={LIMITS.category}
             onChange={(e) => setNewCategory(e.target.value)}
             placeholder="Add new category..."
             className="flex-1 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-2 text-xs font-medium text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
@@ -3618,6 +3666,7 @@ function SettingsPage({
         <div className="mt-6 flex max-w-md gap-2">
           <Input
             value={newCategory}
+            maxLength={LIMITS.category}
             onChange={(e) => setNewCategory(e.target.value)}
             placeholder="Add a custom category"
             data-testid="input-settings-category"
@@ -3675,11 +3724,28 @@ function SettingsPage({
 );
 }
 
+const DEFAULT_TITLE = 'Spendly — Personal Expense Tracker & Budget Manager';
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Dashboard',
+  '/expenses': 'Expenses',
+  '/add-expense': 'Add Expense',
+  '/edit-expense': 'Edit Expense',
+  '/summary': 'Reports',
+  '/settings': 'Settings',
+  '/signup': 'Create Account',
+};
+
 function Router() {
   const { user, loading } = useAuth();
   const [location] = useLocation();
   const finance = useFinance();
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    const path = !user ? '/login' : location.startsWith('/add-expense/') ? '/edit-expense' : location;
+    const page = PAGE_TITLES[path];
+    document.title = page ? `${page} · Spendly` : DEFAULT_TITLE;
+  }, [location, user]);
 
   if (loading) {
     return (

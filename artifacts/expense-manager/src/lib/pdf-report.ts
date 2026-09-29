@@ -89,12 +89,12 @@ export function exportMonthlyExpensePdf({
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.text(userName || 'Avinandan Kundu', 14, 54);
+  doc.text(userName || 'Spendly User', 14, 54);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text(userEmail || 'kunduavinandan5@gmail.com', 14, 60);
+  if (userEmail) doc.text(userEmail, 14, 60);
 
   // ── KPI Summary Cards Box ──
   const kpiBoxY = 66;

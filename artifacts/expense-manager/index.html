@@ -6,10 +6,12 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover"
     />
-    <title>Spendly — Personal Expense Manager</title>
-    <meta name="description" content="A private, mindful personal finance and expense tracker built for everyday awareness." />
+    <title>Spendly — Personal Expense Tracker & Budget Manager</title>
+    <meta name="description" content="Spendly is a free, private expense tracker and budget manager. Log daily spending, set a monthly salary, see category reports and export PDF statements — synced securely across devices." />
     <meta name="application-name" content="Spendly" />
-    <meta name="robots" content="index, follow" />
+    <meta name="author" content="Spendly" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="format-detection" content="telephone=no" />
 
     <!-- PWA / Mobile Web App Meta -->
     <meta name="theme-color" content="#d97706" media="(prefers-color-scheme: light)" />
@@ -19,29 +21,48 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Spendly" />
 
-    <!-- Open Graph / Twitter Cards -->
-    <meta property="og:title" content="Spendly — Private Wealth & Expense Intelligence" />
-    <meta property="og:description" content="A private, mindful personal finance and expense tracker built for everyday awareness." />
+    <!-- Open Graph / Twitter Cards (canonical, og:url and og:image are injected at build time from VITE_SITE_URL) -->
+    <meta property="og:site_name" content="Spendly" />
+    <meta property="og:title" content="Spendly — Private Expense Tracker & Budget Manager" />
+    <meta property="og:description" content="Track daily spending, plan your monthly budget and export PDF statements. Free, private and synced across devices." />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_IN" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Spendly — Private Wealth & Expense Intelligence" />
-    <meta name="twitter:description" content="A private, mindful personal finance and expense tracker built for everyday awareness." />
+    <meta name="twitter:title" content="Spendly — Private Expense Tracker & Budget Manager" />
+    <meta name="twitter:description" content="Track daily spending, plan your monthly budget and export PDF statements. Free, private and synced across devices." />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Spendly",
+        "description": "A free, private personal expense tracker and budget manager with category reports and PDF statements.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" }
+      }
+    </script>
 
     <!-- Icons & Manifest -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=2" />
-    <link rel="icon" type="image/png" href="/favicon.png?v=2" />
     <link rel="shortcut icon" href="/favicon.ico?v=2" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
     <link rel="manifest" href="/manifest.webmanifest?v=2" />
 
-    <!-- Typography -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=DM+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;0,900;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Typography (only the families actually used by index.css) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;0,900;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <noscript>
+      <h1>Spendly — Personal Expense Tracker</h1>
+      <p>Spendly is a private expense tracker and budget manager. Please enable JavaScript to use the app.</p>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

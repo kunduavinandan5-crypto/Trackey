@@ -70,8 +70,8 @@ export default function LoginPage() {
         }
         setLocation('/');
       } else if (mode === 'signup') {
-        if (password.length < 6) {
-          throw new Error('Password must be at least 6 characters long');
+        if (password.length < 8) {
+          throw new Error('Password must be at least 8 characters long');
         }
         const { data, error: signUpErr } = await signUp(email, password, fullName);
         if (signUpErr) throw signUpErr;
@@ -227,6 +227,8 @@ export default function LoginPage() {
                   type="text"
                   required
                   value={fullName}
+                  autoComplete="name"
+                  maxLength={120}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Full Name"
                   className="w-full rounded-2xl border border-[#22c55e]/25 bg-[#0a1610]/80 py-3 pl-11 pr-4 text-sm font-medium text-white placeholder:text-[#5a7364] outline-none transition focus:border-[#4ade80] focus:ring-2 focus:ring-[#4ade80]/20"
@@ -238,6 +240,7 @@ export default function LoginPage() {
               <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#4ade80]/70" />
               <input
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -254,6 +257,7 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
                     className="w-full rounded-2xl border border-[#22c55e]/25 bg-[#0a1610]/80 py-3 pl-11 pr-11 text-sm font-medium text-white placeholder:text-[#5a7364] outline-none transition focus:border-[#4ade80] focus:ring-2 focus:ring-[#4ade80]/20"
@@ -262,6 +266,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#7d9688] hover:text-white"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -315,10 +320,8 @@ export default function LoginPage() {
             onClick={handleGuestMode}
             className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-[#22c55e]/20 bg-[#0a1610]/90 py-3 text-xs font-bold text-white transition hover:bg-[#12241b] active:scale-[0.98]"
           >
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-black font-extrabold text-[10px]">
-              G
-            </span>
-            <span>Continue with Google / Demo</span>
+            <Sparkles className="h-4 w-4 text-[#4ade80]" />
+            <span>Continue as Guest / Demo</span>
           </button>
         </div>
 
@@ -478,6 +481,8 @@ export default function LoginPage() {
                     type="text"
                     required
                     value={fullName}
+                    autoComplete="name"
+                    maxLength={120}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Avinandan Kundu"
                     className="w-full rounded-xl border border-border bg-muted/30 py-2.5 pl-10 pr-4 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -492,6 +497,7 @@ export default function LoginPage() {
                 <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -524,6 +530,7 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full rounded-xl border border-border bg-muted/30 py-2.5 pl-10 pr-10 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"

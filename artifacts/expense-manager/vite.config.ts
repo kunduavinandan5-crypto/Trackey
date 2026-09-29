@@ -1,14 +1,53 @@
+import fs from 'fs';
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const port = Number(process.env.PORT) || 5173;
 const basePath = process.env.BASE_PATH || '/';
 
+// Absolute-URL SEO tags (canonical, og:url, og:image) and sitemap/robots need
+// the public origin, e.g. VITE_SITE_URL=https://spendly.example.com
+function seo(siteUrl: string | undefined): Plugin {
+  const origin = siteUrl?.trim().replace(/\/+$/, '');
+  let outDir = 'dist';
+  return {
+    name: 'spendly-seo',
+    configResolved(config) {
+      outDir = config.build.outDir;
+    },
+    transformIndexHtml() {
+      if (!origin) return [];
+      const meta = (attrs: Record<string, string>) => ({ tag: 'meta', attrs, injectTo: 'head' as const });
+      return [
+        { tag: 'link', attrs: { rel: 'canonical', href: `${origin}/` }, injectTo: 'head' },
+        meta({ property: 'og:url', content: `${origin}/` }),
+        meta({ property: 'og:image', content: `${origin}/pwa-512x512.png` }),
+        meta({ property: 'og:image:alt', content: 'Spendly logo' }),
+        meta({ name: 'twitter:image', content: `${origin}/pwa-512x512.png` }),
+      ];
+    },
+    writeBundle() {
+      // Only the public entry page is indexable; everything else is behind login.
+      const robots = ['User-agent: *', 'Allow: /$', 'Disallow: /expenses', 'Disallow: /add-expense', 'Disallow: /summary', 'Disallow: /settings', 'Allow: /'];
+      if (origin) {
+        robots.push('', `Sitemap: ${origin}/sitemap.xml`);
+        const today = new Date().toISOString().slice(0, 10);
+        fs.writeFileSync(
+          path.join(outDir, 'sitemap.xml'),
+          `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${origin}/</loc><lastmod>${today}</lastmod><priority>1.0</priority></url>\n</urlset>\n`,
+        );
+      }
+      fs.writeFileSync(path.join(outDir, 'robots.txt'), robots.join('\n') + '\n');
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const siteUrl = process.env.VITE_SITE_URL || env.VITE_SITE_URL;
   const supabaseUrl = process.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL || 'https://ytnrtpaavuvrufbjqgfe.supabase.co';
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bnJ0cGFhdnV2cnVmYmpxZ2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4Nzg4NzAsImV4cCI6MjEwNDQ1NDg3MH0.NpevKARacYjbS-KndRWr9MHParKp8TDinwdgtzFJarM';
 
@@ -21,6 +60,7 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     tailwindcss(),
+    seo(siteUrl),
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
@@ -28,7 +68,6 @@ export default defineConfig(({ mode }) => {
       },
       includeAssets: [
         'favicon.svg',
-        'robots.txt',
         'apple-touch-icon.png',
         'pwa-192x192.png',
         'pwa-512x512.png',
