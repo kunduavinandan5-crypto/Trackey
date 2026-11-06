@@ -104,6 +104,33 @@ export function ReportCharts({
   const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
   const monthShortName = new Date(yearNum, monthNum - 1, 1).toLocaleString('default', { month: 'short' }).toUpperCase();
 
+  const chartTicks = useMemo(
+    () => ['1', '10', '20', String(daysInMonth)],
+    [daysInMonth],
+  );
+
+  const renderDayTick = ({ x, y, payload }: any) => {
+    const d = parseInt(payload?.value, 10);
+    if (isNaN(d)) return <g />;
+
+    let anchor: 'start' | 'middle' | 'end' = 'middle';
+    if (d === 1) anchor = 'start';
+    else if (d === daysInMonth) anchor = 'end';
+
+    return (
+      <text
+        x={x}
+        y={y + 12}
+        textAnchor={anchor}
+        fill="#9ca3af"
+        fontSize={9.5}
+        fontWeight={700}
+      >
+        {`${monthShortName} ${String(d).padStart(2, '0')}`}
+      </text>
+    );
+  };
+
   const totalSpent = useMemo(
     () => expenses.reduce((sum, item) => sum + item.amount, 0),
     [expenses],
@@ -276,7 +303,7 @@ export function ReportCharts({
           ) : (
             <div className="relative h-[210px] sm:h-[240px] w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
+                <AreaChart data={dailyData} margin={{ top: 20, right: 18, left: -20, bottom: 6 }}>
                   <defs>
                     <linearGradient id="goldCurveGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.45} />
@@ -286,19 +313,11 @@ export function ReportCharts({
                   </defs>
                   <XAxis
                     dataKey="day"
+                    ticks={chartTicks}
+                    interval={0}
                     tickLine={false}
                     axisLine={{ stroke: 'rgba(245, 158, 11, 0.15)' }}
-                    tick={{ fill: '#9ca3af', fontSize: 9.5, fontWeight: 700 }}
-                    tickFormatter={(day) => {
-                      const d = parseInt(day, 10);
-                      if (d === 1) return `${monthShortName} 01`;
-                      if (d === 8) return `${monthShortName} 08`;
-                      if (peakDay && d === peakDay.dayNum) return `${monthShortName} ${String(d).padStart(2, '0')} (PEAK)`;
-                      if (d === 22) return `${monthShortName} 22`;
-                      if (d === daysInMonth) return `${monthShortName} ${d}`;
-                      return '';
-                    }}
-                    interval={0}
+                    tick={renderDayTick}
                   />
                   <YAxis
                     tickLine={false}
