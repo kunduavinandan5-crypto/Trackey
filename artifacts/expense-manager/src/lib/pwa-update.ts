@@ -168,3 +168,4 @@ export async function forceAppRefresh(): Promise<void> {
     window.location.href = window.location.origin + window.location.pathname + '?ts=' + Date.now();
   }
 }
+

@@ -4,7 +4,7 @@
   "installCommand": "pnpm install",
   "rewrites": [
     {
-      "source": "/((?!assets/|.*\\.[a-z0-9]+$).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
@@ -57,7 +57,7 @@
       ]
     },
     {
-      "source": "/workbox-(.*).js",
+      "source": "/workbox-:hash.js",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, max-age=0" }
       ]
