@@ -1,3 +1,4 @@
+
 Create a modern, simple, and user-friendly **Expense Manager App** for managing monthly salary and expenses.
 
 ### 1. Salary Setup

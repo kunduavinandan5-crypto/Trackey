@@ -583,6 +583,38 @@ function useFinance() {
     }
   };
 
+  const addSalary = (month: string, amountToAdd: number) => {
+    if (!isValidAmount(amountToAdd) || !/^\d{4}-\d{2}$/.test(month) || amountToAdd <= 0) {
+      notify('Please enter a valid income amount.', 'danger');
+      return;
+    }
+    let calculatedTotal = amountToAdd;
+    let hadPrevious = false;
+
+    setStore((current) => {
+      const prevAmount = current.salaries[month] || 0;
+      hadPrevious = prevAmount > 0;
+      calculatedTotal = prevAmount + amountToAdd;
+      const nextSalaries = { ...current.salaries, [month]: calculatedTotal };
+      const nextStore = { ...current, salaries: nextSalaries };
+      localStorage.setItem(getStoreStorageKey(user?.id), JSON.stringify(nextStore));
+      return nextStore;
+    });
+
+    if (hadPrevious) {
+      notify(`Added ${rupees(amountToAdd)}. Total ${monthLabel(month)} income: ${rupees(calculatedTotal)}`);
+    } else {
+      notify(`${monthLabel(month)} income saved: ${rupees(calculatedTotal)}`);
+    }
+
+    if (user && isRealSupabaseUser(user)) {
+      localChangePendingRef.current = Date.now();
+      saveSalaryToDb(user.id, month, calculatedTotal).then((ok) => {
+        if (!ok) console.warn('[Supabase] Failed to save salary to database:', month);
+      });
+    }
+  };
+
   const syncWithSupabase = async () => {
     if (!user || !isRealSupabaseUser(user)) {
       notify('Please sign in with a Supabase account to sync.', 'danger');
@@ -705,6 +737,7 @@ function useFinance() {
     updateExpense,
     deleteExpense,
     setSalary,
+    addSalary,
     addCategory,
     removeCategory,
     importStore,
@@ -2326,10 +2359,14 @@ function SpendlyMobileAddTransaction({
   const todayStr = new Date().toISOString().slice(0, 10);
   const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
+  const presentIncome = finance.store.salaries[salaryMonth] ?? 0;
+  const enteredAmount = Number(amount) || 0;
+  const newTotal = presentIncome + enteredAmount;
+
   const handleSaveIncome = (e: FormEvent) => {
     e.preventDefault();
-    if (!Number(amount)) return;
-    finance.setSalary(salaryMonth, Number(amount));
+    if (!enteredAmount || enteredAmount <= 0) return;
+    finance.addSalary(salaryMonth, enteredAmount);
     setLocation('/');
   };
 
@@ -2363,7 +2400,7 @@ function SpendlyMobileAddTransaction({
       <div className="spendly-glass-card text-center relative overflow-hidden">
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-24 bg-[#fbbf24]/15 blur-2xl rounded-full pointer-events-none" />
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#9ca3af]">
-          {transactionType === 'income' ? 'TOTAL INCOME' : 'TOTAL EXPENSE'}
+          {transactionType === 'income' ? (presentIncome > 0 ? 'ADD TO INCOME' : 'ADD INCOME') : 'TOTAL EXPENSE'}
         </p>
         <div className="mt-2 flex items-center justify-center gap-1">
           <span className={`text-3xl font-extrabold ${transactionType === 'income' ? 'text-[#fbbf24]' : 'text-[#f87171]'}`}>₹</span>
@@ -2382,24 +2419,26 @@ function SpendlyMobileAddTransaction({
       </div>
 
       {/* Segmented Income / Expense Toggle */}
-      <div className="spendly-segmented-toggle">
-        <button
-          type="button"
-          onClick={() => setTransactionType('income')}
-          className={`spendly-segment-btn ${transactionType === 'income' ? 'spendly-segment-btn--active' : ''}`}
-        >
-          <Wallet className="h-4 w-4" />
-          <span>Income</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setTransactionType('expense')}
-          className={`spendly-segment-btn ${transactionType === 'expense' ? 'spendly-segment-btn--active' : ''}`}
-        >
-          <CreditCard className="h-4 w-4" />
-          <span>Expense</span>
-        </button>
-      </div>
+      {!editing && (
+        <div className="spendly-segmented-toggle">
+          <button
+            type="button"
+            onClick={() => setTransactionType('income')}
+            className={`spendly-segment-btn ${transactionType === 'income' ? 'spendly-segment-btn--active' : ''}`}
+          >
+            <Wallet className="h-4 w-4" />
+            <span>Income</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTransactionType('expense')}
+            className={`spendly-segment-btn ${transactionType === 'expense' ? 'spendly-segment-btn--active' : ''}`}
+          >
+            <CreditCard className="h-4 w-4" />
+            <span>Expense</span>
+          </button>
+        </div>
+      )}
 
       {transactionType === 'income' ? (
         <form onSubmit={handleSaveIncome} className="space-y-4">
@@ -2421,15 +2460,37 @@ function SpendlyMobileAddTransaction({
                 <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#fbbf24]" />
               </div>
             </label>
+
+            {/* Income Addition Breakdown */}
+            <div className="rounded-xl bg-[#101626]/80 border border-[#fbbf24]/20 p-3 text-xs space-y-2">
+              <div className="flex justify-between items-center text-[#9ca3af]">
+                <span>Present income:</span>
+                <span className="font-bold text-[#f1f5f3]">
+                  {presentIncome > 0 ? rupees(presentIncome) : '₹0'}
+                </span>
+              </div>
+              {enteredAmount > 0 && (
+                <>
+                  <div className="flex justify-between items-center text-[#9ca3af]">
+                    <span>Amount to add:</span>
+                    <span className="font-bold text-[#fbbf24]">+{rupees(enteredAmount)}</span>
+                  </div>
+                  <div className="pt-2 border-t border-[#fbbf24]/20 flex justify-between items-center">
+                    <span className="font-bold text-[#f1f5f3]">New total income:</span>
+                    <span className="font-bold text-[#34d399] text-sm">{rupees(newTotal)}</span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <button
             type="submit"
-            disabled={!Number(amount)}
+            disabled={!enteredAmount || enteredAmount <= 0}
             className="spendly-neon-btn disabled:opacity-50"
           >
             <Check className="h-5 w-5 stroke-[2.5]" />
-            <span>Save Income</span>
+            <span>{presentIncome > 0 ? 'Add to Income' : 'Save Income'}</span>
           </button>
         </form>
       ) : (
@@ -2596,9 +2657,22 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [customOpen, setCustomOpen] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
+  const [desktopType, setDesktopType] = useState<'expense' | 'income'>('expense');
+  const [desktopMonth, setDesktopMonth] = useState(monthKey());
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  const desktopPresentIncome = finance.store.salaries[desktopMonth] ?? 0;
+  const desktopEnteredAmount = Number(amount) || 0;
+  const desktopNewTotal = desktopPresentIncome + desktopEnteredAmount;
+
+  const handleDesktopSaveIncome = (e: FormEvent) => {
+    e.preventDefault();
+    if (!desktopEnteredAmount || desktopEnteredAmount <= 0) return;
+    finance.addSalary(desktopMonth, desktopEnteredAmount);
+    setLocation('/');
+  };
 
   const valid = Boolean(
     Number(amount) > 0 && isValidAmount(Number(amount)) && description.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date),
@@ -2663,12 +2737,138 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
 
         <div className="mb-8">
           <p className="font-mono-ui text-[10px] font-medium uppercase tracking-[.18em] text-primary">{editing ? 'Refine the record' : 'One small step'}</p>
-          <h1 className="mt-2 font-display text-5xl leading-none tracking-[-.045em]">{editing ? 'Edit expense.' : 'Add an expense.'}</h1>
-          <p className="mt-3 text-sm text-muted-foreground">Keep it simple. You can always add more context later.</p>
+          <h1 className="mt-2 font-display text-5xl leading-none tracking-[-.045em]">
+            {editing
+              ? 'Edit expense.'
+              : desktopType === 'income'
+                ? 'Add income.'
+                : 'Add an expense.'}
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {desktopType === 'income'
+              ? 'Add earnings or salary to your monthly income. It will add to your present income.'
+              : 'Keep it simple. You can always add more context later.'}
+          </p>
         </div>
 
-        <form onSubmit={submit} className="rounded-3xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-8">
-          <div className="grid gap-6 sm:grid-cols-2">
+        {!editing && (
+          <div className="mb-6 flex max-w-xs rounded-2xl bg-muted p-1">
+            <button
+              type="button"
+              onClick={() => setDesktopType('income')}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition ${
+                desktopType === 'income'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              <span>Income</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDesktopType('expense')}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition ${
+                desktopType === 'expense'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              <span>Expense</span>
+            </button>
+          </div>
+        )}
+
+        {desktopType === 'income' && !editing ? (
+          <form
+            onSubmit={handleDesktopSaveIncome}
+            className="rounded-3xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-8 space-y-6"
+          >
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Field label="Amount to add">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-display text-2xl text-primary">₹</span>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="1"
+                      step="any"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0"
+                      data-testid="input-income-amount"
+                      className="h-16 border-primary/30 bg-primary/[.04] pl-11 font-display text-3xl placeholder:text-muted-foreground/40"
+                      autoFocus
+                    />
+                  </div>
+                </Field>
+              </div>
+
+              <div className="sm:col-span-2">
+                <Field label="For Month">
+                  <div className="relative">
+                    <Select
+                      value={desktopMonth}
+                      onChange={(e) => setDesktopMonth(e.target.value)}
+                      data-testid="select-income-month"
+                      className="pr-10"
+                    >
+                      {getMonthOptions(desktopMonth).map((m) => (
+                        <option key={m} value={m}>
+                          {monthLabel(m)}
+                        </option>
+                      ))}
+                    </Select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+                </Field>
+              </div>
+
+              <div className="sm:col-span-2">
+                <div className="rounded-2xl border border-primary/20 bg-primary/[.03] p-4 text-sm space-y-2">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Present income for {monthLabel(desktopMonth)}:</span>
+                    <span className="font-semibold text-foreground">
+                      {desktopPresentIncome > 0 ? rupees(desktopPresentIncome) : '₹0'}
+                    </span>
+                  </div>
+                  {desktopEnteredAmount > 0 && (
+                    <>
+                      <div className="flex justify-between items-center text-muted-foreground">
+                        <span>Amount to add:</span>
+                        <span className="font-bold text-primary">+{rupees(desktopEnteredAmount)}</span>
+                      </div>
+                      <div className="pt-2 border-t border-border flex justify-between items-center">
+                        <span className="font-bold text-foreground">New total income:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                          {rupees(desktopNewTotal)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col-reverse justify-end gap-3 border-t border-border pt-6 sm:flex-row">
+              <Button variant="quiet" type="button" onClick={() => setLocation('/expenses')} testId="button-cancel-income">
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!desktopEnteredAmount || desktopEnteredAmount <= 0}
+                testId="button-save-income"
+              >
+                <Check className="h-4 w-4" />
+                {desktopPresentIncome > 0 ? 'Add to Income' : 'Save Income'}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={submit} className="rounded-3xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-8">
+            <div className="grid gap-6 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Field label="Amount">
                 <div className="relative">
@@ -2783,6 +2983,7 @@ function ExpenseFormPage({ finance }: { finance: ReturnType<typeof useFinance> }
             </Button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );
