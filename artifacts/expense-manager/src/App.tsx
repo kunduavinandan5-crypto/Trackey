@@ -75,6 +75,7 @@ import {
   isRealSupabaseUser,
 } from '@/lib/db-service';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { APP_VERSION, checkForAppUpdates, forceAppRefresh, subscribePwa, type PwaStatus } from '@/lib/pwa-update';
 
 type Expense = {
   id: string;
@@ -731,6 +732,7 @@ function useFinance() {
     store,
     categories,
     toast,
+    notify,
     isSyncing,
     syncWithSupabase,
     addExpense,
@@ -758,6 +760,15 @@ function AppShell({
 }) {
   const { user } = useAuth();
   const [location] = useLocation();
+  const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
+    isChecking: false,
+    hasUpdate: false,
+    lastChecked: null,
+  });
+
+  useEffect(() => {
+    return subscribePwa(setPwaStatus);
+  }, []);
 
   const navItems = [
     { href: '/', label: 'HOME', icon: Landmark },
@@ -768,6 +779,20 @@ function AppShell({
 
   return (
     <div className="app-grain min-h-[100dvh] bg-background text-foreground transition-colors duration-200">
+      {/* PWA Update Banner */}
+      {pwaStatus.hasUpdate && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-1.5 text-xs font-bold text-[#080c14] shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>New update ready!</span>
+          <button
+            type="button"
+            onClick={() => forceAppRefresh()}
+            className="rounded-full bg-[#080c14] text-[#fbbf24] px-2.5 py-0.5 text-[10px] font-extrabold uppercase hover:opacity-90 active:scale-95 transition"
+          >
+            Update
+          </button>
+        </div>
+      )}
 
       {/* ── Top Header Navigation Bar (Desktop only, hidden on mobile) ── */}
       <header className="sticky top-0 z-50 hidden w-full border-b border-border/40 bg-background/85 backdrop-blur-xl transition-colors sm:block">
@@ -3414,6 +3439,15 @@ function SpendlyMobileSettings({
   const [selectedMonth, setSelectedMonth] = useState(monthKey());
   const [salaryValue, setSalaryValue] = useState(String(finance.store.salaries[selectedMonth] ?? ''));
   const [newCategory, setNewCategory] = useState('');
+  const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
+    isChecking: false,
+    hasUpdate: false,
+    lastChecked: null,
+  });
+
+  useEffect(() => {
+    return subscribePwa(setPwaStatus);
+  }, []);
 
   useEffect(() => {
     setSalaryValue(finance.store.salaries[selectedMonth] ? String(finance.store.salaries[selectedMonth]) : '');
@@ -3683,6 +3717,54 @@ function SpendlyMobileSettings({
           </button>
         </div>
       </div>
+
+      {/* ── APP VERSION & PWA UPDATE CARD ── */}
+      <div className="spendly-glass-card space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+              <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#f1f5f3]">App Version & Updates</p>
+              <p className="text-[10px] text-[#9ca3af]">
+                {APP_VERSION} • {pwaStatus.hasUpdate ? 'Update Available' : 'Running latest build'}
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#10b981]/15 px-2 py-0.5 text-[10px] font-bold text-[#34d399] border border-[#10b981]/25">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#34d399] animate-pulse" />
+            Live PWA
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 pt-0.5">
+          <button
+            type="button"
+            disabled={pwaStatus.isChecking}
+            onClick={async () => {
+              const res = await checkForAppUpdates();
+              finance.notify(res.message, res.updated ? 'success' : undefined);
+            }}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] py-2 px-3 text-xs font-bold text-[#080c14] transition active:scale-95 disabled:opacity-50 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
+            <span>{pwaStatus.isChecking ? 'Checking...' : 'Check Update'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              finance.notify('Clearing cache and reloading fresh...');
+              await forceAppRefresh();
+            }}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/30 py-2 px-3 text-xs font-bold text-[#fde68a] transition active:scale-95 hover:bg-[#202942]"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />
+            <span>Force Reload</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -3917,6 +3999,35 @@ function SettingsPage({
                 </>
               )}
             </button>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/40 p-4">
+            <div>
+              <p className="text-sm font-bold">App version & updates</p>
+              <p className="text-xs text-muted-foreground">{APP_VERSION} • Auto-updates enabled</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await checkForAppUpdates();
+                  finance.notify(res.message, res.updated ? 'success' : undefined);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold transition hover:bg-muted"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Check for updates
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  finance.notify('Clearing cache and reloading fresh...');
+                  await forceAppRefresh();
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold transition hover:bg-muted"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Force reload
+              </button>
+            </div>
           </div>
         </div>
       </section>
