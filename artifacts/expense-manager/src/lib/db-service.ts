@@ -364,8 +364,13 @@ export async function saveLendingToDb(userId: string, item: Omit<DbLending, 'use
       },
       { onConflict: 'id' }
     );
-    return !error;
-  } catch {
+    if (error) {
+      console.warn('[Supabase] Error saving lending record:', error.message, error.details);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[Supabase] Exception saving lending record:', err);
     return false;
   }
 }
@@ -374,8 +379,13 @@ export async function deleteLendingFromDb(userId: string, id: string): Promise<b
   if (!isSupabaseConfigured || !isRealSupabaseUser({ id: userId })) return false;
   try {
     const { error } = await supabase.from('lending_records').delete().eq('id', id).eq('user_id', userId);
-    return !error;
-  } catch {
+    if (error) {
+      console.warn('[Supabase] Error deleting lending record:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[Supabase] Exception deleting lending record:', err);
     return false;
   }
 }

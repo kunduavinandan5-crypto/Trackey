@@ -817,7 +817,7 @@ function AppShell({
           {/* Desktop Navigation Links */}
           <nav className="hidden items-center gap-1.5 rounded-full border border-border/70 bg-card/70 p-1 shadow-sm backdrop-blur-md sm:flex" aria-label="Primary navigation">
             {navItems.map((item) => {
-              const active = location === item.href;
+              const active = item.href === '/' ? location === '/' : location.startsWith(item.href);
               const Icon = item.icon;
               return (
                 <Link
@@ -1019,7 +1019,7 @@ function MobileBottomNav({
         <Link
           href="/services"
           data-testid="link-mobile-services"
-          className={`spendly-bottom-nav-btn ${location === '/services' ? 'spendly-bottom-nav-btn--active' : ''}`}
+          className={`spendly-bottom-nav-btn ${location.startsWith('/services') ? 'spendly-bottom-nav-btn--active' : ''}`}
           title="Services"
         >
           <HandCoins className="h-4 w-4" />
@@ -4107,10 +4107,73 @@ type EmiItem = {
 
 function ServicesPage() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<'lending' | 'cash' | 'loan' | 'emi'>('lending');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [location, setLocation] = useLocation();
+  const params = useParams<{ subpage?: string }>();
+
+  // Determine current active subpage from params or URL path
+  const currentSubpage = useMemo<'lending' | 'cash' | 'loan' | 'emi' | null>(() => {
+    if (params?.subpage && ['lending', 'cash', 'loan', 'emi'].includes(params.subpage)) {
+      return params.subpage as 'lending' | 'cash' | 'loan' | 'emi';
+    }
+    const match = location.match(/^\/services\/(lending|cash|loan|emi)/i);
+    if (match) return match[1].toLowerCase() as 'lending' | 'cash' | 'loan' | 'emi';
+    return null;
+  }, [params?.subpage, location]);
+
+  const isSubpageView = Boolean(currentSubpage);
+
+  const [activeTab, setActiveTab] = useState<'lending' | 'cash' | 'loan' | 'emi'>(() => {
+    return currentSubpage || 'lending';
+  });
+
+  useEffect(() => {
+    if (currentSubpage) {
+      setActiveTab(currentSubpage);
+    }
+  }, [currentSubpage]);
+
   const [loadingDb, setLoadingDb] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  // Dedicated Lending Form state
+  const [lendingForm, setLendingForm] = useState({
+    person: '',
+    amount: '',
+    dueDate: new Date().toISOString().slice(0, 10),
+    type: 'lent' as 'lent' | 'borrowed',
+    notes: '',
+  });
+
+  // Dedicated Cash Form state
+  const [cashForm, setCashForm] = useState({
+    description: '',
+    amount: '',
+    date: new Date().toISOString().slice(0, 10),
+    type: 'out' as 'in' | 'out',
+    location: 'Wallet',
+    notes: '',
+  });
+
+  // Dedicated Loan Form state
+  const [loanForm, setLoanForm] = useState({
+    lender: '',
+    principal: '',
+    interestRate: '10',
+    tenureMonths: '12',
+    outstanding: '',
+    notes: '',
+  });
+
+  // Dedicated EMI Form state
+  const [emiForm, setEmiForm] = useState({
+    item: '',
+    monthlyAmount: '',
+    dueDay: '5',
+    totalInstallments: '12',
+    remainingInstallments: '12',
+    autoDebit: true,
+    notes: '',
+  });
 
   // Storage key prefix per user (or guest)
   const userPrefix = user?.id ? user.id : 'guest';
@@ -4262,9 +4325,6 @@ function ServicesPage() {
     localStorage.setItem(`spendly_service_emis_${userPrefix}`, JSON.stringify(emiList));
   }, [emiList, userPrefix]);
 
-  // Add form fields state
-  const [formFields, setFormFields] = useState<Record<string, string>>({});
-
   const services = [
     {
       id: 'lending' as const,
@@ -4273,7 +4333,7 @@ function ServicesPage() {
       color: '#fbbf24',
       glow: 'rgba(251,191,36,0.12)',
       count: lendingList.length,
-      desc: 'Track money you lent or borrowed',
+      desc: 'Track money you lent to friends or family',
       tag: 'Lend & Recover',
     },
     {
@@ -4283,7 +4343,7 @@ function ServicesPage() {
       color: '#34d399',
       glow: 'rgba(52,211,153,0.12)',
       count: cashList.length,
-      desc: 'Physical cash balance & flows',
+      desc: 'Monitor physical cash flow and balances',
       tag: 'Cash Flow',
     },
     {
@@ -4293,7 +4353,7 @@ function ServicesPage() {
       color: '#f87171',
       glow: 'rgba(248,113,113,0.12)',
       count: loanList.length,
-      desc: 'Active loans & balances',
+      desc: 'Manage active loans and repayment schedules',
       tag: 'Loan Tracker',
     },
     {
@@ -4303,10 +4363,12 @@ function ServicesPage() {
       color: '#818cf8',
       glow: 'rgba(129,140,248,0.12)',
       count: emiList.length,
-      desc: 'Monthly installments & dues',
+      desc: 'View and track all your EMI obligations',
       tag: 'Monthly Dues',
     },
   ];
+
+  const currentService = services.find((s) => s.id === activeTab) || services[0];
 
   // Calculations for stats — 100% computed from real records
   const totalLent = lendingList.filter(l => l.type === 'lent' && l.status === 'pending').reduce((s, l) => s + l.amount, 0);
@@ -4319,117 +4381,179 @@ function ServicesPage() {
   const totalOutstandingLoan = loanList.filter(l => l.status === 'active').reduce((s, l) => s + l.outstanding, 0);
   const totalMonthlyEmi = emiList.filter(e => e.status === 'ongoing').reduce((s, e) => s + e.monthlyAmount, 0);
 
-  // Form Submission — saves to Local + Supabase DB
-  const handleAddSubmit = async (e: FormEvent) => {
+  // 1. Lending Form Submission — saves to Local + Supabase DB
+  const handleLendingFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (activeTab === 'lending') {
-      const person = formFields.person?.trim();
-      const amount = Number(formFields.amount);
-      if (!person || !amount) return;
-      const newItem: LendingItem = {
-        id: uid(),
-        person,
-        amount,
-        type: (formFields.type as 'lent' | 'borrowed') || 'lent',
-        dueDate: formFields.dueDate || new Date().toISOString().slice(0, 10),
-        status: 'pending',
-        notes: formFields.notes || '',
-      };
-      setLendingList([newItem, ...lendingList]);
-      if (user && isRealSupabaseUser(user)) {
-        saveLendingToDb(user.id, {
-          id: newItem.id,
-          person_name: newItem.person,
-          amount: newItem.amount,
-          type: newItem.type,
-          due_date: newItem.dueDate,
-          status: newItem.status,
-          notes: newItem.notes,
-        });
-      }
-    } else if (activeTab === 'cash') {
-      const description = formFields.description?.trim();
-      const amount = Number(formFields.amount);
-      if (!description || !amount) return;
-      const newItem: CashItem = {
-        id: uid(),
-        description,
-        amount,
-        type: (formFields.type as 'in' | 'out') || 'out',
-        date: formFields.date || new Date().toISOString().slice(0, 10),
-        location: formFields.location?.trim() || 'Wallet',
-        notes: formFields.notes || '',
-      };
-      setCashList([newItem, ...cashList]);
-      if (user && isRealSupabaseUser(user)) {
-        saveCashToDb(user.id, {
-          id: newItem.id,
-          description: newItem.description,
-          amount: newItem.amount,
-          type: newItem.type,
-          date: newItem.date,
-          wallet_location: newItem.location,
-          notes: newItem.notes,
-        });
-      }
-    } else if (activeTab === 'loan') {
-      const lender = formFields.lender?.trim();
-      const principal = Number(formFields.principal);
-      if (!lender || !principal) return;
-      const newItem: LoanItem = {
-        id: uid(),
-        lender,
-        principal,
-        interestRate: Number(formFields.interestRate) || 10,
-        tenureMonths: Number(formFields.tenureMonths) || 12,
-        outstanding: Number(formFields.outstanding) || principal,
-        status: 'active',
-        notes: formFields.notes || '',
-      };
-      setLoanList([newItem, ...loanList]);
-      if (user && isRealSupabaseUser(user)) {
-        saveLoanToDb(user.id, {
-          id: newItem.id,
-          lender_name: newItem.lender,
-          principal_amount: newItem.principal,
-          interest_rate: newItem.interestRate,
-          tenure_months: newItem.tenureMonths,
-          outstanding_balance: newItem.outstanding,
-          status: newItem.status,
-          notes: newItem.notes,
-        });
-      }
-    } else if (activeTab === 'emi') {
-      const item = formFields.item?.trim();
-      const monthlyAmount = Number(formFields.monthlyAmount);
-      if (!item || !monthlyAmount) return;
-      const totalInstallments = Number(formFields.totalInstallments) || 12;
-      const newItem: EmiItem = {
-        id: uid(),
-        item,
-        monthlyAmount,
-        dueDay: Number(formFields.dueDay) || 5,
-        totalInstallments,
-        remainingInstallments: Number(formFields.remainingInstallments) || totalInstallments,
-        autoDebit: formFields.autoDebit !== 'false',
-        status: 'ongoing',
-      };
-      setEmiList([newItem, ...emiList]);
-      if (user && isRealSupabaseUser(user)) {
-        saveEmiToDb(user.id, {
-          id: newItem.id,
-          loan_or_item: newItem.item,
-          monthly_amount: newItem.monthlyAmount,
-          due_day: newItem.dueDay,
-          total_installments: newItem.totalInstallments,
-          remaining_installments: newItem.remainingInstallments,
-          auto_debit: newItem.autoDebit,
-          status: newItem.status,
-        });
-      }
+    const person = lendingForm.person.trim();
+    const amount = Number(lendingForm.amount);
+    if (!person || !amount || amount <= 0) return;
+
+    const newItem: LendingItem = {
+      id: uid(),
+      person,
+      amount,
+      type: lendingForm.type,
+      dueDate: lendingForm.dueDate || new Date().toISOString().slice(0, 10),
+      status: 'pending',
+      notes: lendingForm.notes.trim(),
+    };
+
+    setLendingList([newItem, ...lendingList]);
+    if (user && isRealSupabaseUser(user)) {
+      saveLendingToDb(user.id, {
+        id: newItem.id,
+        person_name: newItem.person,
+        amount: newItem.amount,
+        type: newItem.type,
+        due_date: newItem.dueDate,
+        status: newItem.status,
+        notes: newItem.notes,
+      });
     }
-    setFormFields({});
-    setShowAddModal(false);
+
+    setLendingForm({
+      person: '',
+      amount: '',
+      dueDate: new Date().toISOString().slice(0, 10),
+      type: 'lent',
+      notes: '',
+    });
+    setSaveSuccessMsg(`Saved entry for "${newItem.person}" (${rupees(newItem.amount)}) directly to database in lending table!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
+  };
+
+  // 2. Cash Form Submission
+  const handleCashFormSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const description = cashForm.description.trim();
+    const amount = Number(cashForm.amount);
+    if (!description || !amount || amount <= 0) return;
+
+    const newItem: CashItem = {
+      id: uid(),
+      description,
+      amount,
+      type: cashForm.type,
+      date: cashForm.date || new Date().toISOString().slice(0, 10),
+      location: cashForm.location.trim() || 'Wallet',
+      notes: cashForm.notes.trim(),
+    };
+
+    setCashList([newItem, ...cashList]);
+    if (user && isRealSupabaseUser(user)) {
+      saveCashToDb(user.id, {
+        id: newItem.id,
+        description: newItem.description,
+        amount: newItem.amount,
+        type: newItem.type,
+        date: newItem.date,
+        wallet_location: newItem.location,
+        notes: newItem.notes,
+      });
+    }
+
+    setCashForm({
+      description: '',
+      amount: '',
+      date: new Date().toISOString().slice(0, 10),
+      type: 'out',
+      location: 'Wallet',
+      notes: '',
+    });
+    setSaveSuccessMsg(`Saved cash transaction "${newItem.description}" (${rupees(newItem.amount)}) to database!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
+  };
+
+  // 3. Loan Form Submission
+  const handleLoanFormSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const lender = loanForm.lender.trim();
+    const principal = Number(loanForm.principal);
+    if (!lender || !principal || principal <= 0) return;
+
+    const outstanding = Number(loanForm.outstanding) > 0 ? Number(loanForm.outstanding) : principal;
+    const newItem: LoanItem = {
+      id: uid(),
+      lender,
+      principal,
+      interestRate: Number(loanForm.interestRate) || 10,
+      tenureMonths: Number(loanForm.tenureMonths) || 12,
+      outstanding,
+      status: 'active',
+      notes: loanForm.notes.trim(),
+    };
+
+    setLoanList([newItem, ...loanList]);
+    if (user && isRealSupabaseUser(user)) {
+      saveLoanToDb(user.id, {
+        id: newItem.id,
+        lender_name: newItem.lender,
+        principal_amount: newItem.principal,
+        interest_rate: newItem.interestRate,
+        tenure_months: newItem.tenureMonths,
+        outstanding_balance: newItem.outstanding,
+        status: newItem.status,
+        notes: newItem.notes,
+      });
+    }
+
+    setLoanForm({
+      lender: '',
+      principal: '',
+      interestRate: '10',
+      tenureMonths: '12',
+      outstanding: '',
+      notes: '',
+    });
+    setSaveSuccessMsg(`Saved loan "${newItem.lender}" (${rupees(newItem.principal)}) to database!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
+  };
+
+  // 4. EMI Form Submission
+  const handleEmiFormSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const item = emiForm.item.trim();
+    const monthlyAmount = Number(emiForm.monthlyAmount);
+    if (!item || !monthlyAmount || monthlyAmount <= 0) return;
+
+    const totalInstallments = Number(emiForm.totalInstallments) || 12;
+    const remainingInstallments = Number(emiForm.remainingInstallments) || totalInstallments;
+    const newItem: EmiItem = {
+      id: uid(),
+      item,
+      monthlyAmount,
+      dueDay: Number(emiForm.dueDay) || 5,
+      totalInstallments,
+      remainingInstallments,
+      autoDebit: emiForm.autoDebit,
+      status: 'ongoing',
+    };
+
+    setEmiList([newItem, ...emiList]);
+    if (user && isRealSupabaseUser(user)) {
+      saveEmiToDb(user.id, {
+        id: newItem.id,
+        loan_or_item: newItem.item,
+        monthly_amount: newItem.monthlyAmount,
+        due_day: newItem.dueDay,
+        total_installments: newItem.totalInstallments,
+        remaining_installments: newItem.remainingInstallments,
+        auto_debit: newItem.autoDebit,
+        status: newItem.status,
+      });
+    }
+
+    setEmiForm({
+      item: '',
+      monthlyAmount: '',
+      dueDay: '5',
+      totalInstallments: '12',
+      remainingInstallments: '12',
+      autoDebit: true,
+      notes: '',
+    });
+    setSaveSuccessMsg(`Saved EMI schedule "${newItem.item}" (${rupees(newItem.monthlyAmount)}/mo) to database!`);
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
   // Toggle Lending Status
@@ -4520,124 +4644,176 @@ function ServicesPage() {
     }
   };
 
+  // ── VIEW A: SERVICES HUB (When on /services) ──
+  if (!isSubpageView) {
+    return (
+      <div className="page-enter mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-2 sm:pb-6">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between pt-1 sm:pt-2">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setLocation('/')}
+              className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full bg-[#111827]/80 border border-white/10 text-[#9ca3af] hover:text-white hover:border-white/20 active:scale-95 transition"
+              title="Back to Home"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div>
+              <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24] flex items-center gap-1.5">
+                <span>Financial Hub</span>
+                {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing cloud...)</span>}
+              </p>
+              <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
+                Services
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/expenses"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-[#9ca3af] hover:text-white hover:bg-white/[0.08] transition"
+            >
+              <ScrollText className="h-3.5 w-3.5 text-[#fbbf24]" />
+              <span className="hidden sm:inline">Transaction</span>
+              <span>Ledger</span>
+            </Link>
+          </div>
+        </div>
+
+        <p className="text-xs sm:text-sm text-[#9ca3af] -mt-1 sm:-mt-2">
+          Manage your lending, cash accounts, loans, and EMI schedules seamlessly in one place.
+        </p>
+
+        {/* 4 Interactive Service Option Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+          {services.map((svc) => {
+            const Icon = svc.icon;
+            return (
+              <button
+                key={svc.id}
+                type="button"
+                onClick={() => setLocation('/services/' + svc.id)}
+                className="group relative flex flex-col justify-between rounded-2xl p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[145px] sm:min-h-[165px] text-left active:scale-[0.98] border border-white/[0.06] hover:border-white/[0.18] shadow-lg hover:shadow-xl"
+                style={{
+                  background: `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.85) 75%)`,
+                }}
+              >
+                {/* Card Top Row: Icon + Real Count Badge */}
+                <div className="flex items-start justify-between w-full">
+                  <div
+                    className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl transition-transform group-hover:scale-105"
+                    style={{
+                      background: `${svc.color}18`,
+                      border: `1px solid ${svc.color}30`,
+                    }}
+                  >
+                    <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" style={{ color: svc.color }} />
+                  </div>
+
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
+                    style={{
+                      background: `${svc.color}20`,
+                      color: svc.color,
+                    }}
+                  >
+                    {svc.count} {svc.count === 1 ? 'item' : 'items'}
+                  </span>
+                </div>
+
+                {/* Card Center: Label & Description */}
+                <div className="my-2">
+                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
+                    <span>{svc.label}</span>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />
+                  </h3>
+                  <p className="mt-0.5 text-[11px] leading-snug text-[#9ca3af] line-clamp-1">
+                    {svc.desc}
+                  </p>
+                </div>
+
+                {/* Card Bottom Tag & Open indicator */}
+                <div className="flex items-center justify-between pt-0.5">
+                  <span
+                    className="inline-block rounded-full px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider"
+                    style={{
+                      background: `${svc.color}15`,
+                      color: svc.color,
+                    }}
+                  >
+                    {svc.tag}
+                  </span>
+                  <span className="text-[10px] font-bold text-white/50 group-hover:text-white transition flex items-center gap-0.5">
+                    Open <ArrowUpRight className="h-3 w-3" />
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Quick access to Ledger (Seamless Glass Banner) */}
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
+              <ScrollText className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm sm:text-base font-bold text-[#f1f5f3]">
+                Transaction Ledger
+              </p>
+              <p className="text-[11px] sm:text-xs text-[#9ca3af]">
+                View, filter, and inspect all recorded transactions & monthly ledgers
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/expenses"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:opacity-95 active:scale-95 transition shrink-0"
+          >
+            <span>Open Ledger</span>
+            <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ── VIEW B: DEDICATED SERVICE SUBPAGE (e.g. /services/lending) ──
   return (
     <div className="page-enter mx-auto w-full max-w-5xl space-y-3.5 sm:space-y-5 pb-2 sm:pb-6">
-      {/* ── Responsive Header Bar ── */}
+      {/* ── Subpage Header Bar ── */}
       <div className="flex items-center justify-between pt-1 sm:pt-2">
         <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             type="button"
-            onClick={() => setLocation('/')}
-            className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full bg-[#111827]/80 border border-white/10 text-[#9ca3af] hover:text-white hover:border-white/20 active:scale-95 transition"
-            title="Back to Home"
+            onClick={() => setLocation('/services')}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#111827]/80 border border-white/10 px-3 py-1.5 text-xs font-bold text-[#9ca3af] hover:text-white hover:border-white/20 active:scale-95 transition"
+            title="Back to Services"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Services</span>
           </button>
           <div>
             <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24] flex items-center gap-1.5">
-              <span>Financial Hub</span>
-              {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing with cloud...)</span>}
+              <span>Financial Hub / {currentService.label}</span>
+              {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing...)</span>}
             </p>
-            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
-              Services
+            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2">
+              <span>{currentService.label} Tracker</span>
             </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/expenses"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-[#9ca3af] hover:text-white hover:bg-white/[0.08] transition"
-          >
-            <ScrollText className="h-3.5 w-3.5 text-[#fbbf24]" />
-            <span>Ledger</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.3)] hover:opacity-95 active:scale-95 transition"
-          >
-            <Plus className="h-4 w-4 stroke-[2.5]" />
-            <span>Add Entry</span>
-          </button>
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#34d399]/10 border border-[#34d399]/20 px-3 py-1 text-[10px] font-bold text-[#34d399]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#34d399] animate-pulse" />
+            <span>Supabase Cloud</span>
+          </span>
         </div>
-      </div>
-
-      <p className="text-xs sm:text-sm text-[#9ca3af] -mt-1 sm:-mt-2">
-        Manage your lending, cash balance, active loans, and recurring EMI schedules in dedicated tables.
-      </p>
-
-      {/* ── 4 Top Service Selector Boxes ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-        {services.map((svc) => {
-          const Icon = svc.icon;
-          const isSelected = activeTab === svc.id;
-          return (
-            <button
-              key={svc.id}
-              type="button"
-              onClick={() => setActiveTab(svc.id)}
-              className={`group relative flex flex-col justify-between rounded-2xl p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[145px] sm:min-h-[165px] text-left active:scale-[0.98] ${
-                isSelected
-                  ? 'border-2 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
-                  : 'border border-white/[0.06] hover:border-white/[0.14]'
-              }`}
-              style={{
-                borderColor: isSelected ? svc.color : 'rgba(255, 255, 255, 0.08)',
-                background: isSelected
-                  ? `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(16,22,38,0.92) 80%)`
-                  : `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.8) 75%)`,
-              }}
-            >
-              {/* Card Top Row: Icon + Count */}
-              <div className="flex items-start justify-between w-full">
-                <div
-                  className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl transition-transform group-hover:scale-105"
-                  style={{
-                    background: `${svc.color}18`,
-                    border: `1px solid ${svc.color}30`,
-                  }}
-                >
-                  <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" style={{ color: svc.color }} />
-                </div>
-
-                <span
-                  className="rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
-                  style={{
-                    background: isSelected ? `${svc.color}25` : 'rgba(255,255,255,0.05)',
-                    color: isSelected ? svc.color : '#9ca3af',
-                  }}
-                >
-                  {svc.count} {svc.count === 1 ? 'item' : 'items'}
-                </span>
-              </div>
-
-              {/* Card Center: Label & Description */}
-              <div className="my-2">
-                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
-                  <span>{svc.label}</span>
-                  {isSelected && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />}
-                </h3>
-                <p className="mt-0.5 text-[11px] leading-snug text-[#9ca3af] line-clamp-1">
-                  {svc.desc}
-                </p>
-              </div>
-
-              {/* Card Bottom Tag */}
-              <div className="pt-0.5">
-                <span
-                  className="inline-block rounded-full px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider"
-                  style={{
-                    background: `${svc.color}15`,
-                    color: svc.color,
-                  }}
-                >
-                  {svc.tag}
-                </span>
-              </div>
-            </button>
-          );
-        })}
       </div>
 
       {/* ── Segmented Tab Switcher Pills ── */}
@@ -4646,7 +4822,10 @@ function ServicesPage() {
           <button
             key={svc.id}
             type="button"
-            onClick={() => setActiveTab(svc.id)}
+            onClick={() => {
+              setActiveTab(svc.id);
+              setLocation('/services/' + svc.id);
+            }}
             className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 text-center ${
               activeTab === svc.id
                 ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20'
@@ -4658,9 +4837,148 @@ function ServicesPage() {
         ))}
       </div>
 
-      {/* ── TABLE 1: LENDING TABLE ── */}
+      {/* ── SERVICE 1: LENDING SUBPAGE ── */}
       {activeTab === 'lending' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* DEDICATED LENDING ENTRY FORM */}
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#fbbf24]/15 border border-[#fbbf24]/30 text-[#fbbf24]">
+                  <HandCoins className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white">Record New Lending Entry</h2>
+                  <p className="text-[11px] text-[#9ca3af]">Enter amount, date, and person name to save directly to database</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#fbbf24]">
+                Supabase Live
+              </span>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLendingFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Person Name */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Person / Contact Name <span className="text-[#fbbf24]">*</span>
+                  </label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9ca3af]" />
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Rahul Sharma"
+                      value={lendingForm.person}
+                      onChange={(e) => setLendingForm({ ...lendingForm, person: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-9 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Amount (₹) <span className="text-[#fbbf24]">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#fbbf24]">₹</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="1"
+                      placeholder="e.g. 5000"
+                      value={lendingForm.amount}
+                      onChange={(e) => setLendingForm({ ...lendingForm, amount: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Date / Due Date <span className="text-[#fbbf24]">*</span>
+                  </label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9ca3af]" />
+                    <input
+                      required
+                      type="date"
+                      value={lendingForm.dueDate}
+                      onChange={(e) => setLendingForm({ ...lendingForm, dueDate: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-9 pr-3 py-2.5 text-xs font-medium text-white outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Direction */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Direction
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#111726] border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setLendingForm({ ...lendingForm, type: 'lent' })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        lendingForm.type === 'lent'
+                          ? 'bg-[#fbbf24] text-[#080c14] shadow-sm shadow-[#fbbf24]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>I Lent (Give)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLendingForm({ ...lendingForm, type: 'borrowed' })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        lendingForm.type === 'borrowed'
+                          ? 'bg-[#f87171] text-white shadow-sm shadow-[#f87171]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>I Borrowed (Take)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Notes / Remarks (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dinner bill split, trip advance, emergency loan"
+                    value={lendingForm.notes}
+                    onChange={(e) => setLendingForm({ ...lendingForm, notes: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-5 py-2.5 text-xs font-bold text-[#080c14] shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:opacity-95 active:scale-95 transition"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Save to Lending Table</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -4684,23 +5002,17 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <HandCoins className="h-4.5 w-4.5 text-[#fbbf24]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Lending Ledger</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Lending Ledger (Supabase Database)</h2>
                 <span className="rounded-full bg-[#fbbf24]/15 text-[#fbbf24] text-[10px] font-bold px-2 py-0.5">
                   {lendingList.length}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#fbbf24] hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New</span>
-              </button>
             </div>
 
             {lendingList.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#9ca3af]">No lending records yet. Tap + Add Entry.</div>
+              <div className="p-8 text-center text-xs text-[#9ca3af]">
+                No lending records in database yet. Use the form above to add your first record.
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-[#f1f5f3]">
@@ -4747,6 +5059,7 @@ function ServicesPage() {
                                 ? 'bg-[#34d399]/20 text-[#34d399]'
                                 : 'bg-white/[0.06] text-[#fde68a] hover:bg-white/[0.1]'
                             }`}
+                            title="Click to toggle status in Supabase"
                           >
                             {item.status === 'settled' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                             <span>{item.status}</span>
@@ -4757,7 +5070,7 @@ function ServicesPage() {
                             type="button"
                             onClick={() => handleDeleteLending(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
-                            title="Delete"
+                            title="Delete from database"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -4772,9 +5085,156 @@ function ServicesPage() {
         </div>
       )}
 
-      {/* ── TABLE 2: CASH TABLE ── */}
+      {/* ── SERVICE 2: CASH SUBPAGE ── */}
       {activeTab === 'cash' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* DEDICATED CASH ENTRY FORM */}
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 text-[#34d399]">
+                  <Banknote className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white">Record Cash Flow Entry</h2>
+                  <p className="text-[11px] text-[#9ca3af]">Enter physical cash spent or received to update cash balance</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#34d399]/10 border border-[#34d399]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#34d399]">
+                Supabase Live
+              </span>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCashFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Description */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Description <span className="text-[#34d399]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. ATM withdrawal, grocery"
+                    value={cashForm.description}
+                    onChange={(e) => setCashForm({ ...cashForm, description: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Amount (₹) <span className="text-[#34d399]">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#34d399]">₹</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="1"
+                      placeholder="e.g. 1500"
+                      value={cashForm.amount}
+                      onChange={(e) => setCashForm({ ...cashForm, amount: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Date <span className="text-[#34d399]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="date"
+                    value={cashForm.date}
+                    onChange={(e) => setCashForm({ ...cashForm, date: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+
+                {/* Flow Type */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Flow Direction
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#111726] border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setCashForm({ ...cashForm, type: 'out' })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        cashForm.type === 'out'
+                          ? 'bg-[#f87171] text-white shadow-sm shadow-[#f87171]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Cash Out (Spent)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCashForm({ ...cashForm, type: 'in' })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        cashForm.type === 'in'
+                          ? 'bg-[#34d399] text-[#080c14] shadow-sm shadow-[#34d399]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Cash In (Received)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Storage / Location
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Wallet, Safe, Drawer"
+                    value={cashForm.location}
+                    onChange={(e) => setCashForm({ ...cashForm, location: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dinner cash tip"
+                    value={cashForm.notes}
+                    onChange={(e) => setCashForm({ ...cashForm, notes: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#059669] to-[#34d399] px-5 py-2.5 text-xs font-bold text-[#080c14] shadow-[0_0_15px_rgba(52,211,153,0.3)] hover:opacity-95 active:scale-95 transition"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Save to Cash Table</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -4796,30 +5256,24 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <Banknote className="h-4.5 w-4.5 text-[#34d399]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Physical Cash Ledger</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Cash Transactions (Supabase Database)</h2>
                 <span className="rounded-full bg-[#34d399]/15 text-[#34d399] text-[10px] font-bold px-2 py-0.5">
                   {cashList.length}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#34d399] hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New</span>
-              </button>
             </div>
 
             {cashList.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#9ca3af]">No cash entries yet. Tap + Add Entry.</div>
+              <div className="p-8 text-center text-xs text-[#9ca3af]">
+                No cash transactions in database yet. Use the form above to record cash flow.
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-[#f1f5f3]">
                   <thead className="bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af] border-b border-white/[0.04]">
                     <tr>
                       <th className="py-3 px-4">Description</th>
-                      <th className="py-3 px-4">Flow</th>
+                      <th className="py-3 px-4">Direction</th>
                       <th className="py-3 px-4">Amount</th>
                       <th className="py-3 px-4">Date</th>
                       <th className="py-3 px-4">Location</th>
@@ -4836,31 +5290,25 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold uppercase ${
-                              item.type === 'in'
-                                ? 'bg-[#34d399]/15 text-[#34d399]'
-                                : 'bg-[#f87171]/15 text-[#f87171]'
+                              item.type === 'in' ? 'bg-[#34d399]/15 text-[#34d399]' : 'bg-[#f87171]/15 text-[#f87171]'
                             }`}
                           >
-                            {item.type === 'in' ? '+ Cash In' : '- Cash Out'}
+                            {item.type === 'in' ? 'Cash In (+)' : 'Cash Out (-)'}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-bold whitespace-nowrap">
-                          {rupees(item.amount)}
-                        </td>
-                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">
-                          {shortDate(item.date)}
-                        </td>
-                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">
-                          <span className="rounded-md bg-white/[0.04] px-2 py-1 text-[10px] font-medium text-white/90">
-                            {item.location}
+                          <span className={item.type === 'in' ? 'text-[#34d399]' : 'text-[#f87171]'}>
+                            {item.type === 'in' ? '+' : '-'}{rupees(item.amount)}
                           </span>
                         </td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">{shortDate(item.date)}</td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">{item.location}</td>
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => handleDeleteCash(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
-                            title="Delete"
+                            title="Delete from database"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -4875,25 +5323,160 @@ function ServicesPage() {
         </div>
       )}
 
-      {/* ── TABLE 3: LOAN TABLE ── */}
+      {/* ── SERVICE 3: LOAN SUBPAGE ── */}
       {activeTab === 'loan' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* DEDICATED LOAN ENTRY FORM */}
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#f87171]/15 border border-[#f87171]/30 text-[#f87171]">
+                  <CircleDollarSign className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white">Record Loan Entry</h2>
+                  <p className="text-[11px] text-[#9ca3af]">Enter lender name, principal amount, and tenure to save to database</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#f87171]/10 border border-[#f87171]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#f87171]">
+                Supabase Live
+              </span>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLoanFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Lender Name */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Lender / Institution Name <span className="text-[#f87171]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. HDFC Bank, Personal Loan"
+                    value={loanForm.lender}
+                    onChange={(e) => setLoanForm({ ...loanForm, lender: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition"
+                  />
+                </div>
+
+                {/* Principal Amount */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Principal Amount (₹) <span className="text-[#f87171]">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#f87171]">₹</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="1"
+                      placeholder="e.g. 500000"
+                      value={loanForm.principal}
+                      onChange={(e) => setLoanForm({ ...loanForm, principal: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Outstanding Balance */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Outstanding Balance (₹)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#f87171]">₹</span>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="Leave blank if equals principal"
+                      value={loanForm.outstanding}
+                      onChange={(e) => setLoanForm({ ...loanForm, outstanding: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Interest Rate */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Interest Rate (% p.a.)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g. 9.5"
+                    value={loanForm.interestRate}
+                    onChange={(e) => setLoanForm({ ...loanForm, interestRate: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                  />
+                </div>
+
+                {/* Tenure */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Tenure (Months)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 24"
+                    value={loanForm.tenureMonths}
+                    onChange={(e) => setLoanForm({ ...loanForm, tenureMonths: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Notes / Reference (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Fixed rate loan"
+                    value={loanForm.notes}
+                    onChange={(e) => setLoanForm({ ...loanForm, notes: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#f87171] px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:opacity-95 active:scale-95 transition"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Save to Loans Table</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#f87171]">Total Outstanding Debt</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#f87171]">Outstanding Debt</p>
               <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(totalOutstandingLoan)}</p>
             </div>
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af]">Total Original Principal</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af]">Active Loans</p>
               <p className="text-lg sm:text-xl font-black text-white mt-0.5">
-                {rupees(loanList.reduce((s, l) => s + l.principal, 0))}
+                {loanList.filter(l => l.status === 'active').length}
               </p>
             </div>
             <div className="col-span-2 sm:col-span-1 rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#fbbf24]">Active Accounts</p>
-              <p className="text-lg sm:text-xl font-black text-white mt-0.5">
-                {loanList.filter(l => l.status === 'active').length}
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#34d399]">Debt Free Status</p>
+              <p className="text-lg sm:text-xl font-black mt-0.5 text-[#34d399]">
+                {totalOutstandingLoan === 0 ? 'Clear (₹0)' : 'Active Repayments'}
               </p>
             </div>
           </div>
@@ -4903,31 +5486,25 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <CircleDollarSign className="h-4.5 w-4.5 text-[#f87171]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Loans & Debt Schedule</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Active Loans (Supabase Database)</h2>
                 <span className="rounded-full bg-[#f87171]/15 text-[#f87171] text-[10px] font-bold px-2 py-0.5">
                   {loanList.length}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#f87171] hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New</span>
-              </button>
             </div>
 
             {loanList.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#9ca3af]">No active loans. Tap + Add Entry.</div>
+              <div className="p-8 text-center text-xs text-[#9ca3af]">
+                No loans in database yet. Use the form above to record your active loans.
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-[#f1f5f3]">
                   <thead className="bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af] border-b border-white/[0.04]">
                     <tr>
-                      <th className="py-3 px-4">Lender / Facility</th>
+                      <th className="py-3 px-4">Lender</th>
                       <th className="py-3 px-4">Principal</th>
-                      <th className="py-3 px-4">Rate</th>
+                      <th className="py-3 px-4">Interest</th>
                       <th className="py-3 px-4">Tenure</th>
                       <th className="py-3 px-4">Outstanding</th>
                       <th className="py-3 px-4">Status</th>
@@ -4956,6 +5533,7 @@ function ServicesPage() {
                                 ? 'bg-[#f87171]/20 text-[#f87171]'
                                 : 'bg-[#34d399]/20 text-[#34d399]'
                             }`}
+                            title="Click to toggle status in Supabase"
                           >
                             {item.status}
                           </button>
@@ -4965,7 +5543,7 @@ function ServicesPage() {
                             type="button"
                             onClick={() => handleDeleteLoan(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
-                            title="Delete"
+                            title="Delete from database"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -4980,9 +5558,160 @@ function ServicesPage() {
         </div>
       )}
 
-      {/* ── TABLE 4: EMI TABLE ── */}
+      {/* ── SERVICE 4: EMI SUBPAGE ── */}
       {activeTab === 'emi' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* DEDICATED EMI ENTRY FORM */}
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#818cf8]/15 border border-[#818cf8]/30 text-[#818cf8]">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white">Record EMI Schedule</h2>
+                  <p className="text-[11px] text-[#9ca3af]">Enter item name, monthly amount, and due date to track monthly dues</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#818cf8]/10 border border-[#818cf8]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#818cf8]">
+                Supabase Live
+              </span>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEmiFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Item / Obligation */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Item / Obligation <span className="text-[#818cf8]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. iPhone EMI, Car EMI"
+                    value={emiForm.item}
+                    onChange={(e) => setEmiForm({ ...emiForm, item: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition"
+                  />
+                </div>
+
+                {/* Monthly Amount */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Monthly EMI (₹) <span className="text-[#818cf8]">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#818cf8]">₹</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="1"
+                      placeholder="e.g. 4500"
+                      value={emiForm.monthlyAmount}
+                      onChange={(e) => setEmiForm({ ...emiForm, monthlyAmount: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Due Day */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Due Day of Month (1-31)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="e.g. 5"
+                    value={emiForm.dueDay}
+                    onChange={(e) => setEmiForm({ ...emiForm, dueDay: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                  />
+                </div>
+
+                {/* Total Installments */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Total Installments
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 12"
+                    value={emiForm.totalInstallments}
+                    onChange={(e) => setEmiForm({ ...emiForm, totalInstallments: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                  />
+                </div>
+
+                {/* Remaining Installments */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Remaining Installments
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 8"
+                    value={emiForm.remainingInstallments}
+                    onChange={(e) => setEmiForm({ ...emiForm, remainingInstallments: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                  />
+                </div>
+
+                {/* Auto-Debit */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Auto-Debit from Bank
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#111726] border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setEmiForm({ ...emiForm, autoDebit: true })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        emiForm.autoDebit
+                          ? 'bg-[#34d399] text-[#080c14] shadow-sm shadow-[#34d399]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Enabled</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmiForm({ ...emiForm, autoDebit: false })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        !emiForm.autoDebit
+                          ? 'bg-white/20 text-white shadow-sm'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Manual</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#818cf8] px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(129,140,248,0.3)] hover:opacity-95 active:scale-95 transition"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Save to EMI Table</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -5008,23 +5737,17 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <CalendarDays className="h-4.5 w-4.5 text-[#818cf8]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Monthly EMI Commitments</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Monthly EMI Schedules (Supabase Database)</h2>
                 <span className="rounded-full bg-[#818cf8]/15 text-[#818cf8] text-[10px] font-bold px-2 py-0.5">
                   {emiList.length}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#818cf8] hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New</span>
-              </button>
             </div>
 
             {emiList.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#9ca3af]">No EMI schedules yet. Tap + Add Entry.</div>
+              <div className="p-8 text-center text-xs text-[#9ca3af]">
+                No EMI schedules in database yet. Use the form above to record recurring installments.
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-[#f1f5f3]">
@@ -5070,6 +5793,7 @@ function ServicesPage() {
                                 ? 'bg-[#818cf8]/20 text-[#818cf8]'
                                 : 'bg-[#34d399]/20 text-[#34d399]'
                             }`}
+                            title="Click to toggle status in Supabase"
                           >
                             {item.status}
                           </button>
@@ -5079,7 +5803,7 @@ function ServicesPage() {
                             type="button"
                             onClick={() => handleDeleteEmi(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
-                            title="Delete"
+                            title="Delete from database"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -5093,281 +5817,22 @@ function ServicesPage() {
           </div>
         </div>
       )}
-
-      {/* ── Quick access to Ledger (Seamless Glass Banner) ── */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
-            <ScrollText className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm sm:text-base font-bold text-[#f1f5f3]">
-              Standard Expense Ledger
-            </p>
-            <p className="text-[11px] sm:text-xs text-[#9ca3af]">
-              View, filter, and inspect your general expense ledger & receipts
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href="/expenses"
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:opacity-95 active:scale-95 transition shrink-0"
-        >
-          <span>Open Ledger</span>
-          <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
-        </Link>
-      </div>
-
-      {/* ── Add Entry Modal Drawer ── */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[#0e1322] border border-white/10 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <h3 className="text-base font-bold text-white capitalize">
-                Add New {activeTab} Entry
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormFields({});
-                  setShowAddModal(false);
-                }}
-                className="grid h-7 w-7 place-items-center rounded-full bg-white/[0.05] text-[#9ca3af] hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddSubmit} className="space-y-3.5">
-              {activeTab === 'lending' && (
-                <>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Person Name</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. Rahul Sharma"
-                      value={formFields.person || ''}
-                      onChange={(e) => setFormFields({ ...formFields, person: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#fbbf24]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Type</label>
-                    <select
-                      value={formFields.type || 'lent'}
-                      onChange={(e) => setFormFields({ ...formFields, type: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                    >
-                      <option value="lent">Lent (I gave money)</option>
-                      <option value="borrowed">Borrowed (I took money)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Amount (₹)</label>
-                    <input
-                      required
-                      type="number"
-                      placeholder="e.g. 2500"
-                      value={formFields.amount || ''}
-                      onChange={(e) => setFormFields({ ...formFields, amount: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#fbbf24]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Due Date</label>
-                    <input
-                      type="date"
-                      value={formFields.dueDate || ''}
-                      onChange={(e) => setFormFields({ ...formFields, dueDate: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              {activeTab === 'cash' && (
-                <>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Description</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. ATM withdrawal, grocery"
-                      value={formFields.description || ''}
-                      onChange={(e) => setFormFields({ ...formFields, description: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#34d399]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Flow Type</label>
-                    <select
-                      value={formFields.type || 'out'}
-                      onChange={(e) => setFormFields({ ...formFields, type: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                    >
-                      <option value="out">Cash Out (Spent)</option>
-                      <option value="in">Cash In (Received/Withdrawn)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Amount (₹)</label>
-                    <input
-                      required
-                      type="number"
-                      placeholder="e.g. 500"
-                      value={formFields.amount || ''}
-                      onChange={(e) => setFormFields({ ...formFields, amount: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#34d399]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Location / Stash</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Wallet, Drawer, Pocket"
-                      value={formFields.location || 'Wallet'}
-                      onChange={(e) => setFormFields({ ...formFields, location: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              {activeTab === 'loan' && (
-                <>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Lender / Bank</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. ICICI Bank, Car Loan"
-                      value={formFields.lender || ''}
-                      onChange={(e) => setFormFields({ ...formFields, lender: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#f87171]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Principal Amount (₹)</label>
-                    <input
-                      required
-                      type="number"
-                      placeholder="e.g. 100000"
-                      value={formFields.principal || ''}
-                      onChange={(e) => setFormFields({ ...formFields, principal: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#f87171]"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Interest %</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder="e.g. 10.5"
-                        value={formFields.interestRate || '10.5'}
-                        onChange={(e) => setFormFields({ ...formFields, interestRate: e.target.value })}
-                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Tenure (Mos)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 24"
-                        value={formFields.tenureMonths || '24'}
-                        onChange={(e) => setFormFields({ ...formFields, tenureMonths: e.target.value })}
-                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Outstanding Balance (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 85000"
-                      value={formFields.outstanding || ''}
-                      onChange={(e) => setFormFields({ ...formFields, outstanding: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              {activeTab === 'emi' && (
-                <>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Item / Loan Name</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. iPhone, Laptop EMI"
-                      value={formFields.item || ''}
-                      onChange={(e) => setFormFields({ ...formFields, item: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#818cf8]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Monthly EMI Amount (₹)</label>
-                    <input
-                      required
-                      type="number"
-                      placeholder="e.g. 4500"
-                      value={formFields.monthlyAmount || ''}
-                      onChange={(e) => setFormFields({ ...formFields, monthlyAmount: e.target.value })}
-                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#818cf8]"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Due Day of Month</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="31"
-                        placeholder="e.g. 5"
-                        value={formFields.dueDay || '5'}
-                        onChange={(e) => setFormFields({ ...formFields, dueDay: e.target.value })}
-                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Remaining EMIs</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 6"
-                        value={formFields.remainingInstallments || '6'}
-                        onChange={(e) => setFormFields({ ...formFields, remainingInstallments: e.target.value })}
-                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-semibold text-[#9ca3af] hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-md hover:opacity-95"
-                >
-                  Save Entry
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function Router() {
   const { user, loading } = useAuth();
@@ -5416,6 +5881,7 @@ function Router() {
           <Route path="/add-expense/:id"><ExpenseFormPage finance={finance} /></Route>
           <Route path="/add-expense"><ExpenseFormPage finance={finance} /></Route>
           <Route path="/summary"><SummaryPage finance={finance} /></Route>
+          <Route path="/services/:subpage"><ServicesPage /></Route>
           <Route path="/services"><ServicesPage /></Route>
           <Route path="/settings"><SettingsPage finance={finance} theme={theme} toggleTheme={toggleTheme} /></Route>
           <Route path="/login"><LoginPage /></Route>
