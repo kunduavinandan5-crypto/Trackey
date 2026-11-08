@@ -884,6 +884,22 @@ function AppShell({
         </div>
       </header>
 
+      {/* ── Mobile Top Header (Phone only) ── */}
+      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-border/40 bg-background/85 px-4 backdrop-blur-xl transition-colors sm:hidden">
+        <Brand compact />
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle Button for Mobile */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            className="grid h-9 w-9 place-items-center rounded-full border border-border/60 bg-card/80 text-muted-foreground transition active:scale-90 hover:text-foreground shadow-sm"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-slate-700" />}
+          </button>
+        </div>
+      </header>
+
       {/* ── Mobile Bottom Navigation (hidden on sm+) ── */}
       <MobileBottomNav location={location} theme={theme} toggleTheme={toggleTheme} />
 
@@ -5414,6 +5430,102 @@ function ServicesPage() {
                 {rupees(totalLent - totalBorrowed)}
               </p>
             </div>
+          </div>
+
+          {/* Table Container — Lending Transactions */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 overflow-hidden backdrop-blur-xl shadow-lg">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <HandCoins className="h-4.5 w-4.5 text-[#fbbf24]" />
+                <h2 className="text-sm sm:text-base font-bold text-white">Lending Transactions</h2>
+                <span className="rounded-full bg-[#fbbf24]/15 text-[#fbbf24] text-[10px] font-bold px-2 py-0.5">
+                  {lendingList.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services/lending')}
+                className="inline-flex items-center gap-1 rounded-lg bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/30 px-2.5 py-1 text-xs font-bold text-[#fbbf24] transition"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
+            </div>
+
+            {lendingList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[#9ca3af]">
+                No lending records yet. Click &quot;+ New&quot; or the Lending card above to record an entry.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[#f1f5f3]">
+                  <thead className="bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af] border-b border-white/[0.04]">
+                    <tr>
+                      <th className="py-3 px-4">Person</th>
+                      <th className="py-3 px-4">Direction</th>
+                      <th className="py-3 px-4">Amount</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {lendingList.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                          {item.person}
+                          {item.notes && <p className="text-[10px] text-[#9ca3af] font-normal">{item.notes}</p>}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold uppercase ${
+                              item.type === 'lent'
+                                ? 'bg-[#fbbf24]/15 text-[#fbbf24]'
+                                : 'bg-[#f87171]/15 text-[#f87171]'
+                            }`}
+                          >
+                            {item.type === 'lent' ? 'Lent (Give)' : 'Borrowed (Take)'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold whitespace-nowrap">
+                          <span className={item.type === 'lent' ? 'text-[#fbbf24]' : 'text-[#f87171]'}>
+                            {item.type === 'lent' ? '+' : '-'}{rupees(item.amount)}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">
+                          {item.dueDate ? shortDate(item.dueDate) : '—'}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleLendingStatus(item)}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase transition ${
+                              item.status === 'settled'
+                                ? 'bg-[#34d399]/20 text-[#34d399]'
+                                : 'bg-white/[0.06] text-[#fde68a] hover:bg-white/[0.1]'
+                            }`}
+                            title="Click to toggle status"
+                          >
+                            {item.status === 'settled' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                            <span>{item.status}</span>
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLending(item.id)}
+                            className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
+                            title="Delete from database"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
