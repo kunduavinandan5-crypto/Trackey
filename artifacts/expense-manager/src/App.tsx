@@ -5426,19 +5426,11 @@ function ServicesPage() {
                   {lendingList.length}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setLocation('/services/lending')}
-                className="inline-flex items-center gap-1 rounded-lg bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/30 px-2.5 py-1 text-xs font-bold text-[#fbbf24] transition"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New</span>
-              </button>
             </div>
 
             {lendingList.length === 0 ? (
               <div className="p-8 text-center text-xs text-[#9ca3af]">
-                No lending records in database yet. Use the form above to add your first record.
+                No lending records in database yet.
               </div>
             ) : (
               <div className="overflow-x-auto">
