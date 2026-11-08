@@ -4730,24 +4730,16 @@ function ServicesPage() {
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#fbbf24]/15 border border-[#fbbf24]/30 text-[#fbbf24]">
                   <HandCoins className="h-4 w-4" />
                 </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white">Record New Lending Entry</h2>
-                  <p className="text-[11px] text-[#9ca3af]">Enter amount, date, and person name to save directly to database</p>
-                </div>
+                <h2 className="text-sm sm:text-base font-bold text-white">Record New Lending Entry</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#fbbf24]">
-                  Supabase Live
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLocation('/services')}
-                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
-                  title="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services')}
+                className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
             {saveSuccessMsg && (
@@ -4885,24 +4877,16 @@ function ServicesPage() {
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 text-[#34d399]">
                   <Banknote className="h-4 w-4" />
                 </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white">Record Cash Flow Entry</h2>
-                  <p className="text-[11px] text-[#9ca3af]">Enter physical cash spent or received to update cash balance</p>
-                </div>
+                <h2 className="text-sm sm:text-base font-bold text-white">Record Cash Flow Entry</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[#34d399]/10 border border-[#34d399]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#34d399]">
-                  Supabase Live
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLocation('/services')}
-                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
-                  title="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services')}
+                className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
             {saveSuccessMsg && (
@@ -5032,24 +5016,16 @@ function ServicesPage() {
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#f87171]/15 border border-[#f87171]/30 text-[#f87171]">
                   <CircleDollarSign className="h-4 w-4" />
                 </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white">Record Loan Entry</h2>
-                  <p className="text-[11px] text-[#9ca3af]">Enter lender name, principal amount, and tenure to save to database</p>
-                </div>
+                <h2 className="text-sm sm:text-base font-bold text-white">Record Loan Entry</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[#f87171]/10 border border-[#f87171]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#f87171]">
-                  Supabase Live
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLocation('/services')}
-                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
-                  title="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services')}
+                className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
             {saveSuccessMsg && (
@@ -5167,24 +5143,16 @@ function ServicesPage() {
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#818cf8]/15 border border-[#818cf8]/30 text-[#818cf8]">
                   <CalendarDays className="h-4 w-4" />
                 </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white">Record EMI Schedule</h2>
-                  <p className="text-[11px] text-[#9ca3af]">Enter item name, monthly amount, and due date to track monthly dues</p>
-                </div>
+                <h2 className="text-sm sm:text-base font-bold text-white">Record EMI Schedule</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[#818cf8]/10 border border-[#818cf8]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#818cf8]">
-                  Supabase Live
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLocation('/services')}
-                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
-                  title="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services')}
+                className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
             {saveSuccessMsg && (
