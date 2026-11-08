@@ -4709,10 +4709,10 @@ function ServicesPage() {
                 setActiveTab(svc.id);
                 setLocation('/services/' + svc.id);
               }}
-              className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 text-center ${
+              className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 text-center active:scale-95 ${
                 activeTab === svc.id
-                  ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20'
-                  : 'text-[#9ca3af] hover:text-white'
+                  ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20 tab-pill-pop scale-[1.02]'
+                  : 'text-[#9ca3af] hover:text-white hover:bg-white/[0.03]'
               }`}
             >
               {svc.label}
@@ -4724,7 +4724,7 @@ function ServicesPage() {
 
         {/* ── LENDING FORM ── */}
         {activeTab === 'lending' && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
+          <div key="form-lending" className="tab-pane-enter rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#fbbf24]/15 border border-[#fbbf24]/30 text-[#fbbf24]">
@@ -4871,7 +4871,7 @@ function ServicesPage() {
 
         {/* ── CASH FORM ── */}
         {activeTab === 'cash' && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
+          <div key="form-cash" className="tab-pane-enter rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 text-[#34d399]">
@@ -5010,7 +5010,7 @@ function ServicesPage() {
 
         {/* ── LOAN FORM ── */}
         {activeTab === 'loan' && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
+          <div key="form-loan" className="tab-pane-enter rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#f87171]/15 border border-[#f87171]/30 text-[#f87171]">
@@ -5137,7 +5137,7 @@ function ServicesPage() {
 
         {/* ── EMI FORM ── */}
         {activeTab === 'emi' && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
+          <div key="form-emi" className="tab-pane-enter rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#818cf8]/15 border border-[#818cf8]/30 text-[#818cf8]">
@@ -5383,10 +5383,10 @@ function ServicesPage() {
             key={svc.id}
             type="button"
             onClick={() => setActiveTab(svc.id)}
-            className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 text-center ${
+            className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 text-center active:scale-95 ${
               activeTab === svc.id
-                ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20'
-                : 'text-[#9ca3af] hover:text-white'
+                ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20 tab-pill-pop scale-[1.02]'
+                : 'text-[#9ca3af] hover:text-white hover:bg-white/[0.03]'
             }`}
           >
             {svc.label}
@@ -5396,7 +5396,7 @@ function ServicesPage() {
 
       {/* ── SERVICE 1: LENDING ── */}
       {activeTab === 'lending' && (
-        <div className="space-y-4">
+        <div key="lending" className="tab-pane-enter space-y-4">
 
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -5420,7 +5420,7 @@ function ServicesPage() {
 
       {/* ── SERVICE 2: CASH ── */}
       {activeTab === 'cash' && (
-        <div className="space-y-4">
+        <div key="cash" className="tab-pane-enter space-y-4">
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -5519,7 +5519,7 @@ function ServicesPage() {
 
       {/* ── SERVICE 3: LOAN ── */}
       {activeTab === 'loan' && (
-        <div className="space-y-4">
+        <div key="loan" className="tab-pane-enter space-y-4">
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -5627,7 +5627,7 @@ function ServicesPage() {
 
       {/* ── SERVICE 4: EMI ── */}
       {activeTab === 'emi' && (
-        <div className="space-y-4">
+        <div key="emi" className="tab-pane-enter space-y-4">
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
