@@ -774,8 +774,8 @@ function AppShell({
   const navItems = [
     { href: '/', label: 'HOME', icon: Landmark },
     { href: '/summary', label: 'REPORTS', icon: TrendingUp },
-    { href: '/expenses', label: 'LEDGER', icon: ScrollText },
     { href: '/services', label: 'SERVICES', icon: HandCoins },
+    { href: '/settings', label: 'PROFILE', icon: UserCog },
   ];
 
   return (
@@ -1002,17 +1002,6 @@ function MobileBottomNav({
           <span>REPORTS</span>
         </Link>
 
-        {/* Ledger */}
-        <Link
-          href="/expenses"
-          data-testid="link-mobile-expenses"
-          className={`spendly-bottom-nav-btn ${location.startsWith('/expenses') ? 'spendly-bottom-nav-btn--active' : ''}`}
-          title="Ledger"
-        >
-          <ScrollText className="h-4 w-4" />
-          <span>LEDGER</span>
-        </Link>
-
         {/* Services */}
         <Link
           href="/services"
@@ -1022,6 +1011,17 @@ function MobileBottomNav({
         >
           <HandCoins className="h-4 w-4" />
           <span>SERVICE</span>
+        </Link>
+
+        {/* Profile */}
+        <Link
+          href="/settings"
+          data-testid="link-mobile-settings"
+          className={`spendly-bottom-nav-btn ${location === '/settings' ? 'spendly-bottom-nav-btn--active' : ''}`}
+          title="Profile"
+        >
+          <UserCog className="h-4 w-4" />
+          <span>PROFILE</span>
         </Link>
       </nav>
 
@@ -4059,9 +4059,7 @@ function ServicesPage() {
       label: 'Lending',
       icon: HandCoins,
       color: '#fbbf24',
-      bg: '#1e1c12',
-      border: 'rgba(251,191,36,0.3)',
-      shadow: 'rgba(251,191,36,0.15)',
+      glow: 'rgba(251,191,36,0.12)',
       desc: 'Track money you lent to friends or family',
       tag: 'Lend & Recover',
     },
@@ -4070,9 +4068,7 @@ function ServicesPage() {
       label: 'Cash',
       icon: Banknote,
       color: '#34d399',
-      bg: '#0d1f17',
-      border: 'rgba(52,211,153,0.3)',
-      shadow: 'rgba(52,211,153,0.12)',
+      glow: 'rgba(52,211,153,0.12)',
       desc: 'Monitor your physical cash flow and balances',
       tag: 'Cash Flow',
     },
@@ -4081,9 +4077,7 @@ function ServicesPage() {
       label: 'Loan',
       icon: CircleDollarSign,
       color: '#f87171',
-      bg: '#1f0d0d',
-      border: 'rgba(248,113,113,0.3)',
-      shadow: 'rgba(248,113,113,0.12)',
+      glow: 'rgba(248,113,113,0.12)',
       desc: 'Manage active loans and repayment schedules',
       tag: 'Loan Tracker',
     },
@@ -4092,112 +4086,134 @@ function ServicesPage() {
       label: 'EMI',
       icon: CalendarDays,
       color: '#818cf8',
-      bg: '#0f0d1f',
-      border: 'rgba(129,140,248,0.3)',
-      shadow: 'rgba(129,140,248,0.12)',
+      glow: 'rgba(129,140,248,0.12)',
       desc: 'View and track all your EMI obligations',
       tag: 'Monthly Dues',
     },
   ];
 
   return (
-    <div className="spendly-mobile-bg min-h-[100dvh] pb-28">
-      {/* Header */}
-      <div className="px-4 pt-5 pb-4">
-        <div className="flex items-center justify-between mb-1">
+    <div className="page-enter mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-20 sm:pb-8">
+      {/* Responsive Header Bar */}
+      <div className="flex items-center justify-between pt-1 sm:pt-2">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={() => setLocation('/')}
-            className="grid h-8 w-8 place-items-center rounded-full bg-[#111827]/80 border border-white/10 text-[#9ca3af] active:scale-95 transition"
+            className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full bg-[#111827]/80 border border-white/10 text-[#9ca3af] hover:text-white hover:border-white/20 active:scale-95 transition"
+            title="Back to Home"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-[#182033] border border-[#fbbf24]/30 text-[#fbbf24]">
+          <div>
+            <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24]">
+              Financial Hub
+            </p>
+            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Services
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/expenses"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-[#9ca3af] hover:text-white hover:bg-white/[0.08] transition"
+          >
+            <ScrollText className="h-3.5 w-3.5 text-[#fbbf24]" />
+            <span>Ledger</span>
+          </Link>
+          <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full bg-[#182033]/90 border border-white/10 text-[#fbbf24] shadow-sm">
             <Settings2 className="h-4 w-4" />
           </div>
         </div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#fbbf24] mt-3">Financial Hub</p>
-        <h1 className="font-serif text-2xl font-bold text-white mt-0.5 tracking-tight">Services</h1>
-        <p className="text-xs text-[#9ca3af] mt-1">Manage your financial instruments in one place</p>
       </div>
 
-      {/* Service Cards Grid */}
-      <div className="px-4 grid grid-cols-2 gap-3">
+      <p className="text-xs sm:text-sm text-[#9ca3af] -mt-1 sm:-mt-2">
+        Manage your lending, cash accounts, loans, and EMI schedules seamlessly in one place.
+      </p>
+
+      {/* Flexible Grid for Phone (2-col) & Tablet/Desktop (2-to-4 col) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         {services.map((svc) => {
           const Icon = svc.icon;
           return (
-            <button
+            <div
               key={svc.id}
-              type="button"
-              onClick={() => {/* future navigation */}}
-              className="relative flex flex-col items-start rounded-2xl p-4 text-left active:scale-[0.97] transition-all duration-200"
+              className="group relative flex flex-col justify-between rounded-2xl bg-[#0c101c]/80 border border-white/[0.06] hover:border-white/[0.14] p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[168px] sm:min-h-[195px] shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.7)]"
               style={{
-                background: svc.bg,
-                border: `1px solid ${svc.border}`,
-                boxShadow: `0 4px 20px ${svc.shadow}, inset 0 1px 1px rgba(255,255,255,0.05)`,
+                background: `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.85) 75%)`,
               }}
             >
-              {/* Icon Badge */}
-              <div
-                className="mb-3 grid h-10 w-10 place-items-center rounded-xl"
-                style={{
-                  background: `${svc.color}18`,
-                  border: `1px solid ${svc.color}40`,
-                }}
-              >
-                <Icon className="h-5 w-5" style={{ color: svc.color }} />
-              </div>
+              {/* Card Top Row: Icon Badge + Coming Soon tag */}
+              <div className="flex items-start justify-between gap-2">
+                <div
+                  className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl transition-transform group-hover:scale-105"
+                  style={{
+                    background: `${svc.color}18`,
+                    border: `1px solid ${svc.color}25`,
+                  }}
+                >
+                  <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" style={{ color: svc.color }} />
+                </div>
 
-              {/* Label */}
-              <p className="text-base font-extrabold tracking-tight" style={{ color: svc.color }}>
-                {svc.label}
-              </p>
-
-              {/* Description */}
-              <p className="mt-1 text-[11px] leading-snug text-[#9ca3af]">{svc.desc}</p>
-
-              {/* Tag Pill */}
-              <span
-                className="mt-3 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider"
-                style={{
-                  background: `${svc.color}18`,
-                  color: svc.color,
-                  border: `1px solid ${svc.color}30`,
-                }}
-              >
-                {svc.tag}
-              </span>
-
-              {/* Coming soon overlay — remove once feature is built */}
-              <div className="absolute inset-0 rounded-2xl flex items-end justify-end p-2 pointer-events-none">
-                <span className="rounded-full bg-[#111827]/70 px-2 py-0.5 text-[9px] font-bold text-[#6b7280] uppercase tracking-wider">
-                  Coming soon
+                <span className="rounded-full bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 text-[8.5px] sm:text-[9.5px] font-bold uppercase tracking-wider text-[#9ca3af]">
+                  Soon
                 </span>
               </div>
-            </button>
+
+              {/* Card Center: Label & Description */}
+              <div className="my-2.5 sm:my-3">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
+                  <span>{svc.label}</span>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />
+                </h3>
+                <p className="mt-1 text-[11px] sm:text-xs leading-snug text-[#9ca3af] line-clamp-2">
+                  {svc.desc}
+                </p>
+              </div>
+
+              {/* Card Bottom: Clean Tag Pill without overlaps */}
+              <div className="pt-1">
+                <span
+                  className="inline-block rounded-full px-2.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider"
+                  style={{
+                    background: `${svc.color}15`,
+                    color: svc.color,
+                    border: `1px solid ${svc.color}20`,
+                  }}
+                >
+                  {svc.tag}
+                </span>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      {/* Quick access to Ledger */}
-      <div className="px-4 mt-4">
-        <div className="rounded-2xl border border-[#fbbf24]/15 bg-[#101626]/80 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
-              <ScrollText className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-[#f1f5f3]">Transaction Ledger</p>
-              <p className="text-[11px] text-[#9ca3af]">View all your expense records</p>
-            </div>
+      {/* Quick access to Ledger (Seamless Glass Banner) */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
+            <ScrollText className="h-5 w-5" />
           </div>
-          <Link
-            href="/expenses"
-            className="inline-flex items-center gap-1 rounded-xl bg-[#182033] border border-[#fbbf24]/30 px-3 py-1.5 text-xs font-bold text-[#fde68a] active:scale-95 transition"
-          >
-            Open <ArrowUpRight className="h-3 w-3" />
-          </Link>
+          <div>
+            <p className="text-sm sm:text-base font-bold text-[#f1f5f3]">
+              Transaction Ledger
+            </p>
+            <p className="text-[11px] sm:text-xs text-[#9ca3af]">
+              View, filter, and inspect all recorded transactions & monthly ledgers
+            </p>
+          </div>
         </div>
+
+        <Link
+          href="/expenses"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:opacity-95 active:scale-95 transition shrink-0"
+        >
+          <span>Open Ledger</span>
+          <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
+        </Link>
       </div>
     </div>
   );
