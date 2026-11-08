@@ -876,7 +876,7 @@ function AppShell({
       <MobileBottomNav location={location} theme={theme} toggleTheme={toggleTheme} />
 
       {/* ── Main Content ── */}
-      <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-[1420px] px-3.5 pb-24 pt-4 sm:px-8 sm:pb-16 sm:pt-6 lg:px-12">
+      <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-[1420px] px-3.5 pb-20 pt-3 sm:px-8 sm:pb-16 sm:pt-6 lg:px-12">
         {children}
       </main>
 
@@ -4291,7 +4291,7 @@ function ServicesPage() {
   };
 
   return (
-    <div className="page-enter mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-24 sm:pb-8">
+    <div className="page-enter mx-auto w-full max-w-5xl space-y-3.5 sm:space-y-5 pb-2 sm:pb-6">
       {/* ── Responsive Header Bar ── */}
       <div className="flex items-center justify-between pt-1 sm:pt-2">
         <div className="flex items-center gap-2.5 sm:gap-3">
