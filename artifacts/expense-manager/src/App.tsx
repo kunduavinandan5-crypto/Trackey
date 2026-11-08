@@ -4419,7 +4419,12 @@ function ServicesPage() {
       notes: '',
     });
     setSaveSuccessMsg(`Saved entry for "${newItem.person}" (${rupees(newItem.amount)}) directly to database in lending table!`);
-    setTimeout(() => setSaveSuccessMsg(null), 3500);
+    setTimeout(() => {
+      setSaveSuccessMsg(null);
+      if (isSubpageView) {
+        setLocation('/services');
+      }
+    }, 1200);
   };
 
   // 2. Cash Form Submission
@@ -4461,7 +4466,12 @@ function ServicesPage() {
       notes: '',
     });
     setSaveSuccessMsg(`Saved cash transaction "${newItem.description}" (${rupees(newItem.amount)}) to database!`);
-    setTimeout(() => setSaveSuccessMsg(null), 3500);
+    setTimeout(() => {
+      setSaveSuccessMsg(null);
+      if (isSubpageView) {
+        setLocation('/services');
+      }
+    }, 1200);
   };
 
   // 3. Loan Form Submission
@@ -4506,7 +4516,12 @@ function ServicesPage() {
       notes: '',
     });
     setSaveSuccessMsg(`Saved loan "${newItem.lender}" (${rupees(newItem.principal)}) to database!`);
-    setTimeout(() => setSaveSuccessMsg(null), 3500);
+    setTimeout(() => {
+      setSaveSuccessMsg(null);
+      if (isSubpageView) {
+        setLocation('/services');
+      }
+    }, 1200);
   };
 
   // 4. EMI Form Submission
@@ -4553,7 +4568,12 @@ function ServicesPage() {
       notes: '',
     });
     setSaveSuccessMsg(`Saved EMI schedule "${newItem.item}" (${rupees(newItem.monthlyAmount)}/mo) to database!`);
-    setTimeout(() => setSaveSuccessMsg(null), 3500);
+    setTimeout(() => {
+      setSaveSuccessMsg(null);
+      if (isSubpageView) {
+        setLocation('/services');
+      }
+    }, 1200);
   };
 
   // Toggle Lending Status
@@ -4644,204 +4664,67 @@ function ServicesPage() {
     }
   };
 
-  // ── VIEW A: SERVICES HUB (When on /services) ──
-  if (!isSubpageView) {
+  // ── VIEW A: DEDICATED SERVICE FORM (opens on /services/:subpage) ──
+  if (isSubpageView) {
     return (
-      <div className="page-enter mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-2 sm:pb-6">
-        {/* Header Bar */}
+      <div className="page-enter mx-auto w-full max-w-4xl space-y-4 sm:space-y-5 pb-2 sm:pb-6">
+        {/* Subpage Header */}
         <div className="flex items-center justify-between pt-1 sm:pt-2">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               type="button"
-              onClick={() => setLocation('/')}
+              onClick={() => setLocation('/services')}
               className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full bg-[#111827]/80 border border-white/10 text-[#9ca3af] hover:text-white hover:border-white/20 active:scale-95 transition"
-              title="Back to Home"
+              title="Back to Services"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div>
               <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24] flex items-center gap-1.5">
-                <span>Financial Hub</span>
-                {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing cloud...)</span>}
+                <span>Financial Hub / {currentService.label}</span>
+                {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing...)</span>}
               </p>
-              <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
-                Services
+              <h1 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">
+                {currentService.label} Tracker
               </h1>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/expenses"
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-[#9ca3af] hover:text-white hover:bg-white/[0.08] transition"
-            >
-              <ScrollText className="h-3.5 w-3.5 text-[#fbbf24]" />
-              <span className="hidden sm:inline">Transaction</span>
-              <span>Ledger</span>
-            </Link>
-          </div>
-        </div>
-
-        <p className="text-xs sm:text-sm text-[#9ca3af] -mt-1 sm:-mt-2">
-          Manage your lending, cash accounts, loans, and EMI schedules seamlessly in one place.
-        </p>
-
-        {/* 4 Interactive Service Option Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-          {services.map((svc) => {
-            const Icon = svc.icon;
-            return (
-              <button
-                key={svc.id}
-                type="button"
-                onClick={() => setLocation('/services/' + svc.id)}
-                className="group relative flex flex-col justify-between rounded-2xl p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[145px] sm:min-h-[165px] text-left active:scale-[0.98] border border-white/[0.06] hover:border-white/[0.18] shadow-lg hover:shadow-xl"
-                style={{
-                  background: `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.85) 75%)`,
-                }}
-              >
-                {/* Card Top Row: Icon + Real Count Badge */}
-                <div className="flex items-start justify-between w-full">
-                  <div
-                    className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl transition-transform group-hover:scale-105"
-                    style={{
-                      background: `${svc.color}18`,
-                      border: `1px solid ${svc.color}30`,
-                    }}
-                  >
-                    <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" style={{ color: svc.color }} />
-                  </div>
-
-                  <span
-                    className="rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
-                    style={{
-                      background: `${svc.color}20`,
-                      color: svc.color,
-                    }}
-                  >
-                    {svc.count} {svc.count === 1 ? 'item' : 'items'}
-                  </span>
-                </div>
-
-                {/* Card Center: Label & Description */}
-                <div className="my-2">
-                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
-                    <span>{svc.label}</span>
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />
-                  </h3>
-                  <p className="mt-0.5 text-[11px] leading-snug text-[#9ca3af] line-clamp-1">
-                    {svc.desc}
-                  </p>
-                </div>
-
-                {/* Card Bottom Tag & Open indicator */}
-                <div className="flex items-center justify-between pt-0.5">
-                  <span
-                    className="inline-block rounded-full px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider"
-                    style={{
-                      background: `${svc.color}15`,
-                      color: svc.color,
-                    }}
-                  >
-                    {svc.tag}
-                  </span>
-                  <span className="text-[10px] font-bold text-white/50 group-hover:text-white transition flex items-center gap-0.5">
-                    Open <ArrowUpRight className="h-3 w-3" />
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Quick access to Ledger (Seamless Glass Banner) */}
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
-              <ScrollText className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm sm:text-base font-bold text-[#f1f5f3]">
-                Transaction Ledger
-              </p>
-              <p className="text-[11px] sm:text-xs text-[#9ca3af]">
-                View, filter, and inspect all recorded transactions & monthly ledgers
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href="/expenses"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:opacity-95 active:scale-95 transition shrink-0"
-          >
-            <span>Open Ledger</span>
-            <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // ── VIEW B: DEDICATED SERVICE SUBPAGE (e.g. /services/lending) ──
-  return (
-    <div className="page-enter mx-auto w-full max-w-5xl space-y-3.5 sm:space-y-5 pb-2 sm:pb-6">
-      {/* ── Subpage Header Bar ── */}
-      <div className="flex items-center justify-between pt-1 sm:pt-2">
-        <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={() => setLocation('/services')}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#111827]/80 border border-white/10 px-3 py-1.5 text-xs font-bold text-[#9ca3af] hover:text-white hover:border-white/20 active:scale-95 transition"
-            title="Back to Services"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] border border-white/10 px-3 py-1.5 text-xs font-semibold text-[#9ca3af] hover:text-white hover:bg-white/[0.08] transition"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Services</span>
+            <span>All Services</span>
           </button>
-          <div>
-            <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24] flex items-center gap-1.5">
-              <span>Financial Hub / {currentService.label}</span>
-              {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing...)</span>}
-            </p>
-            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span>{currentService.label} Tracker</span>
-            </h1>
-          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#34d399]/10 border border-[#34d399]/20 px-3 py-1 text-[10px] font-bold text-[#34d399]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#34d399] animate-pulse" />
-            <span>Supabase Cloud</span>
-          </span>
+        {/* Tab Switcher Pills — to switch between service forms */}
+        <div className="flex items-center gap-1.5 rounded-2xl bg-[#0c101c]/90 border border-white/[0.06] p-1 overflow-x-auto">
+          {services.map((svc) => (
+            <button
+              key={svc.id}
+              type="button"
+              onClick={() => {
+                setActiveTab(svc.id);
+                setLocation('/services/' + svc.id);
+              }}
+              className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 text-center ${
+                activeTab === svc.id
+                  ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20'
+                  : 'text-[#9ca3af] hover:text-white'
+              }`}
+            >
+              {svc.label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* ── Segmented Tab Switcher Pills ── */}
-      <div className="flex items-center gap-1.5 rounded-2xl bg-[#0c101c]/90 border border-white/[0.06] p-1 overflow-x-auto">
-        {services.map((svc) => (
-          <button
-            key={svc.id}
-            type="button"
-            onClick={() => {
-              setActiveTab(svc.id);
-              setLocation('/services/' + svc.id);
-            }}
-            className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 text-center ${
-              activeTab === svc.id
-                ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20'
-                : 'text-[#9ca3af] hover:text-white'
-            }`}
-          >
-            {svc.label}
-          </button>
-        ))}
-      </div>
+        {/* FORM ONLY — no summary strip, no table */}
 
-      {/* ── SERVICE 1: LENDING SUBPAGE ── */}
-      {activeTab === 'lending' && (
-        <div className="space-y-4">
-          {/* DEDICATED LENDING ENTRY FORM */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
+        {/* ── LENDING FORM ── */}
+        {activeTab === 'lending' && (
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#fbbf24]/15 border border-[#fbbf24]/30 text-[#fbbf24]">
@@ -4852,9 +4735,19 @@ function ServicesPage() {
                   <p className="text-[11px] text-[#9ca3af]">Enter amount, date, and person name to save directly to database</p>
                 </div>
               </div>
-              <span className="rounded-full bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#fbbf24]">
-                Supabase Live
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#fbbf24]">
+                  Supabase Live
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLocation('/services')}
+                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {saveSuccessMsg && (
@@ -4872,14 +4765,16 @@ function ServicesPage() {
                     Person / Contact Name <span className="text-[#fbbf24]">*</span>
                   </label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9ca3af]" />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                    </span>
                     <input
                       required
                       type="text"
                       placeholder="e.g. Rahul Sharma"
                       value={lendingForm.person}
                       onChange={(e) => setLendingForm({ ...lendingForm, person: e.target.value })}
-                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-9 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition"
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition"
                     />
                   </div>
                 </div>
@@ -4910,13 +4805,15 @@ function ServicesPage() {
                     Date / Due Date <span className="text-[#fbbf24]">*</span>
                   </label>
                   <div className="relative">
-                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9ca3af]" />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    </span>
                     <input
                       required
                       type="date"
                       value={lendingForm.dueDate}
                       onChange={(e) => setLendingForm({ ...lendingForm, dueDate: e.target.value })}
-                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-9 pr-3 py-2.5 text-xs font-medium text-white outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition"
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/50 transition"
                     />
                   </div>
                 </div>
@@ -4932,7 +4829,7 @@ function ServicesPage() {
                       onClick={() => setLendingForm({ ...lendingForm, type: 'lent' })}
                       className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
                         lendingForm.type === 'lent'
-                          ? 'bg-[#fbbf24] text-[#080c14] shadow-sm shadow-[#fbbf24]/30'
+                          ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-sm shadow-[#fbbf24]/30'
                           : 'text-[#9ca3af] hover:text-white'
                       }`}
                     >
@@ -4953,7 +4850,7 @@ function ServicesPage() {
                 </div>
 
                 {/* Notes */}
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
                     Notes / Remarks (Optional)
                   </label>
@@ -4970,14 +4867,568 @@ function ServicesPage() {
               <div className="flex items-center justify-end pt-1">
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-5 py-2.5 text-xs font-bold text-[#080c14] shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:opacity-95 active:scale-95 transition"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-5 py-2.5 text-xs font-bold text-[#080c14] shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:opacity-95 active:scale-95 transition"
                 >
                   <Plus className="h-4 w-4 stroke-[2.5]" />
-                  <span>Save to Lending Table</span>
+                  <span>+ Save to Lending Table</span>
                 </button>
               </div>
             </form>
           </div>
+        )}
+
+        {/* ── CASH FORM ── */}
+        {activeTab === 'cash' && (
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 text-[#34d399]">
+                  <Banknote className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white">Record Cash Flow Entry</h2>
+                  <p className="text-[11px] text-[#9ca3af]">Enter physical cash spent or received to update cash balance</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#34d399]/10 border border-[#34d399]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#34d399]">
+                  Supabase Live
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLocation('/services')}
+                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCashFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Description <span className="text-[#34d399]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. ATM withdrawal, grocery"
+                    value={cashForm.description}
+                    onChange={(e) => setCashForm({ ...cashForm, description: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Amount (₹) <span className="text-[#34d399]">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#34d399]">₹</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="1"
+                      placeholder="e.g. 1500"
+                      value={cashForm.amount}
+                      onChange={(e) => setCashForm({ ...cashForm, amount: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Date <span className="text-[#34d399]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="date"
+                    value={cashForm.date}
+                    onChange={(e) => setCashForm({ ...cashForm, date: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Flow Direction
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#111726] border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setCashForm({ ...cashForm, type: 'out' })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        cashForm.type === 'out'
+                          ? 'bg-[#f87171] text-white shadow-sm shadow-[#f87171]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Cash Out (Spent)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCashForm({ ...cashForm, type: 'in' })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        cashForm.type === 'in'
+                          ? 'bg-[#34d399] text-[#080c14] shadow-sm shadow-[#34d399]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Cash In (Received)</span>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Storage / Location
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Wallet, Safe, Drawer"
+                    value={cashForm.location}
+                    onChange={(e) => setCashForm({ ...cashForm, location: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dinner cash tip"
+                    value={cashForm.notes}
+                    onChange={(e) => setCashForm({ ...cashForm, notes: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#059669] to-[#34d399] px-5 py-2.5 text-xs font-bold text-[#080c14] shadow-[0_0_15px_rgba(52,211,153,0.3)] hover:opacity-95 active:scale-95 transition"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Save to Cash Table</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ── LOAN FORM ── */}
+        {activeTab === 'loan' && (
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#f87171]/15 border border-[#f87171]/30 text-[#f87171]">
+                  <CircleDollarSign className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white">Record Loan Entry</h2>
+                  <p className="text-[11px] text-[#9ca3af]">Enter lender name, principal amount, and tenure to save to database</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#f87171]/10 border border-[#f87171]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#f87171]">
+                  Supabase Live
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLocation('/services')}
+                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLoanFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Lender / Institution Name <span className="text-[#f87171]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. HDFC Bank, Personal Loan"
+                    value={loanForm.lender}
+                    onChange={(e) => setLoanForm({ ...loanForm, lender: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Principal Amount (₹) <span className="text-[#f87171]">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#f87171]">₹</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="1"
+                      placeholder="e.g. 500000"
+                      value={loanForm.principal}
+                      onChange={(e) => setLoanForm({ ...loanForm, principal: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Outstanding Balance (₹)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#f87171]">₹</span>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="Leave blank if equals principal"
+                      value={loanForm.outstanding}
+                      onChange={(e) => setLoanForm({ ...loanForm, outstanding: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Interest Rate (% p.a.)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g. 9.5"
+                    value={loanForm.interestRate}
+                    onChange={(e) => setLoanForm({ ...loanForm, interestRate: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Tenure (Months)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 24"
+                    value={loanForm.tenureMonths}
+                    onChange={(e) => setLoanForm({ ...loanForm, tenureMonths: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Notes / Reference (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Fixed rate loan"
+                    value={loanForm.notes}
+                    onChange={(e) => setLoanForm({ ...loanForm, notes: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#f87171] px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:opacity-95 active:scale-95 transition"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Save to Loans Table</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ── EMI FORM ── */}
+        {activeTab === 'emi' && (
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#818cf8]/15 border border-[#818cf8]/30 text-[#818cf8]">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white">Record EMI Schedule</h2>
+                  <p className="text-[11px] text-[#9ca3af]">Enter item name, monthly amount, and due date to track monthly dues</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#818cf8]/10 border border-[#818cf8]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#818cf8]">
+                  Supabase Live
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLocation('/services')}
+                  className="grid h-7 w-7 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition"
+                  title="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {saveSuccessMsg && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEmiFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Item / Obligation <span className="text-[#818cf8]">*</span>
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. iPhone EMI, Car EMI"
+                    value={emiForm.item}
+                    onChange={(e) => setEmiForm({ ...emiForm, item: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Monthly EMI (₹) <span className="text-[#818cf8]">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#818cf8]">₹</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="1"
+                      placeholder="e.g. 4500"
+                      value={emiForm.monthlyAmount}
+                      onChange={(e) => setEmiForm({ ...emiForm, monthlyAmount: e.target.value })}
+                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Due Day of Month (1-31)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="e.g. 5"
+                    value={emiForm.dueDay}
+                    onChange={(e) => setEmiForm({ ...emiForm, dueDay: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Total Installments
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 12"
+                    value={emiForm.totalInstallments}
+                    onChange={(e) => setEmiForm({ ...emiForm, totalInstallments: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Remaining Installments
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 8"
+                    value={emiForm.remainingInstallments}
+                    onChange={(e) => setEmiForm({ ...emiForm, remainingInstallments: e.target.value })}
+                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
+                    Auto-Debit from Bank
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#111726] border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setEmiForm({ ...emiForm, autoDebit: true })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        emiForm.autoDebit
+                          ? 'bg-[#34d399] text-[#080c14] shadow-sm shadow-[#34d399]/30'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Enabled</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmiForm({ ...emiForm, autoDebit: false })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        !emiForm.autoDebit
+                          ? 'bg-white/20 text-white shadow-sm'
+                          : 'text-[#9ca3af] hover:text-white'
+                      }`}
+                    >
+                      <span>Manual</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#818cf8] px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(129,140,248,0.3)] hover:opacity-95 active:scale-95 transition"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Save to EMI Table</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── VIEW B: SERVICES HUB (/services) — 4 cards + tab pills + ledger tables. NO FORM. ──
+  return (
+    <div className="page-enter mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-2 sm:pb-6">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between pt-1 sm:pt-2">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setLocation('/')}
+            className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full bg-[#111827]/80 border border-white/10 text-[#9ca3af] hover:text-white hover:border-white/20 active:scale-95 transition"
+            title="Back to Home"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div>
+            <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24] flex items-center gap-1.5">
+              <span>Financial Hub</span>
+              {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing cloud...)</span>}
+            </p>
+            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Services
+            </h1>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setLocation('/services/' + activeTab)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-md shadow-[#fbbf24]/20 hover:opacity-95 active:scale-95 transition"
+        >
+          <Plus className="h-4 w-4 stroke-[2.5]" />
+          <span>Add Entry</span>
+        </button>
+      </div>
+
+      <p className="text-xs sm:text-sm text-[#9ca3af] -mt-1 sm:-mt-2">
+        Manage your lending, cash balance, active loans, and recurring EMI schedules in dedicated tables.
+      </p>
+
+      {/* 4 Service Option Cards — clicking opens the dedicated form in a new tab */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+        {services.map((svc) => {
+          const Icon = svc.icon;
+          const isSelected = activeTab === svc.id;
+          return (
+            <button
+              key={svc.id}
+              type="button"
+              onClick={() => {
+                setActiveTab(svc.id);
+                setLocation('/services/' + svc.id);
+              }}
+              className={`group relative flex flex-col justify-between rounded-2xl p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[145px] sm:min-h-[165px] text-left active:scale-[0.98] shadow-lg hover:shadow-xl ${
+                isSelected
+                  ? 'border-2 border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.25)]'
+                  : 'border border-white/[0.06] hover:border-white/[0.18]'
+              }`}
+              style={{
+                background: `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.85) 75%)`,
+              }}
+            >
+              <div className="flex items-start justify-between w-full">
+                <div
+                  className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl transition-transform group-hover:scale-105"
+                  style={{ background: `${svc.color}18`, border: `1px solid ${svc.color}30` }}
+                >
+                  <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" style={{ color: svc.color }} />
+                </div>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
+                  style={{ background: `${svc.color}20`, color: svc.color }}
+                >
+                  {svc.count} {svc.count === 1 ? 'ITEM' : 'ITEMS'}
+                </span>
+              </div>
+              <div className="my-2">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
+                  <span>{svc.label}</span>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />
+                </h3>
+                <p className="mt-0.5 text-[11px] leading-snug text-[#9ca3af] line-clamp-1">{svc.desc}</p>
+              </div>
+              <div className="flex items-center pt-0.5">
+                <span
+                  className="inline-block rounded-full px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider"
+                  style={{ background: `${svc.color}15`, color: svc.color }}
+                >
+                  {svc.tag}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Segmented Tab Switcher Pills */}
+      <div className="flex items-center gap-1.5 rounded-2xl bg-[#0c101c]/90 border border-white/[0.06] p-1 overflow-x-auto">
+        {services.map((svc) => (
+          <button
+            key={svc.id}
+            type="button"
+            onClick={() => setActiveTab(svc.id)}
+            className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 text-center ${
+              activeTab === svc.id
+                ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20'
+                : 'text-[#9ca3af] hover:text-white'
+            }`}
+          >
+            {svc.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── SERVICE 1: LENDING ── */}
+      {activeTab === 'lending' && (
+        <div className="space-y-4">
 
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -5002,11 +5453,19 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <HandCoins className="h-4.5 w-4.5 text-[#fbbf24]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Lending Ledger (Supabase Database)</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Lending Ledger</h2>
                 <span className="rounded-full bg-[#fbbf24]/15 text-[#fbbf24] text-[10px] font-bold px-2 py-0.5">
                   {lendingList.length}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services/lending')}
+                className="inline-flex items-center gap-1 rounded-lg bg-[#fbbf24]/10 hover:bg-[#fbbf24]/20 border border-[#fbbf24]/30 px-2.5 py-1 text-xs font-bold text-[#fbbf24] transition"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
             </div>
 
             {lendingList.length === 0 ? (
@@ -5085,156 +5544,9 @@ function ServicesPage() {
         </div>
       )}
 
-      {/* ── SERVICE 2: CASH SUBPAGE ── */}
+      {/* ── SERVICE 2: CASH ── */}
       {activeTab === 'cash' && (
         <div className="space-y-4">
-          {/* DEDICATED CASH ENTRY FORM */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 text-[#34d399]">
-                  <Banknote className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white">Record Cash Flow Entry</h2>
-                  <p className="text-[11px] text-[#9ca3af]">Enter physical cash spent or received to update cash balance</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-[#34d399]/10 border border-[#34d399]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#34d399]">
-                Supabase Live
-              </span>
-            </div>
-
-            {saveSuccessMsg && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>{saveSuccessMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCashFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {/* Description */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Description <span className="text-[#34d399]">*</span>
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. ATM withdrawal, grocery"
-                    value={cashForm.description}
-                    onChange={(e) => setCashForm({ ...cashForm, description: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
-                  />
-                </div>
-
-                {/* Amount */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Amount (₹) <span className="text-[#34d399]">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#34d399]">₹</span>
-                    <input
-                      required
-                      type="number"
-                      step="any"
-                      min="1"
-                      placeholder="e.g. 1500"
-                      value={cashForm.amount}
-                      onChange={(e) => setCashForm({ ...cashForm, amount: e.target.value })}
-                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Date <span className="text-[#34d399]">*</span>
-                  </label>
-                  <input
-                    required
-                    type="date"
-                    value={cashForm.date}
-                    onChange={(e) => setCashForm({ ...cashForm, date: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
-                  />
-                </div>
-
-                {/* Flow Type */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Flow Direction
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#111726] border border-white/10">
-                    <button
-                      type="button"
-                      onClick={() => setCashForm({ ...cashForm, type: 'out' })}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
-                        cashForm.type === 'out'
-                          ? 'bg-[#f87171] text-white shadow-sm shadow-[#f87171]/30'
-                          : 'text-[#9ca3af] hover:text-white'
-                      }`}
-                    >
-                      <span>Cash Out (Spent)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCashForm({ ...cashForm, type: 'in' })}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
-                        cashForm.type === 'in'
-                          ? 'bg-[#34d399] text-[#080c14] shadow-sm shadow-[#34d399]/30'
-                          : 'text-[#9ca3af] hover:text-white'
-                      }`}
-                    >
-                      <span>Cash In (Received)</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Storage / Location
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Wallet, Safe, Drawer"
-                    value={cashForm.location}
-                    onChange={(e) => setCashForm({ ...cashForm, location: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
-                  />
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Notes (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Dinner cash tip"
-                    value={cashForm.notes}
-                    onChange={(e) => setCashForm({ ...cashForm, notes: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#34d399] focus:ring-1 focus:ring-[#34d399]/50 transition"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end pt-1">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#059669] to-[#34d399] px-5 py-2.5 text-xs font-bold text-[#080c14] shadow-[0_0_15px_rgba(52,211,153,0.3)] hover:opacity-95 active:scale-95 transition"
-                >
-                  <Plus className="h-4 w-4 stroke-[2.5]" />
-                  <span>Save to Cash Table</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -5256,11 +5568,19 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <Banknote className="h-4.5 w-4.5 text-[#34d399]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Cash Transactions (Supabase Database)</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Cash Transactions</h2>
                 <span className="rounded-full bg-[#34d399]/15 text-[#34d399] text-[10px] font-bold px-2 py-0.5">
                   {cashList.length}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services/cash')}
+                className="inline-flex items-center gap-1 rounded-lg bg-[#34d399]/10 hover:bg-[#34d399]/20 border border-[#34d399]/30 px-2.5 py-1 text-xs font-bold text-[#34d399] transition"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
             </div>
 
             {cashList.length === 0 ? (
@@ -5323,144 +5643,9 @@ function ServicesPage() {
         </div>
       )}
 
-      {/* ── SERVICE 3: LOAN SUBPAGE ── */}
+      {/* ── SERVICE 3: LOAN ── */}
       {activeTab === 'loan' && (
         <div className="space-y-4">
-          {/* DEDICATED LOAN ENTRY FORM */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#f87171]/15 border border-[#f87171]/30 text-[#f87171]">
-                  <CircleDollarSign className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white">Record Loan Entry</h2>
-                  <p className="text-[11px] text-[#9ca3af]">Enter lender name, principal amount, and tenure to save to database</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-[#f87171]/10 border border-[#f87171]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#f87171]">
-                Supabase Live
-              </span>
-            </div>
-
-            {saveSuccessMsg && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>{saveSuccessMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleLoanFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {/* Lender Name */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Lender / Institution Name <span className="text-[#f87171]">*</span>
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. HDFC Bank, Personal Loan"
-                    value={loanForm.lender}
-                    onChange={(e) => setLoanForm({ ...loanForm, lender: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition"
-                  />
-                </div>
-
-                {/* Principal Amount */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Principal Amount (₹) <span className="text-[#f87171]">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#f87171]">₹</span>
-                    <input
-                      required
-                      type="number"
-                      step="any"
-                      min="1"
-                      placeholder="e.g. 500000"
-                      value={loanForm.principal}
-                      onChange={(e) => setLoanForm({ ...loanForm, principal: e.target.value })}
-                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Outstanding Balance */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Outstanding Balance (₹)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#f87171]">₹</span>
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="Leave blank if equals principal"
-                      value={loanForm.outstanding}
-                      onChange={(e) => setLoanForm({ ...loanForm, outstanding: e.target.value })}
-                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Interest Rate */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Interest Rate (% p.a.)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="e.g. 9.5"
-                    value={loanForm.interestRate}
-                    onChange={(e) => setLoanForm({ ...loanForm, interestRate: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
-                  />
-                </div>
-
-                {/* Tenure */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Tenure (Months)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 24"
-                    value={loanForm.tenureMonths}
-                    onChange={(e) => setLoanForm({ ...loanForm, tenureMonths: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition font-mono"
-                  />
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Notes / Reference (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Fixed rate loan"
-                    value={loanForm.notes}
-                    onChange={(e) => setLoanForm({ ...loanForm, notes: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#f87171] focus:ring-1 focus:ring-[#f87171]/50 transition"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end pt-1">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#f87171] px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(248,113,113,0.3)] hover:opacity-95 active:scale-95 transition"
-                >
-                  <Plus className="h-4 w-4 stroke-[2.5]" />
-                  <span>Save to Loans Table</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -5486,11 +5671,19 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <CircleDollarSign className="h-4.5 w-4.5 text-[#f87171]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Active Loans (Supabase Database)</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Active Loans</h2>
                 <span className="rounded-full bg-[#f87171]/15 text-[#f87171] text-[10px] font-bold px-2 py-0.5">
                   {loanList.length}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services/loan')}
+                className="inline-flex items-center gap-1 rounded-lg bg-[#f87171]/10 hover:bg-[#f87171]/20 border border-[#f87171]/30 px-2.5 py-1 text-xs font-bold text-[#f87171] transition"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
             </div>
 
             {loanList.length === 0 ? (
@@ -5558,160 +5751,9 @@ function ServicesPage() {
         </div>
       )}
 
-      {/* ── SERVICE 4: EMI SUBPAGE ── */}
+      {/* ── SERVICE 4: EMI ── */}
       {activeTab === 'emi' && (
         <div className="space-y-4">
-          {/* DEDICATED EMI ENTRY FORM */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c101c]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#818cf8]/15 border border-[#818cf8]/30 text-[#818cf8]">
-                  <CalendarDays className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white">Record EMI Schedule</h2>
-                  <p className="text-[11px] text-[#9ca3af]">Enter item name, monthly amount, and due date to track monthly dues</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-[#818cf8]/10 border border-[#818cf8]/20 px-2.5 py-0.5 text-[10px] font-bold text-[#818cf8]">
-                Supabase Live
-              </span>
-            </div>
-
-            {saveSuccessMsg && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#34d399]/15 border border-[#34d399]/30 p-3 text-xs font-semibold text-[#34d399]">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>{saveSuccessMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleEmiFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {/* Item / Obligation */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Item / Obligation <span className="text-[#818cf8]">*</span>
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. iPhone EMI, Car EMI"
-                    value={emiForm.item}
-                    onChange={(e) => setEmiForm({ ...emiForm, item: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition"
-                  />
-                </div>
-
-                {/* Monthly Amount */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Monthly EMI (₹) <span className="text-[#818cf8]">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#818cf8]">₹</span>
-                    <input
-                      required
-                      type="number"
-                      step="any"
-                      min="1"
-                      placeholder="e.g. 4500"
-                      value={emiForm.monthlyAmount}
-                      onChange={(e) => setEmiForm({ ...emiForm, monthlyAmount: e.target.value })}
-                      className="w-full rounded-xl bg-[#111726] border border-white/10 pl-8 pr-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Due Day */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Due Day of Month (1-31)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    placeholder="e.g. 5"
-                    value={emiForm.dueDay}
-                    onChange={(e) => setEmiForm({ ...emiForm, dueDay: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
-                  />
-                </div>
-
-                {/* Total Installments */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Total Installments
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 12"
-                    value={emiForm.totalInstallments}
-                    onChange={(e) => setEmiForm({ ...emiForm, totalInstallments: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
-                  />
-                </div>
-
-                {/* Remaining Installments */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Remaining Installments
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 8"
-                    value={emiForm.remainingInstallments}
-                    onChange={(e) => setEmiForm({ ...emiForm, remainingInstallments: e.target.value })}
-                    className="w-full rounded-xl bg-[#111726] border border-white/10 px-3 py-2.5 text-xs font-medium text-white placeholder-[#6b7280] outline-none focus:border-[#818cf8] focus:ring-1 focus:ring-[#818cf8]/50 transition font-mono"
-                  />
-                </div>
-
-                {/* Auto-Debit */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1">
-                    Auto-Debit from Bank
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#111726] border border-white/10">
-                    <button
-                      type="button"
-                      onClick={() => setEmiForm({ ...emiForm, autoDebit: true })}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
-                        emiForm.autoDebit
-                          ? 'bg-[#34d399] text-[#080c14] shadow-sm shadow-[#34d399]/30'
-                          : 'text-[#9ca3af] hover:text-white'
-                      }`}
-                    >
-                      <span>Enabled</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEmiForm({ ...emiForm, autoDebit: false })}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
-                        !emiForm.autoDebit
-                          ? 'bg-white/20 text-white shadow-sm'
-                          : 'text-[#9ca3af] hover:text-white'
-                      }`}
-                    >
-                      <span>Manual</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end pt-1">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#818cf8] px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(129,140,248,0.3)] hover:opacity-95 active:scale-95 transition"
-                >
-                  <Plus className="h-4 w-4 stroke-[2.5]" />
-                  <span>Save to EMI Table</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
@@ -5737,11 +5779,19 @@ function ServicesPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <CalendarDays className="h-4.5 w-4.5 text-[#818cf8]" />
-                <h2 className="text-sm sm:text-base font-bold text-white">Monthly EMI Schedules (Supabase Database)</h2>
+                <h2 className="text-sm sm:text-base font-bold text-white">Monthly EMI Schedules</h2>
                 <span className="rounded-full bg-[#818cf8]/15 text-[#818cf8] text-[10px] font-bold px-2 py-0.5">
                   {emiList.length}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setLocation('/services/emi')}
+                className="inline-flex items-center gap-1 rounded-lg bg-[#818cf8]/10 hover:bg-[#818cf8]/20 border border-[#818cf8]/30 px-2.5 py-1 text-xs font-bold text-[#818cf8] transition"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
             </div>
 
             {emiList.length === 0 ? (
@@ -5817,6 +5867,31 @@ function ServicesPage() {
           </div>
         </div>
       )}
+
+      {/* ── Transaction Ledger Banner (Bottom of Services Page) ── */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
+            <ScrollText className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm sm:text-base font-bold text-[#f1f5f3]">
+              Transaction Ledger
+            </p>
+            <p className="text-[11px] sm:text-xs text-[#9ca3af]">
+              View, filter, and inspect all recorded transactions & monthly ledgers
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/expenses"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:opacity-95 active:scale-95 transition shrink-0"
+        >
+          <span>Open Ledger</span>
+          <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
+        </Link>
+      </div>
     </div>
   );
 }
