@@ -75,6 +75,18 @@ import {
   fetchUserSalaries,
   saveSalaryToDb,
   isRealSupabaseUser,
+  fetchUserLending,
+  saveLendingToDb,
+  deleteLendingFromDb,
+  fetchUserCash,
+  saveCashToDb,
+  deleteCashFromDb,
+  fetchUserLoans,
+  saveLoanToDb,
+  deleteLoanFromDb,
+  fetchUserEmis,
+  saveEmiToDb,
+  deleteEmiFromDb,
 } from '@/lib/db-service';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { APP_VERSION, checkForAppUpdates, forceAppRefresh, subscribePwa, type PwaStatus } from '@/lib/pwa-update';
@@ -4094,77 +4106,161 @@ type EmiItem = {
 };
 
 function ServicesPage() {
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<'lending' | 'cash' | 'loan' | 'emi'>('lending');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loadingDb, setLoadingDb] = useState(false);
 
-  // 1. Lending State
+  // Storage key prefix per user (or guest)
+  const userPrefix = user?.id ? user.id : 'guest';
+
+  // Helper to filter out any old dummy preview records from previous sessions
+  const isRealRecord = (item: { id: string }) => !/^(l1|l2|l3|c1|c2|c3|ln1|ln2|e1|e2|e3)$/.test(item.id);
+
+  // 1. Lending State (starts empty, loads real data)
   const [lendingList, setLendingList] = useState<LendingItem[]>(() => {
     try {
-      const saved = localStorage.getItem('spendly_service_lending');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem(`spendly_service_lending_${userPrefix}`) || localStorage.getItem('spendly_service_lending');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter(isRealRecord);
+      }
     } catch {}
-    return [
-      { id: 'l1', person: 'Rahul Sharma', amount: 3500, type: 'lent', dueDate: '2026-11-15', status: 'pending', notes: 'Dinner bill split' },
-      { id: 'l2', person: 'Priya Verma', amount: 1200, type: 'borrowed', dueDate: '2026-11-20', status: 'pending', notes: 'Office taxi fare' },
-      { id: 'l3', person: 'Amit Patel', amount: 5000, type: 'lent', dueDate: '2026-10-28', status: 'settled', notes: 'Weekend trip advance' },
-    ];
+    return [];
   });
 
-  // 2. Cash State
+  // 2. Cash State (starts empty, loads real data)
   const [cashList, setCashList] = useState<CashItem[]>(() => {
     try {
-      const saved = localStorage.getItem('spendly_service_cash');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem(`spendly_service_cash_${userPrefix}`) || localStorage.getItem('spendly_service_cash');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter(isRealRecord);
+      }
     } catch {}
-    return [
-      { id: 'c1', description: 'ATM Cash Withdrawal', amount: 5000, type: 'in', date: '2026-11-02', location: 'Wallet' },
-      { id: 'c2', description: 'Local Grocery & Veggies', amount: 650, type: 'out', date: '2026-11-04', location: 'Wallet' },
-      { id: 'c3', description: 'Emergency Cash Stash', amount: 2000, type: 'in', date: '2026-11-01', location: 'Desk Drawer' },
-    ];
+    return [];
   });
 
-  // 3. Loans State
+  // 3. Loans State (starts empty, loads real data)
   const [loanList, setLoanList] = useState<LoanItem[]>(() => {
     try {
-      const saved = localStorage.getItem('spendly_service_loans');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem(`spendly_service_loans_${userPrefix}`) || localStorage.getItem('spendly_service_loans');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter(isRealRecord);
+      }
     } catch {}
-    return [
-      { id: 'ln1', lender: 'HDFC Personal Loan', principal: 150000, interestRate: 11.5, tenureMonths: 24, outstanding: 98000, status: 'active' },
-      { id: 'ln2', lender: 'SBI Education Loan', principal: 300000, interestRate: 8.5, tenureMonths: 60, outstanding: 185000, status: 'active' },
-    ];
+    return [];
   });
 
-  // 4. EMI State
+  // 4. EMI State (starts empty, loads real data)
   const [emiList, setEmiList] = useState<EmiItem[]>(() => {
     try {
-      const saved = localStorage.getItem('spendly_service_emis');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem(`spendly_service_emis_${userPrefix}`) || localStorage.getItem('spendly_service_emis');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter(isRealRecord);
+      }
     } catch {}
-    return [
-      { id: 'e1', item: 'iPhone 16 Pro (No Cost)', monthlyAmount: 7499, dueDay: 5, totalInstallments: 12, remainingInstallments: 8, autoDebit: true, status: 'ongoing' },
-      { id: 'e2', item: 'MacBook Air M3', monthlyAmount: 6250, dueDay: 10, totalInstallments: 12, remainingInstallments: 3, autoDebit: true, status: 'ongoing' },
-      { id: 'e3', item: 'Sony WH-1000XM5', monthlyAmount: 2400, dueDay: 15, totalInstallments: 6, remainingInstallments: 0, autoDebit: false, status: 'completed' },
-    ];
+    return [];
   });
 
-  // Persist to localStorage
+  // Sync with Supabase on mount / user change
   useEffect(() => {
-    localStorage.setItem('spendly_service_lending', JSON.stringify(lendingList));
-  }, [lendingList]);
+    if (!user || !isRealSupabaseUser(user)) return;
+    let isCancelled = false;
+    setLoadingDb(true);
+
+    Promise.all([
+      fetchUserLending(user.id),
+      fetchUserCash(user.id),
+      fetchUserLoans(user.id),
+      fetchUserEmis(user.id),
+    ]).then(([remoteLending, remoteCash, remoteLoans, remoteEmis]) => {
+      if (isCancelled) return;
+      setLoadingDb(false);
+
+      if (remoteLending !== null) {
+        const mapped: LendingItem[] = remoteLending.map((l) => ({
+          id: l.id,
+          person: l.person_name,
+          amount: Number(l.amount),
+          type: l.type,
+          dueDate: l.due_date || '',
+          status: l.status === 'settled' ? 'settled' : 'pending',
+          notes: l.notes || '',
+        }));
+        setLendingList(mapped);
+        localStorage.setItem(`spendly_service_lending_${user.id}`, JSON.stringify(mapped));
+      }
+
+      if (remoteCash !== null) {
+        const mapped: CashItem[] = remoteCash.map((c) => ({
+          id: c.id,
+          description: c.description,
+          amount: Number(c.amount),
+          type: c.type,
+          date: c.date,
+          location: c.wallet_location || 'Wallet',
+          notes: c.notes || '',
+        }));
+        setCashList(mapped);
+        localStorage.setItem(`spendly_service_cash_${user.id}`, JSON.stringify(mapped));
+      }
+
+      if (remoteLoans !== null) {
+        const mapped: LoanItem[] = remoteLoans.map((ln) => ({
+          id: ln.id,
+          lender: ln.lender_name,
+          principal: Number(ln.principal_amount),
+          interestRate: Number(ln.interest_rate),
+          tenureMonths: Number(ln.tenure_months),
+          outstanding: Number(ln.outstanding_balance),
+          status: ln.status,
+          notes: ln.notes || '',
+        }));
+        setLoanList(mapped);
+        localStorage.setItem(`spendly_service_loans_${user.id}`, JSON.stringify(mapped));
+      }
+
+      if (remoteEmis !== null) {
+        const mapped: EmiItem[] = remoteEmis.map((e) => ({
+          id: e.id,
+          item: e.loan_or_item,
+          monthlyAmount: Number(e.monthly_amount),
+          dueDay: Number(e.due_day),
+          totalInstallments: Number(e.total_installments),
+          remainingInstallments: Number(e.remaining_installments),
+          autoDebit: Boolean(e.auto_debit),
+          status: e.status,
+        }));
+        setEmiList(mapped);
+        localStorage.setItem(`spendly_service_emis_${user.id}`, JSON.stringify(mapped));
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?.id]);
+
+  // Persist local cache
+  useEffect(() => {
+    localStorage.setItem(`spendly_service_lending_${userPrefix}`, JSON.stringify(lendingList));
+  }, [lendingList, userPrefix]);
 
   useEffect(() => {
-    localStorage.setItem('spendly_service_cash', JSON.stringify(cashList));
-  }, [cashList]);
+    localStorage.setItem(`spendly_service_cash_${userPrefix}`, JSON.stringify(cashList));
+  }, [cashList, userPrefix]);
 
   useEffect(() => {
-    localStorage.setItem('spendly_service_loans', JSON.stringify(loanList));
-  }, [loanList]);
+    localStorage.setItem(`spendly_service_loans_${userPrefix}`, JSON.stringify(loanList));
+  }, [loanList, userPrefix]);
 
   useEffect(() => {
-    localStorage.setItem('spendly_service_emis', JSON.stringify(emiList));
-  }, [emiList]);
+    localStorage.setItem(`spendly_service_emis_${userPrefix}`, JSON.stringify(emiList));
+  }, [emiList, userPrefix]);
 
   // Add form fields state
   const [formFields, setFormFields] = useState<Record<string, string>>({});
@@ -4212,7 +4308,7 @@ function ServicesPage() {
     },
   ];
 
-  // Calculations for stats
+  // Calculations for stats — 100% computed from real records
   const totalLent = lendingList.filter(l => l.type === 'lent' && l.status === 'pending').reduce((s, l) => s + l.amount, 0);
   const totalBorrowed = lendingList.filter(l => l.type === 'borrowed' && l.status === 'pending').reduce((s, l) => s + l.amount, 0);
 
@@ -4223,8 +4319,8 @@ function ServicesPage() {
   const totalOutstandingLoan = loanList.filter(l => l.status === 'active').reduce((s, l) => s + l.outstanding, 0);
   const totalMonthlyEmi = emiList.filter(e => e.status === 'ongoing').reduce((s, e) => s + e.monthlyAmount, 0);
 
-  // Form Submission
-  const handleAddSubmit = (e: FormEvent) => {
+  // Form Submission — saves to Local + Supabase DB
+  const handleAddSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (activeTab === 'lending') {
       const person = formFields.person?.trim();
@@ -4240,6 +4336,17 @@ function ServicesPage() {
         notes: formFields.notes || '',
       };
       setLendingList([newItem, ...lendingList]);
+      if (user && isRealSupabaseUser(user)) {
+        saveLendingToDb(user.id, {
+          id: newItem.id,
+          person_name: newItem.person,
+          amount: newItem.amount,
+          type: newItem.type,
+          due_date: newItem.dueDate,
+          status: newItem.status,
+          notes: newItem.notes,
+        });
+      }
     } else if (activeTab === 'cash') {
       const description = formFields.description?.trim();
       const amount = Number(formFields.amount);
@@ -4254,6 +4361,17 @@ function ServicesPage() {
         notes: formFields.notes || '',
       };
       setCashList([newItem, ...cashList]);
+      if (user && isRealSupabaseUser(user)) {
+        saveCashToDb(user.id, {
+          id: newItem.id,
+          description: newItem.description,
+          amount: newItem.amount,
+          type: newItem.type,
+          date: newItem.date,
+          wallet_location: newItem.location,
+          notes: newItem.notes,
+        });
+      }
     } else if (activeTab === 'loan') {
       const lender = formFields.lender?.trim();
       const principal = Number(formFields.principal);
@@ -4269,6 +4387,18 @@ function ServicesPage() {
         notes: formFields.notes || '',
       };
       setLoanList([newItem, ...loanList]);
+      if (user && isRealSupabaseUser(user)) {
+        saveLoanToDb(user.id, {
+          id: newItem.id,
+          lender_name: newItem.lender,
+          principal_amount: newItem.principal,
+          interest_rate: newItem.interestRate,
+          tenure_months: newItem.tenureMonths,
+          outstanding_balance: newItem.outstanding,
+          status: newItem.status,
+          notes: newItem.notes,
+        });
+      }
     } else if (activeTab === 'emi') {
       const item = formFields.item?.trim();
       const monthlyAmount = Number(formFields.monthlyAmount);
@@ -4285,9 +4415,109 @@ function ServicesPage() {
         status: 'ongoing',
       };
       setEmiList([newItem, ...emiList]);
+      if (user && isRealSupabaseUser(user)) {
+        saveEmiToDb(user.id, {
+          id: newItem.id,
+          loan_or_item: newItem.item,
+          monthly_amount: newItem.monthlyAmount,
+          due_day: newItem.dueDay,
+          total_installments: newItem.totalInstallments,
+          remaining_installments: newItem.remainingInstallments,
+          auto_debit: newItem.autoDebit,
+          status: newItem.status,
+        });
+      }
     }
     setFormFields({});
     setShowAddModal(false);
+  };
+
+  // Toggle Lending Status
+  const handleToggleLendingStatus = (item: LendingItem) => {
+    const updatedStatus = item.status === 'pending' ? 'settled' : 'pending';
+    const updated = { ...item, status: updatedStatus as 'pending' | 'settled' };
+    setLendingList(lendingList.map((l) => (l.id === item.id ? updated : l)));
+    if (user && isRealSupabaseUser(user)) {
+      saveLendingToDb(user.id, {
+        id: updated.id,
+        person_name: updated.person,
+        amount: updated.amount,
+        type: updated.type,
+        due_date: updated.dueDate,
+        status: updated.status,
+        notes: updated.notes,
+      });
+    }
+  };
+
+  // Delete Lending
+  const handleDeleteLending = (id: string) => {
+    setLendingList(lendingList.filter((l) => l.id !== id));
+    if (user && isRealSupabaseUser(user)) {
+      deleteLendingFromDb(user.id, id);
+    }
+  };
+
+  // Delete Cash
+  const handleDeleteCash = (id: string) => {
+    setCashList(cashList.filter((c) => c.id !== id));
+    if (user && isRealSupabaseUser(user)) {
+      deleteCashFromDb(user.id, id);
+    }
+  };
+
+  // Toggle Loan Status
+  const handleToggleLoanStatus = (item: LoanItem) => {
+    const updatedStatus = item.status === 'active' ? 'closed' : 'active';
+    const updated = { ...item, status: updatedStatus as 'active' | 'closed' };
+    setLoanList(loanList.map((l) => (l.id === item.id ? updated : l)));
+    if (user && isRealSupabaseUser(user)) {
+      saveLoanToDb(user.id, {
+        id: updated.id,
+        lender_name: updated.lender,
+        principal_amount: updated.principal,
+        interest_rate: updated.interestRate,
+        tenure_months: updated.tenureMonths,
+        outstanding_balance: updated.outstanding,
+        status: updated.status,
+        notes: updated.notes,
+      });
+    }
+  };
+
+  // Delete Loan
+  const handleDeleteLoan = (id: string) => {
+    setLoanList(loanList.filter((l) => l.id !== id));
+    if (user && isRealSupabaseUser(user)) {
+      deleteLoanFromDb(user.id, id);
+    }
+  };
+
+  // Toggle EMI Status
+  const handleToggleEmiStatus = (item: EmiItem) => {
+    const updatedStatus = item.status === 'ongoing' ? 'completed' : 'ongoing';
+    const updated = { ...item, status: updatedStatus as 'ongoing' | 'completed' };
+    setEmiList(emiList.map((e) => (e.id === item.id ? updated : e)));
+    if (user && isRealSupabaseUser(user)) {
+      saveEmiToDb(user.id, {
+        id: updated.id,
+        loan_or_item: updated.item,
+        monthly_amount: updated.monthlyAmount,
+        due_day: updated.dueDay,
+        total_installments: updated.totalInstallments,
+        remaining_installments: updated.remainingInstallments,
+        auto_debit: updated.autoDebit,
+        status: updated.status,
+      });
+    }
+  };
+
+  // Delete EMI
+  const handleDeleteEmi = (id: string) => {
+    setEmiList(emiList.filter((e) => e.id !== id));
+    if (user && isRealSupabaseUser(user)) {
+      deleteEmiFromDb(user.id, id);
+    }
   };
 
   return (
@@ -4304,8 +4534,9 @@ function ServicesPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24]">
-              Financial Hub
+            <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.16em] text-[#fbbf24] flex items-center gap-1.5">
+              <span>Financial Hub</span>
+              {loadingDb && <span className="text-[9px] text-[#fbbf24]/80 lowercase font-medium tracking-normal animate-pulse">(syncing with cloud...)</span>}
             </p>
             <h1 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
               Services
@@ -4510,11 +4741,7 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => {
-                              setLendingList(
-                                lendingList.map((l) => (l.id === item.id ? { ...l, status: l.status === 'pending' ? 'settled' : 'pending' } : l))
-                              );
-                            }}
+                            onClick={() => handleToggleLendingStatus(item)}
                             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase transition ${
                               item.status === 'settled'
                                 ? 'bg-[#34d399]/20 text-[#34d399]'
@@ -4528,7 +4755,7 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => setLendingList(lendingList.filter((l) => l.id !== item.id))}
+                            onClick={() => handleDeleteLending(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
                             title="Delete"
                           >
@@ -4631,7 +4858,7 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => setCashList(cashList.filter((c) => c.id !== item.id))}
+                            onClick={() => handleDeleteCash(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
                             title="Delete"
                           >
@@ -4723,11 +4950,7 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => {
-                              setLoanList(
-                                loanList.map((l) => (l.id === item.id ? { ...l, status: l.status === 'active' ? 'closed' : 'active' } : l))
-                              );
-                            }}
+                            onClick={() => handleToggleLoanStatus(item)}
                             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase transition ${
                               item.status === 'active'
                                 ? 'bg-[#f87171]/20 text-[#f87171]'
@@ -4740,7 +4963,7 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => setLoanList(loanList.filter((l) => l.id !== item.id))}
+                            onClick={() => handleDeleteLoan(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
                             title="Delete"
                           >
@@ -4841,11 +5064,7 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => {
-                              setEmiList(
-                                emiList.map((e) => (e.id === item.id ? { ...e, status: e.status === 'ongoing' ? 'completed' : 'ongoing' } : e))
-                              );
-                            }}
+                            onClick={() => handleToggleEmiStatus(item)}
                             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase transition ${
                               item.status === 'ongoing'
                                 ? 'bg-[#818cf8]/20 text-[#818cf8]'
@@ -4858,7 +5077,7 @@ function ServicesPage() {
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => setEmiList(emiList.filter((e) => e.id !== item.id))}
+                            onClick={() => handleDeleteEmi(item.id)}
                             className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
                             title="Delete"
                           >
