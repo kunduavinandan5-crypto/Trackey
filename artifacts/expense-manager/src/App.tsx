@@ -19,6 +19,7 @@ import {
   CircleAlert,
   CircleDollarSign,
   ClipboardList,
+  Clock,
   CreditCard,
   Database,
   Edit3,
@@ -4049,52 +4050,249 @@ const PAGE_TITLES: Record<string, string> = {
   '/signup': 'Create Account',
 };
 
-// ─── Finance Services Page ───────────────────────────────────────────────────
+// ─── Finance Services Page with 4 Tables ─────────────────────────────────────
+type LendingItem = {
+  id: string;
+  person: string;
+  amount: number;
+  type: 'lent' | 'borrowed';
+  dueDate: string;
+  status: 'pending' | 'settled';
+  notes?: string;
+};
+
+type CashItem = {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'in' | 'out';
+  date: string;
+  location: string;
+  notes?: string;
+};
+
+type LoanItem = {
+  id: string;
+  lender: string;
+  principal: number;
+  interestRate: number;
+  tenureMonths: number;
+  outstanding: number;
+  status: 'active' | 'closed';
+  notes?: string;
+};
+
+type EmiItem = {
+  id: string;
+  item: string;
+  monthlyAmount: number;
+  dueDay: number;
+  totalInstallments: number;
+  remainingInstallments: number;
+  autoDebit: boolean;
+  status: 'ongoing' | 'completed';
+};
+
 function ServicesPage() {
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<'lending' | 'cash' | 'loan' | 'emi'>('lending');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // 1. Lending State
+  const [lendingList, setLendingList] = useState<LendingItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('spendly_service_lending');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: 'l1', person: 'Rahul Sharma', amount: 3500, type: 'lent', dueDate: '2026-11-15', status: 'pending', notes: 'Dinner bill split' },
+      { id: 'l2', person: 'Priya Verma', amount: 1200, type: 'borrowed', dueDate: '2026-11-20', status: 'pending', notes: 'Office taxi fare' },
+      { id: 'l3', person: 'Amit Patel', amount: 5000, type: 'lent', dueDate: '2026-10-28', status: 'settled', notes: 'Weekend trip advance' },
+    ];
+  });
+
+  // 2. Cash State
+  const [cashList, setCashList] = useState<CashItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('spendly_service_cash');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: 'c1', description: 'ATM Cash Withdrawal', amount: 5000, type: 'in', date: '2026-11-02', location: 'Wallet' },
+      { id: 'c2', description: 'Local Grocery & Veggies', amount: 650, type: 'out', date: '2026-11-04', location: 'Wallet' },
+      { id: 'c3', description: 'Emergency Cash Stash', amount: 2000, type: 'in', date: '2026-11-01', location: 'Desk Drawer' },
+    ];
+  });
+
+  // 3. Loans State
+  const [loanList, setLoanList] = useState<LoanItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('spendly_service_loans');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: 'ln1', lender: 'HDFC Personal Loan', principal: 150000, interestRate: 11.5, tenureMonths: 24, outstanding: 98000, status: 'active' },
+      { id: 'ln2', lender: 'SBI Education Loan', principal: 300000, interestRate: 8.5, tenureMonths: 60, outstanding: 185000, status: 'active' },
+    ];
+  });
+
+  // 4. EMI State
+  const [emiList, setEmiList] = useState<EmiItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('spendly_service_emis');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { id: 'e1', item: 'iPhone 16 Pro (No Cost)', monthlyAmount: 7499, dueDay: 5, totalInstallments: 12, remainingInstallments: 8, autoDebit: true, status: 'ongoing' },
+      { id: 'e2', item: 'MacBook Air M3', monthlyAmount: 6250, dueDay: 10, totalInstallments: 12, remainingInstallments: 3, autoDebit: true, status: 'ongoing' },
+      { id: 'e3', item: 'Sony WH-1000XM5', monthlyAmount: 2400, dueDay: 15, totalInstallments: 6, remainingInstallments: 0, autoDebit: false, status: 'completed' },
+    ];
+  });
+
+  // Persist to localStorage
+  useEffect(() => {
+    localStorage.setItem('spendly_service_lending', JSON.stringify(lendingList));
+  }, [lendingList]);
+
+  useEffect(() => {
+    localStorage.setItem('spendly_service_cash', JSON.stringify(cashList));
+  }, [cashList]);
+
+  useEffect(() => {
+    localStorage.setItem('spendly_service_loans', JSON.stringify(loanList));
+  }, [loanList]);
+
+  useEffect(() => {
+    localStorage.setItem('spendly_service_emis', JSON.stringify(emiList));
+  }, [emiList]);
+
+  // Add form fields state
+  const [formFields, setFormFields] = useState<Record<string, string>>({});
 
   const services = [
     {
-      id: 'lending',
+      id: 'lending' as const,
       label: 'Lending',
       icon: HandCoins,
       color: '#fbbf24',
       glow: 'rgba(251,191,36,0.12)',
-      desc: 'Track money you lent to friends or family',
+      count: lendingList.length,
+      desc: 'Track money you lent or borrowed',
       tag: 'Lend & Recover',
     },
     {
-      id: 'cash',
+      id: 'cash' as const,
       label: 'Cash',
       icon: Banknote,
       color: '#34d399',
       glow: 'rgba(52,211,153,0.12)',
-      desc: 'Monitor your physical cash flow and balances',
+      count: cashList.length,
+      desc: 'Physical cash balance & flows',
       tag: 'Cash Flow',
     },
     {
-      id: 'loan',
+      id: 'loan' as const,
       label: 'Loan',
       icon: CircleDollarSign,
       color: '#f87171',
       glow: 'rgba(248,113,113,0.12)',
-      desc: 'Manage active loans and repayment schedules',
+      count: loanList.length,
+      desc: 'Active loans & balances',
       tag: 'Loan Tracker',
     },
     {
-      id: 'emi',
+      id: 'emi' as const,
       label: 'EMI',
       icon: CalendarDays,
       color: '#818cf8',
       glow: 'rgba(129,140,248,0.12)',
-      desc: 'View and track all your EMI obligations',
+      count: emiList.length,
+      desc: 'Monthly installments & dues',
       tag: 'Monthly Dues',
     },
   ];
 
+  // Calculations for stats
+  const totalLent = lendingList.filter(l => l.type === 'lent' && l.status === 'pending').reduce((s, l) => s + l.amount, 0);
+  const totalBorrowed = lendingList.filter(l => l.type === 'borrowed' && l.status === 'pending').reduce((s, l) => s + l.amount, 0);
+
+  const cashIn = cashList.filter(c => c.type === 'in').reduce((s, c) => s + c.amount, 0);
+  const cashOut = cashList.filter(c => c.type === 'out').reduce((s, c) => s + c.amount, 0);
+  const cashBalance = cashIn - cashOut;
+
+  const totalOutstandingLoan = loanList.filter(l => l.status === 'active').reduce((s, l) => s + l.outstanding, 0);
+  const totalMonthlyEmi = emiList.filter(e => e.status === 'ongoing').reduce((s, e) => s + e.monthlyAmount, 0);
+
+  // Form Submission
+  const handleAddSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (activeTab === 'lending') {
+      const person = formFields.person?.trim();
+      const amount = Number(formFields.amount);
+      if (!person || !amount) return;
+      const newItem: LendingItem = {
+        id: uid(),
+        person,
+        amount,
+        type: (formFields.type as 'lent' | 'borrowed') || 'lent',
+        dueDate: formFields.dueDate || new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        notes: formFields.notes || '',
+      };
+      setLendingList([newItem, ...lendingList]);
+    } else if (activeTab === 'cash') {
+      const description = formFields.description?.trim();
+      const amount = Number(formFields.amount);
+      if (!description || !amount) return;
+      const newItem: CashItem = {
+        id: uid(),
+        description,
+        amount,
+        type: (formFields.type as 'in' | 'out') || 'out',
+        date: formFields.date || new Date().toISOString().slice(0, 10),
+        location: formFields.location?.trim() || 'Wallet',
+        notes: formFields.notes || '',
+      };
+      setCashList([newItem, ...cashList]);
+    } else if (activeTab === 'loan') {
+      const lender = formFields.lender?.trim();
+      const principal = Number(formFields.principal);
+      if (!lender || !principal) return;
+      const newItem: LoanItem = {
+        id: uid(),
+        lender,
+        principal,
+        interestRate: Number(formFields.interestRate) || 10,
+        tenureMonths: Number(formFields.tenureMonths) || 12,
+        outstanding: Number(formFields.outstanding) || principal,
+        status: 'active',
+        notes: formFields.notes || '',
+      };
+      setLoanList([newItem, ...loanList]);
+    } else if (activeTab === 'emi') {
+      const item = formFields.item?.trim();
+      const monthlyAmount = Number(formFields.monthlyAmount);
+      if (!item || !monthlyAmount) return;
+      const totalInstallments = Number(formFields.totalInstallments) || 12;
+      const newItem: EmiItem = {
+        id: uid(),
+        item,
+        monthlyAmount,
+        dueDay: Number(formFields.dueDay) || 5,
+        totalInstallments,
+        remainingInstallments: Number(formFields.remainingInstallments) || totalInstallments,
+        autoDebit: formFields.autoDebit !== 'false',
+        status: 'ongoing',
+      };
+      setEmiList([newItem, ...emiList]);
+    }
+    setFormFields({});
+    setShowAddModal(false);
+  };
+
   return (
-    <div className="page-enter mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-20 sm:pb-8">
-      {/* Responsive Header Bar */}
+    <div className="page-enter mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-24 sm:pb-8">
+      {/* ── Responsive Header Bar ── */}
       <div className="flex items-center justify-between pt-1 sm:pt-2">
         <div className="flex items-center gap-2.5 sm:gap-3">
           <button
@@ -4123,75 +4321,561 @@ function ServicesPage() {
             <ScrollText className="h-3.5 w-3.5 text-[#fbbf24]" />
             <span>Ledger</span>
           </Link>
-          <div className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full bg-[#182033]/90 border border-white/10 text-[#fbbf24] shadow-sm">
-            <Settings2 className="h-4 w-4" />
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.3)] hover:opacity-95 active:scale-95 transition"
+          >
+            <Plus className="h-4 w-4 stroke-[2.5]" />
+            <span>Add Entry</span>
+          </button>
         </div>
       </div>
 
       <p className="text-xs sm:text-sm text-[#9ca3af] -mt-1 sm:-mt-2">
-        Manage your lending, cash accounts, loans, and EMI schedules seamlessly in one place.
+        Manage your lending, cash balance, active loans, and recurring EMI schedules in dedicated tables.
       </p>
 
-      {/* Flexible Grid for Phone (2-col) & Tablet/Desktop (2-to-4 col) */}
+      {/* ── 4 Top Service Selector Boxes ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         {services.map((svc) => {
           const Icon = svc.icon;
+          const isSelected = activeTab === svc.id;
           return (
-            <div
+            <button
               key={svc.id}
-              className="group relative flex flex-col justify-between rounded-2xl bg-[#0c101c]/80 border border-white/[0.06] hover:border-white/[0.14] p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[168px] sm:min-h-[195px] shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.7)]"
+              type="button"
+              onClick={() => setActiveTab(svc.id)}
+              className={`group relative flex flex-col justify-between rounded-2xl p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[145px] sm:min-h-[165px] text-left active:scale-[0.98] ${
+                isSelected
+                  ? 'border-2 shadow-[0_0_20px_rgba(245,158,11,0.18)]'
+                  : 'border border-white/[0.06] hover:border-white/[0.14]'
+              }`}
               style={{
-                background: `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.85) 75%)`,
+                borderColor: isSelected ? svc.color : 'rgba(255, 255, 255, 0.08)',
+                background: isSelected
+                  ? `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(16,22,38,0.92) 80%)`
+                  : `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.8) 75%)`,
               }}
             >
-              {/* Card Top Row: Icon Badge + Coming Soon tag */}
-              <div className="flex items-start justify-between gap-2">
+              {/* Card Top Row: Icon + Count */}
+              <div className="flex items-start justify-between w-full">
                 <div
                   className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl transition-transform group-hover:scale-105"
                   style={{
                     background: `${svc.color}18`,
-                    border: `1px solid ${svc.color}25`,
+                    border: `1px solid ${svc.color}30`,
                   }}
                 >
                   <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" style={{ color: svc.color }} />
                 </div>
 
-                <span className="rounded-full bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 text-[8.5px] sm:text-[9.5px] font-bold uppercase tracking-wider text-[#9ca3af]">
-                  Soon
+                <span
+                  className="rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider"
+                  style={{
+                    background: isSelected ? `${svc.color}25` : 'rgba(255,255,255,0.05)',
+                    color: isSelected ? svc.color : '#9ca3af',
+                  }}
+                >
+                  {svc.count} {svc.count === 1 ? 'item' : 'items'}
                 </span>
               </div>
 
               {/* Card Center: Label & Description */}
-              <div className="my-2.5 sm:my-3">
+              <div className="my-2">
                 <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
                   <span>{svc.label}</span>
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />
+                  {isSelected && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />}
                 </h3>
-                <p className="mt-1 text-[11px] sm:text-xs leading-snug text-[#9ca3af] line-clamp-2">
+                <p className="mt-0.5 text-[11px] leading-snug text-[#9ca3af] line-clamp-1">
                   {svc.desc}
                 </p>
               </div>
 
-              {/* Card Bottom: Clean Tag Pill without overlaps */}
-              <div className="pt-1">
+              {/* Card Bottom Tag */}
+              <div className="pt-0.5">
                 <span
-                  className="inline-block rounded-full px-2.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider"
+                  className="inline-block rounded-full px-2 py-0.5 text-[9px] sm:text-[9.5px] font-bold uppercase tracking-wider"
                   style={{
                     background: `${svc.color}15`,
                     color: svc.color,
-                    border: `1px solid ${svc.color}20`,
                   }}
                 >
                   {svc.tag}
                 </span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* Quick access to Ledger (Seamless Glass Banner) */}
+      {/* ── Segmented Tab Switcher Pills ── */}
+      <div className="flex items-center gap-1.5 rounded-2xl bg-[#0c101c]/90 border border-white/[0.06] p-1 overflow-x-auto">
+        {services.map((svc) => (
+          <button
+            key={svc.id}
+            type="button"
+            onClick={() => setActiveTab(svc.id)}
+            className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 text-center ${
+              activeTab === svc.id
+                ? 'bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20'
+                : 'text-[#9ca3af] hover:text-white'
+            }`}
+          >
+            {svc.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── TABLE 1: LENDING TABLE ── */}
+      {activeTab === 'lending' && (
+        <div className="space-y-3">
+          {/* Summary Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#fbbf24]">To Collect (Lent)</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(totalLent)}</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#f87171]">To Repay (Borrowed)</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(totalBorrowed)}</p>
+            </div>
+            <div className="col-span-2 sm:col-span-1 rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#34d399]">Net Position</p>
+              <p className={`text-lg sm:text-xl font-black mt-0.5 ${totalLent - totalBorrowed >= 0 ? 'text-[#34d399]' : 'text-[#f87171]'}`}>
+                {rupees(totalLent - totalBorrowed)}
+              </p>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 overflow-hidden backdrop-blur-xl shadow-lg">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <HandCoins className="h-4.5 w-4.5 text-[#fbbf24]" />
+                <h2 className="text-sm sm:text-base font-bold text-white">Lending Ledger</h2>
+                <span className="rounded-full bg-[#fbbf24]/15 text-[#fbbf24] text-[10px] font-bold px-2 py-0.5">
+                  {lendingList.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#fbbf24] hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
+            </div>
+
+            {lendingList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[#9ca3af]">No lending records yet. Tap + Add Entry.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[#f1f5f3]">
+                  <thead className="bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af] border-b border-white/[0.04]">
+                    <tr>
+                      <th className="py-3 px-4">Person</th>
+                      <th className="py-3 px-4">Type</th>
+                      <th className="py-3 px-4">Amount</th>
+                      <th className="py-3 px-4">Due Date</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {lendingList.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                          {item.person}
+                          {item.notes && <p className="text-[10px] text-[#9ca3af] font-normal">{item.notes}</p>}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold uppercase ${
+                              item.type === 'lent'
+                                ? 'bg-[#fbbf24]/15 text-[#fbbf24]'
+                                : 'bg-[#f87171]/15 text-[#f87171]'
+                            }`}
+                          >
+                            {item.type === 'lent' ? 'Lent (Give)' : 'Borrowed (Take)'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold whitespace-nowrap">
+                          {rupees(item.amount)}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">
+                          {item.dueDate ? shortDate(item.dueDate) : '—'}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLendingList(
+                                lendingList.map((l) => (l.id === item.id ? { ...l, status: l.status === 'pending' ? 'settled' : 'pending' } : l))
+                              );
+                            }}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase transition ${
+                              item.status === 'settled'
+                                ? 'bg-[#34d399]/20 text-[#34d399]'
+                                : 'bg-white/[0.06] text-[#fde68a] hover:bg-white/[0.1]'
+                            }`}
+                          >
+                            {item.status === 'settled' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                            <span>{item.status}</span>
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setLendingList(lendingList.filter((l) => l.id !== item.id))}
+                            className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TABLE 2: CASH TABLE ── */}
+      {activeTab === 'cash' && (
+        <div className="space-y-3">
+          {/* Summary Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#34d399]">Cash in Hand</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(cashBalance)}</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#34d399]">Total Cash In</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(cashIn)}</p>
+            </div>
+            <div className="col-span-2 sm:col-span-1 rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#f87171]">Total Cash Out</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(cashOut)}</p>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 overflow-hidden backdrop-blur-xl shadow-lg">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <Banknote className="h-4.5 w-4.5 text-[#34d399]" />
+                <h2 className="text-sm sm:text-base font-bold text-white">Physical Cash Ledger</h2>
+                <span className="rounded-full bg-[#34d399]/15 text-[#34d399] text-[10px] font-bold px-2 py-0.5">
+                  {cashList.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#34d399] hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
+            </div>
+
+            {cashList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[#9ca3af]">No cash entries yet. Tap + Add Entry.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[#f1f5f3]">
+                  <thead className="bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af] border-b border-white/[0.04]">
+                    <tr>
+                      <th className="py-3 px-4">Description</th>
+                      <th className="py-3 px-4">Flow</th>
+                      <th className="py-3 px-4">Amount</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Location</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {cashList.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                          {item.description}
+                          {item.notes && <p className="text-[10px] text-[#9ca3af] font-normal">{item.notes}</p>}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold uppercase ${
+                              item.type === 'in'
+                                ? 'bg-[#34d399]/15 text-[#34d399]'
+                                : 'bg-[#f87171]/15 text-[#f87171]'
+                            }`}
+                          >
+                            {item.type === 'in' ? '+ Cash In' : '- Cash Out'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold whitespace-nowrap">
+                          {rupees(item.amount)}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">
+                          {shortDate(item.date)}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">
+                          <span className="rounded-md bg-white/[0.04] px-2 py-1 text-[10px] font-medium text-white/90">
+                            {item.location}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setCashList(cashList.filter((c) => c.id !== item.id))}
+                            className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TABLE 3: LOAN TABLE ── */}
+      {activeTab === 'loan' && (
+        <div className="space-y-3">
+          {/* Summary Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#f87171]">Total Outstanding Debt</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(totalOutstandingLoan)}</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af]">Total Original Principal</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">
+                {rupees(loanList.reduce((s, l) => s + l.principal, 0))}
+              </p>
+            </div>
+            <div className="col-span-2 sm:col-span-1 rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#fbbf24]">Active Accounts</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">
+                {loanList.filter(l => l.status === 'active').length}
+              </p>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 overflow-hidden backdrop-blur-xl shadow-lg">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <CircleDollarSign className="h-4.5 w-4.5 text-[#f87171]" />
+                <h2 className="text-sm sm:text-base font-bold text-white">Loans & Debt Schedule</h2>
+                <span className="rounded-full bg-[#f87171]/15 text-[#f87171] text-[10px] font-bold px-2 py-0.5">
+                  {loanList.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#f87171] hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
+            </div>
+
+            {loanList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[#9ca3af]">No active loans. Tap + Add Entry.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[#f1f5f3]">
+                  <thead className="bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af] border-b border-white/[0.04]">
+                    <tr>
+                      <th className="py-3 px-4">Lender / Facility</th>
+                      <th className="py-3 px-4">Principal</th>
+                      <th className="py-3 px-4">Rate</th>
+                      <th className="py-3 px-4">Tenure</th>
+                      <th className="py-3 px-4">Outstanding</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {loanList.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                          {item.lender}
+                          {item.notes && <p className="text-[10px] text-[#9ca3af] font-normal">{item.notes}</p>}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono whitespace-nowrap">{rupees(item.principal)}</td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">{item.interestRate}%</td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">{item.tenureMonths} mo</td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-[#f87171] whitespace-nowrap">
+                          {rupees(item.outstanding)}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLoanList(
+                                loanList.map((l) => (l.id === item.id ? { ...l, status: l.status === 'active' ? 'closed' : 'active' } : l))
+                              );
+                            }}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase transition ${
+                              item.status === 'active'
+                                ? 'bg-[#f87171]/20 text-[#f87171]'
+                                : 'bg-[#34d399]/20 text-[#34d399]'
+                            }`}
+                          >
+                            {item.status}
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setLoanList(loanList.filter((l) => l.id !== item.id))}
+                            className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TABLE 4: EMI TABLE ── */}
+      {activeTab === 'emi' && (
+        <div className="space-y-3">
+          {/* Summary Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#818cf8]">Monthly Outflow</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">{rupees(totalMonthlyEmi)}/mo</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af]">Ongoing Subscriptions</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">
+                {emiList.filter(e => e.status === 'ongoing').length}
+              </p>
+            </div>
+            <div className="col-span-2 sm:col-span-1 rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-3.5 backdrop-blur-xl">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#fbbf24]">Auto-Debit Active</p>
+              <p className="text-lg sm:text-xl font-black text-white mt-0.5">
+                {emiList.filter(e => e.autoDebit && e.status === 'ongoing').length}
+              </p>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 overflow-hidden backdrop-blur-xl shadow-lg">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4.5 w-4.5 text-[#818cf8]" />
+                <h2 className="text-sm sm:text-base font-bold text-white">Monthly EMI Commitments</h2>
+                <span className="rounded-full bg-[#818cf8]/15 text-[#818cf8] text-[10px] font-bold px-2 py-0.5">
+                  {emiList.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#818cf8] hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
+            </div>
+
+            {emiList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[#9ca3af]">No EMI schedules yet. Tap + Add Entry.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[#f1f5f3]">
+                  <thead className="bg-white/[0.02] text-[10px] font-extrabold uppercase tracking-wider text-[#9ca3af] border-b border-white/[0.04]">
+                    <tr>
+                      <th className="py-3 px-4">Item / Obligation</th>
+                      <th className="py-3 px-4">Monthly EMI</th>
+                      <th className="py-3 px-4">Due Date</th>
+                      <th className="py-3 px-4">Installments Left</th>
+                      <th className="py-3 px-4">Auto-Debit</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {emiList.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">{item.item}</td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-[#818cf8] whitespace-nowrap">
+                          {rupees(item.monthlyAmount)}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">Every {item.dueDay}th</td>
+                        <td className="py-3.5 px-4 text-[#9ca3af] whitespace-nowrap">
+                          <span className="font-bold text-white">{item.remainingInstallments}</span> / {item.totalInstallments}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase ${
+                              item.autoDebit
+                                ? 'bg-[#34d399]/15 text-[#34d399]'
+                                : 'bg-white/[0.06] text-[#9ca3af]'
+                            }`}
+                          >
+                            {item.autoDebit ? 'Enabled' : 'Manual'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEmiList(
+                                emiList.map((e) => (e.id === item.id ? { ...e, status: e.status === 'ongoing' ? 'completed' : 'ongoing' } : e))
+                              );
+                            }}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase transition ${
+                              item.status === 'ongoing'
+                                ? 'bg-[#818cf8]/20 text-[#818cf8]'
+                                : 'bg-[#34d399]/20 text-[#34d399]'
+                            }`}
+                          >
+                            {item.status}
+                          </button>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setEmiList(emiList.filter((e) => e.id !== item.id))}
+                            className="p-1 rounded-lg text-[#9ca3af] hover:text-[#f87171] hover:bg-[#f87171]/10 transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick access to Ledger (Seamless Glass Banner) ── */}
       <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
@@ -4199,10 +4883,10 @@ function ServicesPage() {
           </div>
           <div>
             <p className="text-sm sm:text-base font-bold text-[#f1f5f3]">
-              Transaction Ledger
+              Standard Expense Ledger
             </p>
             <p className="text-[11px] sm:text-xs text-[#9ca3af]">
-              View, filter, and inspect all recorded transactions & monthly ledgers
+              View, filter, and inspect your general expense ledger & receipts
             </p>
           </div>
         </div>
@@ -4215,6 +4899,253 @@ function ServicesPage() {
           <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
         </Link>
       </div>
+
+      {/* ── Add Entry Modal Drawer ── */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#0e1322] border border-white/10 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <h3 className="text-base font-bold text-white capitalize">
+                Add New {activeTab} Entry
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormFields({});
+                  setShowAddModal(false);
+                }}
+                className="grid h-7 w-7 place-items-center rounded-full bg-white/[0.05] text-[#9ca3af] hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddSubmit} className="space-y-3.5">
+              {activeTab === 'lending' && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Person Name</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Rahul Sharma"
+                      value={formFields.person || ''}
+                      onChange={(e) => setFormFields({ ...formFields, person: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#fbbf24]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Type</label>
+                    <select
+                      value={formFields.type || 'lent'}
+                      onChange={(e) => setFormFields({ ...formFields, type: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                    >
+                      <option value="lent">Lent (I gave money)</option>
+                      <option value="borrowed">Borrowed (I took money)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Amount (₹)</label>
+                    <input
+                      required
+                      type="number"
+                      placeholder="e.g. 2500"
+                      value={formFields.amount || ''}
+                      onChange={(e) => setFormFields({ ...formFields, amount: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#fbbf24]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Due Date</label>
+                    <input
+                      type="date"
+                      value={formFields.dueDate || ''}
+                      onChange={(e) => setFormFields({ ...formFields, dueDate: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'cash' && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Description</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. ATM withdrawal, grocery"
+                      value={formFields.description || ''}
+                      onChange={(e) => setFormFields({ ...formFields, description: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#34d399]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Flow Type</label>
+                    <select
+                      value={formFields.type || 'out'}
+                      onChange={(e) => setFormFields({ ...formFields, type: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                    >
+                      <option value="out">Cash Out (Spent)</option>
+                      <option value="in">Cash In (Received/Withdrawn)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Amount (₹)</label>
+                    <input
+                      required
+                      type="number"
+                      placeholder="e.g. 500"
+                      value={formFields.amount || ''}
+                      onChange={(e) => setFormFields({ ...formFields, amount: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#34d399]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Location / Stash</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Wallet, Drawer, Pocket"
+                      value={formFields.location || 'Wallet'}
+                      onChange={(e) => setFormFields({ ...formFields, location: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'loan' && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Lender / Bank</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. ICICI Bank, Car Loan"
+                      value={formFields.lender || ''}
+                      onChange={(e) => setFormFields({ ...formFields, lender: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#f87171]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Principal Amount (₹)</label>
+                    <input
+                      required
+                      type="number"
+                      placeholder="e.g. 100000"
+                      value={formFields.principal || ''}
+                      onChange={(e) => setFormFields({ ...formFields, principal: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#f87171]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Interest %</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="e.g. 10.5"
+                        value={formFields.interestRate || '10.5'}
+                        onChange={(e) => setFormFields({ ...formFields, interestRate: e.target.value })}
+                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Tenure (Mos)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 24"
+                        value={formFields.tenureMonths || '24'}
+                        onChange={(e) => setFormFields({ ...formFields, tenureMonths: e.target.value })}
+                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Outstanding Balance (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 85000"
+                      value={formFields.outstanding || ''}
+                      onChange={(e) => setFormFields({ ...formFields, outstanding: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'emi' && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Item / Loan Name</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. iPhone, Laptop EMI"
+                      value={formFields.item || ''}
+                      onChange={(e) => setFormFields({ ...formFields, item: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#818cf8]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Monthly EMI Amount (₹)</label>
+                    <input
+                      required
+                      type="number"
+                      placeholder="e.g. 4500"
+                      value={formFields.monthlyAmount || ''}
+                      onChange={(e) => setFormFields({ ...formFields, monthlyAmount: e.target.value })}
+                      className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-[#818cf8]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Due Day of Month</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        placeholder="e.g. 5"
+                        value={formFields.dueDay || '5'}
+                        onChange={(e) => setFormFields({ ...formFields, dueDay: e.target.value })}
+                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-[#9ca3af] uppercase">Remaining EMIs</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 6"
+                        value={formFields.remainingInstallments || '6'}
+                        onChange={(e) => setFormFields({ ...formFields, remainingInstallments: e.target.value })}
+                        className="mt-1 w-full rounded-xl bg-[#182033] border border-white/10 px-3 py-2 text-xs text-white outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-xl px-4 py-2 text-xs font-semibold text-[#9ca3af] hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-md hover:opacity-95"
+                >
+                  Save Entry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

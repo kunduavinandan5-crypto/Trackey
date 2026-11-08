@@ -223,3 +223,104 @@ BEGIN
       CHECK (char_length(user_agent) <= 512) NOT VALID;
   END IF;
 END $$;
+
+-- ==============================================================================
+-- 7. FINANCIAL SERVICES TABLES: LENDING, CASH, LOANS, EMI SCHEDULES
+-- ==============================================================================
+
+-- 7.1 LENDING RECORDS TABLE
+CREATE TABLE IF NOT EXISTS public.lending_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  person_name TEXT NOT NULL,
+  amount NUMERIC NOT NULL CHECK (amount >= 0),
+  type TEXT NOT NULL CHECK (type IN ('lent', 'borrowed')),
+  due_date TEXT, -- Format: YYYY-MM-DD
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'settled', 'overdue')),
+  notes TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lending_user_id ON public.lending_records(user_id);
+ALTER TABLE public.lending_records ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own lending" ON public.lending_records;
+CREATE POLICY "Users can manage own lending"
+  ON public.lending_records FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- 7.2 CASH RECORDS TABLE
+CREATE TABLE IF NOT EXISTS public.cash_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  description TEXT NOT NULL,
+  amount NUMERIC NOT NULL CHECK (amount >= 0),
+  type TEXT NOT NULL CHECK (type IN ('in', 'out')),
+  date TEXT NOT NULL, -- Format: YYYY-MM-DD
+  wallet_location TEXT DEFAULT 'Wallet',
+  notes TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cash_user_id ON public.cash_records(user_id);
+ALTER TABLE public.cash_records ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own cash records" ON public.cash_records;
+CREATE POLICY "Users can manage own cash records"
+  ON public.cash_records FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- 7.3 LOANS TABLE
+CREATE TABLE IF NOT EXISTS public.loans (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  lender_name TEXT NOT NULL,
+  principal_amount NUMERIC NOT NULL CHECK (principal_amount >= 0),
+  interest_rate NUMERIC DEFAULT 0 CHECK (interest_rate >= 0),
+  tenure_months INT DEFAULT 12 CHECK (tenure_months > 0),
+  outstanding_balance NUMERIC NOT NULL CHECK (outstanding_balance >= 0),
+  start_date TEXT, -- Format: YYYY-MM-DD
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed')),
+  notes TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_loans_user_id ON public.loans(user_id);
+ALTER TABLE public.loans ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own loans" ON public.loans;
+CREATE POLICY "Users can manage own loans"
+  ON public.loans FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- 7.4 EMI SCHEDULES TABLE
+CREATE TABLE IF NOT EXISTS public.emi_schedules (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  loan_or_item TEXT NOT NULL,
+  monthly_amount NUMERIC NOT NULL CHECK (monthly_amount >= 0),
+  due_day INT DEFAULT 5 CHECK (due_day BETWEEN 1 AND 31),
+  total_installments INT DEFAULT 12,
+  remaining_installments INT DEFAULT 12,
+  auto_debit BOOLEAN DEFAULT true,
+  status TEXT NOT NULL DEFAULT 'ongoing' CHECK (status IN ('ongoing', 'completed')),
+  notes TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_emi_user_id ON public.emi_schedules(user_id);
+ALTER TABLE public.emi_schedules ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own emi schedules" ON public.emi_schedules;
+CREATE POLICY "Users can manage own emi schedules"
+  ON public.emi_schedules FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
