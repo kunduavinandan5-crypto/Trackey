@@ -884,21 +884,6 @@ function AppShell({
         </div>
       </header>
 
-      {/* ── Mobile Top Header (Phone only) ── */}
-      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-border/40 bg-background/85 px-4 backdrop-blur-xl transition-colors sm:hidden">
-        <Brand compact />
-        <div className="flex items-center gap-2">
-          {/* Theme Toggle Button for Mobile */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            className="grid h-9 w-9 place-items-center rounded-full border border-border/60 bg-card/80 text-muted-foreground transition active:scale-90 hover:text-foreground shadow-sm"
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-slate-700" />}
-          </button>
-        </div>
-      </header>
 
       {/* ── Mobile Bottom Navigation (hidden on sm+) ── */}
       <MobileBottomNav location={location} theme={theme} toggleTheme={toggleTheme} />
