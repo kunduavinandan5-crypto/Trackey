@@ -19,6 +19,7 @@ import {
   setAppPin,
   verifyPin,
   disableAppLock,
+  updateAppLockMeta,
   isSessionUnlocked,
   setSessionUnlocked,
   lockAppNow,
@@ -259,13 +260,23 @@ export function AppLockScreen({ onUnlock, notify }: AppLockScreenProps) {
 // ── SETUP & CHANGE PIN DIALOG ──
 interface PinSetupDialogProps {
   isOpen: boolean;
+  mode?: 'setup' | 'change';
+  userId?: string;
   onClose: () => void;
   onSuccess: () => void;
   notify?: (message: string, tone?: 'success' | 'danger') => void;
 }
 
-export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupDialogProps) {
-  const [step, setStep] = useState<'create' | 'confirm' | 'biometric'>('create');
+export function PinSetupDialog({
+  isOpen,
+  mode = 'setup',
+  userId,
+  onClose,
+  onSuccess,
+  notify,
+}: PinSetupDialogProps) {
+  const [step, setStep] = useState<'verify_old' | 'create' | 'confirm' | 'biometric'>('create');
+  const [oldPin, setOldPin] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
@@ -277,24 +288,43 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
     if (!isOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
-      setStep('create');
+      setStep(mode === 'change' ? 'verify_old' : 'create');
+      setOldPin('');
       setPin('');
       setConfirmPin('');
       setError('');
       isBiometricsSupported().then(setBiometricSupported);
     }
-  }, [isOpen]);
+  }, [isOpen, mode]);
 
   if (!isOpen) return null;
 
-  const handleDigit = (digit: string) => {
+  const handleDigit = async (digit: string) => {
     setError('');
-    if (step === 'create') {
+    if (step === 'verify_old') {
+      if (oldPin.length < 4) {
+        const next = oldPin + digit;
+        setOldPin(next);
+        if (next.length === 4) {
+          setLoading(true);
+          const ok = await verifyPin(next);
+          setLoading(false);
+          if (ok) {
+            setStep('create');
+          } else {
+            setError('Current PIN is incorrect.');
+            setTimeout(() => setOldPin(''), 600);
+          }
+        }
+      }
+    } else if (step === 'create') {
       if (pin.length < 4) {
         const next = pin + digit;
         setPin(next);
@@ -315,8 +345,7 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
               setStep('create');
             }, 800);
           } else {
-            // Success! Move to biometrics prompt if supported, or finish
-            if (biometricSupported) {
+            if (mode === 'setup' && biometricSupported) {
               setStep('biometric');
             } else {
               completeSetup(false);
@@ -329,7 +358,9 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
 
   const handleBackspace = () => {
     setError('');
-    if (step === 'create') {
+    if (step === 'verify_old') {
+      setOldPin((p) => p.slice(0, -1));
+    } else if (step === 'create') {
       setPin((p) => p.slice(0, -1));
     } else if (step === 'confirm') {
       setConfirmPin((p) => p.slice(0, -1));
@@ -345,8 +376,15 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
           notify?.(reg.error || 'Biometrics could not be registered, PIN lock enabled.', 'danger');
         }
       }
-      await setAppPin(pin, withBiometrics);
-      notify?.('App Lock activated successfully!', 'success');
+      const existing = getAppLockConfig();
+      const bioToKeep = mode === 'change' ? existing.biometricEnabled : withBiometrics;
+      await setAppPin(pin, bioToKeep, userId);
+      notify?.(
+        mode === 'change'
+          ? 'App Lock PIN changed and updated in Supabase!'
+          : 'App Lock activated and synced with Supabase!',
+        'success'
+      );
       onSuccess();
       onClose();
     } catch {
@@ -356,7 +394,7 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
     }
   };
 
-  const currentVal = step === 'create' ? pin : confirmPin;
+  const currentVal = step === 'verify_old' ? oldPin : step === 'create' ? pin : confirmPin;
 
   return (
     <div className="app-lock-dialog fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
@@ -408,11 +446,19 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
             </div>
 
             <h2 className="text-base font-bold text-white">
-              {step === 'create' ? 'Set 4-Digit Security PIN' : 'Confirm Your PIN'}
+              {step === 'verify_old'
+                ? 'Enter Current PIN'
+                : step === 'create'
+                ? mode === 'change'
+                  ? 'Set New 4-Digit PIN'
+                  : 'Set 4-Digit Security PIN'
+                : 'Confirm New PIN'}
             </h2>
             <p className="text-xs text-neutral-400 mt-1">
-              {step === 'create'
-                ? 'Choose a numeric code to secure your financial records'
+              {step === 'verify_old'
+                ? 'Enter your current PIN to authorize change'
+                : step === 'create'
+                ? 'Choose a 4-digit code to update your app lock'
                 : 'Re-enter the same 4-digit code to confirm'}
             </p>
 
@@ -438,8 +484,9 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
                 <button
                   key={num}
                   type="button"
+                  disabled={loading}
                   onClick={() => handleDigit(num)}
-                  className="h-12 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-lg font-bold text-white transition active:scale-95"
+                  className="h-12 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-lg font-bold text-white transition active:scale-95 disabled:opacity-50"
                 >
                   {num}
                 </button>
@@ -447,15 +494,17 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
               <div />
               <button
                 type="button"
+                disabled={loading}
                 onClick={() => handleDigit('0')}
-                className="h-12 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-lg font-bold text-white transition active:scale-95"
+                className="h-12 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-lg font-bold text-white transition active:scale-95 disabled:opacity-50"
               >
                 0
               </button>
               <button
                 type="button"
+                disabled={loading}
                 onClick={handleBackspace}
-                className="h-12 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-neutral-300 flex items-center justify-center transition active:scale-95"
+                className="h-12 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-neutral-300 flex items-center justify-center transition active:scale-95 disabled:opacity-50"
               >
                 <Delete className="h-5 w-5" />
               </button>
@@ -471,12 +520,14 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
 interface AppLockSettingsCardProps {
   notify?: (message: string, tone?: 'success' | 'danger') => void;
   isMobile?: boolean;
+  userId?: string;
 }
 
-export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSettingsCardProps) {
+export function AppLockSettingsCard({ notify, isMobile = false, userId }: AppLockSettingsCardProps) {
   const [config, setConfig] = useState<AppLockConfig>(getAppLockConfig());
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [isSetupOpen, setIsSetupOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'setup' | 'change'>('setup');
   const [isRegisteringBio, setIsRegisteringBio] = useState(false);
 
   const refreshConfig = () => {
@@ -490,25 +541,26 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
 
   const handleToggleLock = () => {
     if (config.enabled) {
-      // Disable lock
-      if (window.confirm('Are you sure you want to turn off App Lock?')) {
-        disableAppLock();
+      if (window.confirm('Are you sure you want to turn off App Lock? This will also remove it from Supabase cloud.')) {
+        disableAppLock(userId);
         refreshConfig();
         notify?.('App Lock turned off.', 'danger');
       }
     } else {
-      // Open Setup Dialog
+      setDialogMode('setup');
       setIsSetupOpen(true);
     }
+  };
+
+  const handleOpenChangePin = () => {
+    setDialogMode('change');
+    setIsSetupOpen(true);
   };
 
   const handleToggleBiometrics = async () => {
     if (!config.enabled) return;
     if (config.biometricEnabled) {
-      saveAppLockConfig({
-        ...config,
-        biometricEnabled: false,
-      });
+      updateAppLockMeta({ biometricEnabled: false }, userId);
       refreshConfig();
       notify?.('Phone biometrics disabled.', 'danger');
     } else {
@@ -516,6 +568,7 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
       const res = await registerBiometrics();
       setIsRegisteringBio(false);
       if (res.success) {
+        updateAppLockMeta({ biometricEnabled: true }, userId);
         refreshConfig();
         notify?.('Phone biometrics enabled successfully!', 'success');
       } else {
@@ -525,10 +578,7 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
   };
 
   const handleTimeoutChange = (minutes: number) => {
-    saveAppLockConfig({
-      ...config,
-      autoLockMinutes: minutes,
-    });
+    updateAppLockMeta({ autoLockMinutes: minutes }, userId);
     refreshConfig();
     notify?.('Auto-lock timeout updated.');
   };
@@ -560,9 +610,16 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-[#9ca3af]">
-                Secure app with 4-digit PIN or phone biometrics
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-[10px] text-[#9ca3af]">
+                  Secure app with 4-digit PIN or phone biometrics
+                </p>
+                {userId && config.enabled && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.2 text-[8.5px] font-bold text-emerald-400 border border-emerald-500/20">
+                    <Check className="h-2.5 w-2.5" /> Supabase Synced
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -651,7 +708,7 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setIsSetupOpen(true)}
+                onClick={handleOpenChangePin}
                 className="flex items-center justify-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/30 py-2 px-3 text-[11px] font-bold text-[#fde68a] transition active:scale-95 hover:bg-[#202942]"
               >
                 <KeyRound className="h-3.5 w-3.5 text-[#fbbf24]" />
@@ -674,6 +731,8 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
       {/* Setup / Change PIN Dialog */}
       <PinSetupDialog
         isOpen={isSetupOpen}
+        mode={dialogMode}
+        userId={userId}
         onClose={() => setIsSetupOpen(false)}
         onSuccess={() => refreshConfig()}
         notify={notify}

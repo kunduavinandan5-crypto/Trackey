@@ -96,6 +96,7 @@ import {
   isSessionUnlocked,
   shouldAutoLock,
   recordLastActive,
+  syncAppLockFromDb,
 } from '@/lib/app-lock';
 
 type Expense = {
@@ -3939,7 +3940,7 @@ function SpendlyMobileSettings({
       </div>
 
       {/* ── APP LOCK & PHONE BIOMETRICS CARD ── */}
-      <AppLockSettingsCard notify={finance.notify} isMobile={true} />
+      <AppLockSettingsCard notify={finance.notify} isMobile={true} userId={user?.id} />
 
       {/* ── APP VERSION & PWA UPDATE CARD ── */}
       <div className="spendly-glass-card space-y-3">
@@ -4190,7 +4191,7 @@ function SettingsPage({
       </section>
 
       {/* Security & App Lock */}
-      <AppLockSettingsCard notify={finance.notify} isMobile={false} />
+      <AppLockSettingsCard notify={finance.notify} isMobile={false} userId={user?.id} />
 
       {/* App & Display Preferences */}
       <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
@@ -6101,6 +6102,16 @@ function Router() {
     const config = getAppLockConfig();
     return config.enabled && !isSessionUnlocked();
   });
+
+  useEffect(() => {
+    if (user?.id) {
+      syncAppLockFromDb(user.id).then((synced) => {
+        if (synced && !isSessionUnlocked()) {
+          setIsAppLocked(true);
+        }
+      });
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {

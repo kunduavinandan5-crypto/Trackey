@@ -1,4 +1,10 @@
 // Spendly App Lock & Biometrics Security Service
+import {
+  saveAppLockSettingsToDb,
+  deleteAppLockSettingsFromDb,
+  fetchAppLockSettings,
+  isRealSupabaseUser,
+} from './db-service';
 export interface AppLockConfig {
   enabled: boolean;
   pinHash: string | null;
@@ -108,26 +114,37 @@ export async function verifyPin(pin: string): Promise<boolean> {
   return hash === config.pinHash;
 }
 
-// Set up or update the numeric PIN
-export async function setAppPin(pin: string, enableBiometric = false): Promise<void> {
+// Set up or update the numeric PIN. Pass userId to also sync to Supabase.
+export async function setAppPin(pin: string, enableBiometric = false, userId?: string): Promise<void> {
   const salt = window.crypto?.getRandomValues
     ? buf2hex(window.crypto.getRandomValues(new Uint8Array(16)).buffer)
     : Math.random().toString(36).substring(2) + Date.now().toString(36);
   const pinHash = await hashPin(pin, salt);
 
   const prev = getAppLockConfig();
-  saveAppLockConfig({
+  const next: AppLockConfig = {
     ...prev,
     enabled: true,
     pinHash,
     pinSalt: salt,
     biometricEnabled: enableBiometric ? prev.biometricEnabled : false,
-  });
+  };
+  saveAppLockConfig(next);
   setSessionUnlocked(true);
+
+  // Sync to Supabase if user is logged in
+  if (userId) {
+    saveAppLockSettingsToDb(userId, {
+      pin_hash: pinHash,
+      pin_salt: salt,
+      bio_enabled: next.biometricEnabled,
+      auto_lock_min: next.autoLockMinutes,
+    }).catch((err) => console.warn('[AppLock] Supabase sync failed on set PIN:', err));
+  }
 }
 
-// Disable App Lock entirely
-export function disableAppLock(): void {
+// Disable App Lock entirely. Pass userId to also remove row from Supabase.
+export function disableAppLock(userId?: string): void {
   saveAppLockConfig({
     enabled: false,
     pinHash: null,
@@ -138,6 +155,55 @@ export function disableAppLock(): void {
   });
   sessionStorage.removeItem(SESSION_UNLOCKED_KEY);
   localStorage.removeItem(LAST_ACTIVE_KEY);
+
+  // Remove from Supabase if user is logged in
+  if (userId) {
+    deleteAppLockSettingsFromDb(userId).catch((err) =>
+      console.warn('[AppLock] Supabase sync failed on disable:', err)
+    );
+  }
+}
+
+// Update just the biometric flag and auto-lock timeout without changing PIN.
+export function updateAppLockMeta(
+  updates: { biometricEnabled?: boolean; autoLockMinutes?: number },
+  userId?: string
+): void {
+  const prev = getAppLockConfig();
+  if (!prev.enabled || !prev.pinHash || !prev.pinSalt) return;
+  const next: AppLockConfig = { ...prev, ...updates };
+  saveAppLockConfig(next);
+
+  if (userId) {
+    saveAppLockSettingsToDb(userId, {
+      pin_hash: next.pinHash!,
+      pin_salt: next.pinSalt!,
+      bio_enabled: next.biometricEnabled,
+      auto_lock_min: next.autoLockMinutes,
+    }).catch((err) => console.warn('[AppLock] Supabase sync failed on meta update:', err));
+  }
+}
+
+// Fetch app lock settings from Supabase and synchronize with local storage
+export async function syncAppLockFromDb(userId: string): Promise<boolean> {
+  if (!isRealSupabaseUser({ id: userId })) return false;
+  try {
+    const remote = await fetchAppLockSettings(userId);
+    if (!remote) return false;
+    const current = getAppLockConfig();
+    saveAppLockConfig({
+      ...current,
+      enabled: true,
+      pinHash: remote.pin_hash,
+      pinSalt: remote.pin_salt,
+      biometricEnabled: remote.bio_enabled,
+      autoLockMinutes: remote.auto_lock_min,
+    });
+    return true;
+  } catch (err) {
+    console.warn('[AppLock] Failed to sync app lock from Supabase:', err);
+    return false;
+  }
 }
 
 // Session state
@@ -164,7 +230,7 @@ export function lockAppNow(): void {
 export function recordLastActive(): void {
   try {
     localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
-  } catch {}
+  } catch { }
 }
 
 export function shouldAutoLock(): boolean {

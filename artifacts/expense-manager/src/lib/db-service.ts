@@ -552,3 +552,86 @@ export async function deleteEmiFromDb(userId: string, id: string): Promise<boole
     return false;
   }
 }
+
+// -----------------------------------------------------------------------------
+// 6. APP LOCK SETTINGS (Separate table: public.app_lock_settings)
+//    Stores pin_hash, pin_salt, bio_enabled, auto_lock_min per user.
+//    The PIN is hashed client-side before being sent — the raw PIN never leaves the device.
+// -----------------------------------------------------------------------------
+
+export interface DbAppLockSettings {
+  user_id: string;
+  pin_hash: string;
+  pin_salt: string;
+  bio_enabled: boolean;
+  auto_lock_min: number;
+  updated_at?: string;
+}
+
+/** Fetch the app lock settings row for this user from Supabase. */
+export async function fetchAppLockSettings(userId: string): Promise<DbAppLockSettings | null> {
+  if (!isSupabaseConfigured || !isRealSupabaseUser({ id: userId })) return null;
+  try {
+    const { data, error } = await supabase
+      .from('app_lock_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) {
+      console.warn('[Supabase] Error fetching app lock settings:', error.message);
+      return null;
+    }
+    return data as DbAppLockSettings | null;
+  } catch (err) {
+    console.warn('[Supabase] Exception fetching app lock settings:', err);
+    return null;
+  }
+}
+
+/** Upsert (create or update) the app lock settings for this user. */
+export async function saveAppLockSettingsToDb(
+  userId: string,
+  settings: { pin_hash: string; pin_salt: string; bio_enabled: boolean; auto_lock_min: number }
+): Promise<boolean> {
+  if (!isSupabaseConfigured || !isRealSupabaseUser({ id: userId })) return false;
+  try {
+    const { error } = await supabase.from('app_lock_settings').upsert(
+      {
+        user_id: userId,
+        pin_hash: settings.pin_hash,
+        pin_salt: settings.pin_salt,
+        bio_enabled: settings.bio_enabled,
+        auto_lock_min: settings.auto_lock_min,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' }
+    );
+    if (error) {
+      console.warn('[Supabase] Error saving app lock settings:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[Supabase] Exception saving app lock settings:', err);
+    return false;
+  }
+}
+
+/** Delete the app lock settings row (when user disables App Lock). */
+export async function deleteAppLockSettingsFromDb(userId: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !isRealSupabaseUser({ id: userId })) return false;
+  try {
+    const { error } = await supabase
+      .from('app_lock_settings')
+      .delete()
+      .eq('user_id', userId);
+    if (error) {
+      console.warn('[Supabase] Error deleting app lock settings:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[Supabase] Exception deleting app lock settings:', err);
+    return false;
+  }
+}
