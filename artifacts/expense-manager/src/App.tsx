@@ -1246,6 +1246,8 @@ function SpendlyMobileHome({
   spent,
   balance,
   expenses,
+  theme,
+  toggleTheme,
 }: {
   finance: ReturnType<typeof useFinance>;
   selectedMonth: string;
@@ -1254,6 +1256,8 @@ function SpendlyMobileHome({
   spent: number;
   balance: number;
   expenses: Expense[];
+  theme?: 'light' | 'dark';
+  toggleTheme?: () => void;
 }) {
   const { user, profile } = useAuth();
   const [, setLocation] = useLocation();
@@ -1308,6 +1312,23 @@ function SpendlyMobileHome({
             </select>
             <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[#fbbf24]" />
           </div>
+
+          {/* Quick Theme Toggle Button */}
+          {toggleTheme && (
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-[#101626] text-[#fbbf24] shadow-sm transition active:scale-95"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4 text-amber-300" />
+              ) : (
+                <Moon className="h-4 w-4 text-[#1E3B2F]" />
+              )}
+            </button>
+          )}
 
           {/* User Avatar with Glowing Gold Ring */}
           <Link
@@ -1559,7 +1580,15 @@ function SpendlyMobileHome({
   );
 }
 
-function HomePage({ finance }: { finance: ReturnType<typeof useFinance> }) {
+function HomePage({
+  finance,
+  theme,
+  toggleTheme,
+}: {
+  finance: ReturnType<typeof useFinance>;
+  theme?: 'light' | 'dark';
+  toggleTheme?: () => void;
+}) {
   const currentMonth = monthKey();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const salary = finance.store.salaries[selectedMonth] ?? 0;
@@ -1597,6 +1626,8 @@ function HomePage({ finance }: { finance: ReturnType<typeof useFinance> }) {
           spent={spent}
           balance={balance}
           expenses={expenses}
+          theme={theme}
+          toggleTheme={toggleTheme}
         />
       </div>
 
@@ -5922,7 +5953,7 @@ function Router() {
     <AppShell toast={finance.toast} theme={theme} toggleTheme={toggleTheme}>
       <ErrorBoundary resetKey={location}>
         <Switch>
-          <Route path="/"><HomePage finance={finance} /></Route>
+          <Route path="/"><HomePage finance={finance} theme={theme} toggleTheme={toggleTheme} /></Route>
           <Route path="/expenses"><ExpensesPage finance={finance} /></Route>
           <Route path="/add-expense/:id"><ExpenseFormPage finance={finance} /></Route>
           <Route path="/add-expense"><ExpenseFormPage finance={finance} /></Route>

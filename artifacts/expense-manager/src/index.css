@@ -38,35 +38,35 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
-  --background: 210 20% 98%;
-  --foreground: 224 71% 4%;
-  --border: 220 13% 88%;
-  --input: 220 13% 88%;
-  --ring: 38 92% 50%;
-  --card: 0 0% 100% / 0.88;
-  --card-foreground: 224 71% 4%;
-  --card-border: 220 13% 86%;
-  --sidebar: 210 20% 96%;
-  --sidebar-foreground: 224 71% 4%;
-  --primary: 38 92% 50%;
-  --primary-foreground: 224 71% 4%;
-  --secondary: 220 14% 94%;
-  --secondary-foreground: 220 20% 14%;
-  --muted: 220 14% 94%;
-  --muted-foreground: 220 9% 46%;
-  --accent: 38 92% 50%;
-  --accent-foreground: 224 71% 4%;
+  --background: 40 62% 90%;
+  --foreground: 155 33% 17%;
+  --border: 155 20% 80%;
+  --input: 155 20% 80%;
+  --ring: 155 33% 17%;
+  --card: 40 40% 96% / 0.95;
+  --card-foreground: 155 33% 17%;
+  --card-border: 155 25% 25% / 0.16;
+  --sidebar: 40 45% 90%;
+  --sidebar-foreground: 155 33% 17%;
+  --primary: 155 33% 17%;
+  --primary-foreground: 40 62% 90%;
+  --secondary: 40 25% 88%;
+  --secondary-foreground: 155 33% 17%;
+  --muted: 40 20% 86%;
+  --muted-foreground: 155 20% 36%;
+  --accent: 155 33% 17%;
+  --accent-foreground: 40 62% 90%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
+  --popover: 40 40% 96%;
+  --popover-foreground: 155 33% 17%;
   --app-font-sans: 'Plus Jakarta Sans', 'DM Sans', sans-serif;
   --app-font-serif: 'Playfair Display', 'Fraunces', serif;
   --app-font-mono: 'DM Mono', monospace;
   --app-font-display: 'Playfair Display', 'Fraunces', serif;
   --radius: 1.15rem;
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.08);
-  --shadow-card: 0 4px 20px 0 rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  --shadow-soft: 0 10px 30px rgba(30, 59, 47, 0.08);
+  --shadow-card: 0 4px 20px 0 rgba(30, 59, 47, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .dark {
@@ -175,14 +175,14 @@ body {
 .app-grain {
   position: relative;
   isolation: isolate;
-  background-color: #f8fafc;
+  background-color: #F5EAD4;
   background:
-    radial-gradient(ellipse at 18% 0%, rgba(245, 158, 11, 0.07) 0%, transparent 36rem),
-    radial-gradient(ellipse at 85% 18%, rgba(56, 189, 248, 0.05) 0%, transparent 40rem),
-    radial-gradient(ellipse at 50% 65%, rgba(16, 185, 129, 0.03) 0%, transparent 34rem),
-    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+    radial-gradient(ellipse at 18% 0%, rgba(30, 59, 47, 0.07) 0%, transparent 36rem),
+    radial-gradient(ellipse at 85% 18%, rgba(30, 59, 47, 0.04) 0%, transparent 40rem),
+    radial-gradient(ellipse at 50% 65%, rgba(30, 59, 47, 0.03) 0%, transparent 34rem),
+    linear-gradient(180deg, #F5EAD4 0%, #EFE3CB 50%, #E7DAC1 100%);
   background-attachment: fixed;
-  color: #0f172a;
+  color: #1E3B2F;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
@@ -810,13 +810,13 @@ body {
 ═══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 639px) {
-  /* Mobile Background */
+  /* Mobile Background: Butter Cream (#F5EAD4) */
   .spendly-mobile-bg {
-    background-color: #f8fafc;
+    background-color: #F5EAD4;
     background:
-      radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 55%),
-      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
-    color: #0f172a;
+      radial-gradient(circle at 50% 0%, rgba(30, 59, 47, 0.08) 0%, transparent 55%),
+      linear-gradient(180deg, #F5EAD4 0%, #EFE3CB 50%, #E7DAC1 100%);
+    color: #1E3B2F;
     min-height: 100dvh;
     position: relative;
     overflow-x: hidden;
@@ -1451,61 +1451,358 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   LIGHT THEME ADAPTATION OVERRIDES
+   LIGHT THEME ADAPTATION OVERRIDES: BUTTER CREAM & FOREST GREEN
+   - 60% MAIN: Butter Cream (#F5EAD4 / #FAF5EC)
+   - 30% SECOND: Forest Green (#1E3B2F - RGB: 30, 59, 47)
+   - 10% ACCENT: Warm Gold / Soft Mint / Pine Accents
 ═══════════════════════════════════════════════════════════════ */
 html:not(.dark) {
   color-scheme: light;
 
-  /* Card and section backgrounds */
-  [class*="bg-[#0c101c]"] {
-    background-color: rgba(255, 255, 255, 0.92) !important;
-    border-color: rgba(226, 232, 240, 0.95) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+  /* App Shell & Backgrounds */
+  body,
+  .app-grain,
+  .spendly-mobile-bg {
+    background-color: #F5EAD4 !important;
+    background:
+      radial-gradient(ellipse at 18% 0%, rgba(30, 59, 47, 0.08) 0%, transparent 36rem),
+      radial-gradient(ellipse at 85% 18%, rgba(30, 59, 47, 0.05) 0%, transparent 40rem),
+      radial-gradient(ellipse at 50% 65%, rgba(30, 59, 47, 0.03) 0%, transparent 34rem),
+      linear-gradient(180deg, #F5EAD4 0%, #EFE3CB 50%, #E7DAC1 100%) !important;
+    color: #1E3B2F !important;
   }
+
+  .spendly-mobile-glow--top {
+    background: radial-gradient(circle, rgba(30, 59, 47, 0.1) 0%, rgba(30, 59, 47, 0.03) 50%, transparent 75%) !important;
+  }
+  .spendly-mobile-glow--center {
+    background: radial-gradient(circle, rgba(30, 59, 47, 0.06) 0%, transparent 70%) !important;
+  }
+
+  /* All Cards, Containers & Glass Surfaces */
+  .spendly-glass-card,
+  .spendly-metric-card,
+  [class*="bg-[#0c101c]"],
+  [class*="bg-[#0e1320]"],
+  [class*="bg-[#101626]"],
   [class*="bg-[#111726]"],
-  [class*="bg-[#101626]"] {
-    background-color: rgba(248, 250, 252, 0.95) !important;
-    border-color: rgba(226, 232, 240, 0.95) !important;
-  }
-  [class*="bg-[#111827]"] {
-    background-color: rgba(255, 255, 255, 0.95) !important;
-    border-color: rgba(226, 232, 240, 0.95) !important;
-  }
-  [class*="bg-[#182033]"] {
-    background-color: rgba(241, 245, 249, 0.95) !important;
-    border-color: rgba(226, 232, 240, 0.9) !important;
-  }
-
-  /* Text readability */
-  [class*="text-white"] {
-    color: #0f172a !important;
-  }
-  [class*="text-[#f1f5f3]"] {
-    color: #0f172a !important;
-  }
-  [class*="text-[#9ca3af]"] {
-    color: #64748b !important;
-  }
-  [class*="border-white/"] {
-    border-color: rgba(0, 0, 0, 0.08) !important;
+  [class*="bg-[#111827]"],
+  [class*="bg-[#0b0f19]"],
+  [class*="bg-[#080c14]"],
+  [class*="bg-[#101524]"],
+  [class*="bg-[#1f2940]"],
+  [class*="bg-[#202942]"],
+  [class*="bg-[#0a1610]"],
+  [class*="bg-[#11241a]"],
+  [class*="bg-[#12241b]"],
+  [class*="bg-[#0e1320]/"],
+  [class*="bg-[#0c101c]/"],
+  [class*="bg-card"] {
+    background-color: #FAF5EC !important;
+    border-color: rgba(30, 59, 47, 0.16) !important;
+    box-shadow:
+      0 4px 20px -2px rgba(30, 59, 47, 0.07),
+      inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+    color: #1E3B2F !important;
   }
 
-  /* Form inputs in light mode */
+  /* Sub-Panels, Elevated Containers, Table Header Bars, Metric Mini-Boxes */
+  [class*="bg-[#182033]"],
+  [class*="bg-[#1e1c12]"],
+  [class*="bg-[#151c2e]"],
+  [class*="bg-[#161e30]"],
+  [class*="bg-[#131927]"],
+  [class*="bg-[#0d1322]"],
+  [class*="bg-white/[0.02]"],
+  [class*="bg-white/[0.04]"],
+  [class*="bg-white/[0.05]"] {
+    background-color: #EDE2CD !important;
+    border-color: rgba(30, 59, 47, 0.14) !important;
+    color: #1E3B2F !important;
+  }
+
+  /* Typography: Forest Green Hierarchy */
+  h1, h2, h3, h4, h5, h6,
+  [class*="text-white"],
+  [class*="text-[#ffffff]"],
+  [class*="text-[#f1f5f3]"],
+  [class*="text-[#f3f4f6]"],
+  [class*="text-[#e2e8f0]"] {
+    color: #1E3B2F !important;
+  }
+
+  /* Subtitles, labels, and muted text */
+  [class*="text-[#9ca3af]"],
+  .text-muted-foreground {
+    color: #4A6356 !important;
+  }
+
+  /* High contrast replacement for pale gold/yellow text on butter cream */
+  [class*="text-[#fde68a]"] {
+    color: #1E3B2F !important;
+  }
+  [class*="text-[#fbbf24]"]:not(button *):not(.spendly-credit-card *):not(.spendly-bottom-bar *) {
+    color: #184A3B !important;
+  }
+
+  /* Universal Borders */
+  [class*="border-white/"],
+  [class*="border-white\\["] {
+    border-color: rgba(30, 59, 47, 0.14) !important;
+  }
+  [class*="border-[#fbbf24]/"] {
+    border-color: rgba(30, 59, 47, 0.22) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     ALL TABS & SEGMENTED SWITCHERS (Exact same color combo)
+     - Inactive: Butter Cream surface (#FAF5EC / #EAE0CA), Forest Green text
+     - Active: Solid Forest Green (#1E3B2F), Butter Cream text (#F5EAD4)
+  ═══════════════════════════════════════════════════════════════ */
+  /* Tab Track / Shell Containers */
+  .spendly-segmented-toggle,
+  .spendly-cat-carousel,
+  [class*="rounded-2xl bg-[#0c101c]"],
+  [class*="rounded-full bg-[#0c101c]"] {
+    background-color: #EAE0CA !important;
+    border: 1px solid rgba(30, 59, 47, 0.18) !important;
+  }
+
+  /* 1. Category Filter Chips (Home Screen) */
+  .spendly-cat-chip--inactive {
+    background: #FAF5EC !important;
+    border: 1px solid rgba(30, 59, 47, 0.18) !important;
+    color: #1E3B2F !important;
+  }
+  .spendly-cat-chip--inactive:hover {
+    background: #EAE0CA !important;
+    color: #1E3B2F !important;
+    border-color: #1E3B2F !important;
+  }
+  .spendly-cat-chip--active {
+    background: #1E3B2F !important;
+    color: #F5EAD4 !important;
+    border: 1px solid #1E3B2F !important;
+    box-shadow: 0 4px 14px rgba(30, 59, 47, 0.28) !important;
+    font-weight: 800 !important;
+  }
+  .spendly-cat-chip--active * {
+    color: #F5EAD4 !important;
+  }
+
+  /* 2. Services Tabs (LENDING, CASH, LOAN, EMI) */
+  /* 3. Reports Tabs (DAILY CURVE, CATEGORIES, CADENCE) */
+  /* 4. Form Segmented Toggles (EXPENSE, INCOME, TRANSFER) */
+  .spendly-segment-btn {
+    color: #4A6356 !important;
+  }
+  .spendly-segment-btn--active,
+  button[class*="from-[#d97706]"][class*="to-[#fbbf24]"],
+  button[class*="from-[#fde68a]"][class*="to-[#f59e0b]"],
+  .desk-tab--active {
+    background: #1E3B2F !important;
+    color: #F5EAD4 !important;
+    border-color: #1E3B2F !important;
+    box-shadow: 0 4px 14px rgba(30, 59, 47, 0.3) !important;
+    font-weight: 800 !important;
+  }
+  .spendly-segment-btn--active *,
+  button[class*="from-[#d97706]"][class*="to-[#fbbf24]"] *,
+  button[class*="from-[#fde68a]"][class*="to-[#f59e0b]"] * {
+    color: #F5EAD4 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     ACTION BUTTONS (Forest Green + Butter Cream)
+  ═══════════════════════════════════════════════════════════════ */
+  .spendly-neon-btn,
+  button.bg-primary,
+  button[class*="bg-primary"]:not(.spendly-bottom-nav-btn),
+  button[class*="bg-gradient-to-r"][class*="from-[#d97706]"]:not(.spendly-bottom-nav-btn) {
+    background: #1E3B2F !important;
+    color: #F5EAD4 !important;
+    border: 1px solid #1E3B2F !important;
+    box-shadow: 0 4px 18px rgba(30, 59, 47, 0.32) !important;
+  }
+  .spendly-neon-btn *,
+  button.bg-primary *,
+  button[class*="bg-primary"]:not(.spendly-bottom-nav-btn) *,
+  button[class*="bg-gradient-to-r"][class*="from-[#d97706]"]:not(.spendly-bottom-nav-btn) * {
+    color: #F5EAD4 !important;
+  }
+
+  /* "+ New" & Secondary Action Buttons across all 4 services */
+  button[class*="bg-[#fbbf24]/10"],
+  button[class*="bg-[#34d399]/10"],
+  button[class*="bg-[#f87171]/10"],
+  button[class*="bg-[#818cf8]/10"] {
+    background-color: #1E3B2F !important;
+    border-color: #1E3B2F !important;
+    color: #F5EAD4 !important;
+    box-shadow: 0 2px 8px rgba(30, 59, 47, 0.22) !important;
+  }
+  button[class*="bg-[#fbbf24]/10"] *,
+  button[class*="bg-[#34d399]/10"] *,
+  button[class*="bg-[#f87171]/10"] *,
+  button[class*="bg-[#818cf8]/10"] * {
+    color: #F5EAD4 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     BOTTOM NAVIGATION DOCK
+  ═══════════════════════════════════════════════════════════════ */
+  .spendly-bottom-bar {
+    background: rgba(250, 245, 236, 0.96) !important;
+    border: 1px solid rgba(30, 59, 47, 0.22) !important;
+    box-shadow:
+      0 12px 36px rgba(30, 59, 47, 0.12),
+      0 0 16px rgba(30, 59, 47, 0.06),
+      inset 0 1px 1px rgba(255, 255, 255, 0.95) !important;
+  }
+  .spendly-bottom-nav-btn {
+    color: #4A6356 !important;
+  }
+  .spendly-bottom-nav-btn span {
+    color: #4A6356 !important;
+  }
+  .spendly-bottom-nav-btn--active {
+    background: #1E3B2F !important;
+    box-shadow: 0 2px 10px rgba(30, 59, 47, 0.25) !important;
+  }
+  .spendly-bottom-nav-btn--active,
+  .spendly-bottom-nav-btn--active span,
+  .spendly-bottom-nav-btn--active svg {
+    color: #F5EAD4 !important;
+  }
+
+  /* Floating Add (+) Action Button */
+  .spendly-bottom-add-btn {
+    background: #1E3B2F !important;
+    color: #F5EAD4 !important;
+    box-shadow:
+      0 6px 24px rgba(30, 59, 47, 0.45),
+      0 0 16px rgba(30, 59, 47, 0.25) !important;
+  }
+  .spendly-bottom-add-btn svg {
+    color: #F5EAD4 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     TABLES (Lending, Cash, Loan, EMI)
+  ═══════════════════════════════════════════════════════════════ */
+  table thead {
+    background-color: #EDE2CD !important;
+    border-bottom: 1px solid rgba(30, 59, 47, 0.15) !important;
+  }
+  table thead th {
+    color: #1E3B2F !important;
+    font-weight: 800 !important;
+  }
+  table tbody tr {
+    border-bottom: 1px solid rgba(30, 59, 47, 0.08) !important;
+    color: #1E3B2F !important;
+  }
+  table tbody tr:hover {
+    background-color: rgba(30, 59, 47, 0.04) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     FORM CONTROLS & SELECTS
+  ═══════════════════════════════════════════════════════════════ */
   input, select, textarea {
-    color: #0f172a !important;
-    background-color: rgba(255, 255, 255, 0.95) !important;
-    border-color: rgba(203, 213, 225, 0.8) !important;
+    color: #1E3B2F !important;
+    background-color: #FAF5EC !important;
+    border-color: rgba(30, 59, 47, 0.24) !important;
   }
   input::placeholder, textarea::placeholder {
-    color: #94a3b8 !important;
+    color: #6C8576 !important;
+  }
+  option {
+    background-color: #FAF5EC !important;
+    color: #1E3B2F !important;
   }
 
-  /* Ensure glowing gold buttons keep their contrast */
-  .bg-gradient-to-r[class*="to-[#fbbf24]"],
-  button[class*="bg-gradient-to-r"] {
-    color: #080c14 !important;
+  /* Month Selector Dropdown Pill */
+  select[class*="bg-[#101626]"] {
+    background-color: #FAF5EC !important;
+    border-color: rgba(30, 59, 47, 0.25) !important;
+    color: #1E3B2F !important;
   }
-  .bg-gradient-to-r[class*="to-[#fbbf24]"] * {
-    color: #080c14 !important;
+
+  /* ═══════════════════════════════════════════════════════════════
+     SERVICE CARDS (Top 4 on /services)
+  ═══════════════════════════════════════════════════════════════ */
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"] {
+    background-color: #FAF5EC !important;
+    border-color: rgba(30, 59, 47, 0.15) !important;
+  }
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"]:hover {
+    border-color: #1E3B2F !important;
+  }
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"] h3 {
+    color: #1E3B2F !important;
+  }
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"] p {
+    color: #4A6356 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SPENDLY CREDIT CARD HERO (Forest Green Premier Metal)
+  ═══════════════════════════════════════════════════════════════ */
+  .spendly-credit-card {
+    background: linear-gradient(145deg, #122820 0%, #1E3B2F 45%, #183328 80%, #0F2119 100%) !important;
+    border: 1px solid rgba(245, 234, 212, 0.45) !important;
+    color: #F5EAD4 !important;
+    box-shadow:
+      0 16px 36px -8px rgba(30, 59, 47, 0.4),
+      inset 0 1px 1px rgba(245, 234, 212, 0.35) !important;
+  }
+  .spendly-credit-card * {
+    color: #F5EAD4 !important;
+  }
+  .spendly-chip {
+    background: linear-gradient(135deg, #fbbf24 0%, #d97706 50%, #fef08a 100%) !important;
+  }
+  .spendly-card-pill {
+    background: rgba(15, 33, 25, 0.75) !important;
+    border-color: rgba(245, 234, 212, 0.3) !important;
+  }
+  .spendly-card-pill__value {
+    color: #F5EAD4 !important;
+  }
+  .spendly-card-pill__label {
+    color: rgba(245, 234, 212, 0.85) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     CHARTS (Recharts / SVG Visualizations)
+  ═══════════════════════════════════════════════════════════════ */
+  .recharts-area-area {
+    fill: #1E3B2F !important;
+    opacity: 0.22 !important;
+  }
+  .recharts-area-curve {
+    stroke: #1E3B2F !important;
+    stroke-width: 2.5px !important;
+  }
+  .recharts-bar-rectangle path {
+    fill: #1E3B2F !important;
+  }
+
+  /* Desktop Floating Navbar */
+  .floating-nav-pill {
+    background: rgba(250, 245, 236, 0.95) !important;
+    border-color: rgba(30, 59, 47, 0.25) !important;
+  }
+  .floating-nav-item {
+    color: #4A6356 !important;
+  }
+  .floating-nav-item--active {
+    background: #1E3B2F !important;
+    color: #F5EAD4 !important;
+  }
+  .floating-nav-add-btn {
+    background: #1E3B2F !important;
+    color: #F5EAD4 !important;
   }
 }
