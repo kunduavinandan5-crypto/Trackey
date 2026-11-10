@@ -1522,13 +1522,37 @@ html:not(.dark) {
   }
 
   /* Typography: Forest Green Hierarchy */
-  h1, h2, h3, h4, h5, h6,
-  [class*="text-white"],
-  [class*="text-[#ffffff]"],
-  [class*="text-[#f1f5f3]"],
-  [class*="text-[#f3f4f6]"],
-  [class*="text-[#e2e8f0]"] {
+  h1:not(.wallet-card-deck *),
+  h2:not(.wallet-card-deck *),
+  h3:not(.wallet-card-deck *),
+  h4:not(.wallet-card-deck *),
+  h5:not(.wallet-card-deck *),
+  h6:not(.wallet-card-deck *),
+  [class*="text-white"]:not(.wallet-card-deck *),
+  [class*="text-[#ffffff]"]:not(.wallet-card-deck *),
+  [class*="text-[#f1f5f3]"]:not(.wallet-card-deck *),
+  [class*="text-[#f3f4f6]"]:not(.wallet-card-deck *),
+  [class*="text-[#e2e8f0]"]:not(.wallet-card-deck *) {
     color: #1E3B2F !important;
+  }
+
+  /* Wallet Card Deck: Preserves exact Image 1 dark frosted aesthetic in light mode */
+  .wallet-card-deck {
+    background: #111317 !important;
+    border-color: rgba(30, 59, 47, 0.3) !important;
+    box-shadow: 0 20px 50px -10px rgba(30, 59, 47, 0.35) !important;
+  }
+  .wallet-card-deck [class*="text-white"] {
+    color: #ffffff !important;
+  }
+  .wallet-card-deck [class*="text-white/"] {
+    color: rgba(255, 255, 255, 0.75) !important;
+  }
+  .wallet-card-deck [class*="text-emerald-"] {
+    color: #34d399 !important;
+  }
+  .wallet-card-deck [class*="text-rose-"] {
+    color: #fb7185 !important;
   }
 
   /* Subtitles, labels, and muted text */

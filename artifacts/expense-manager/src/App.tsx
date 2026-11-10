@@ -1341,106 +1341,84 @@ function SpendlyMobileHome({
         </div>
       </div>
 
-      {/* ── SPENDLY LUXURY GOLD OBSIDIAN CREDIT CARD HERO ── */}
-      <div className="spendly-credit-card">
-        {/* Card Sheen & Mesh Texture Overlay */}
-        <div className="spendly-credit-card__sheen" />
-        <div className="spendly-credit-card__mesh-pattern" />
-
-        {/* Top Row: Smart Chip, Contactless Wave & Tier Logo */}
-        <div className="spendly-credit-card__top">
-          <div className="flex items-center gap-2.5">
-            {/* Gold EMV Smart Chip */}
-            <div className="spendly-chip" title="EMV Smart Chip">
-              <div className="spendly-chip__line spendly-chip__line--h" />
-              <div className="spendly-chip__line spendly-chip__line--v" />
-              <div className="spendly-chip__core" />
-            </div>
-
-            {/* Contactless Wave Icon */}
-            <svg
-              className="h-4.5 w-4.5 text-[#fbbf24]/80"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            >
-              <path d="M8.5 16.5a5 5 0 0 1 0-9" />
-              <path d="M12 19a8.5 8.5 0 0 0 0-14" />
-              <path d="M15.5 21.5a12 12 0 0 0 0-19" />
-            </svg>
-          </div>
-
-          {/* Brand & Platinum Tier Badge */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[#fde68a] drop-shadow-sm font-display">
-              SPENDLY
-            </span>
-            <span className="rounded-full bg-[#1e1c12] border border-[#fbbf24]/40 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-widest text-[#fde68a] shadow-sm">
-              PRIVATE WEALTH
-            </span>
-          </div>
-        </div>
-
-        {/* Card Body: Total Balance */}
-        <div className="spendly-credit-card__body">
-          <p className="spendly-credit-card__label">Total Balance</p>
-          <p className="spendly-credit-card__amount" data-testid="spendly-total-balance">
-            {rupees(balance)}
+      {/* ── SKEUOMORPHIC FROSTED WALLET CARD DECK HERO (IMAGE 1 EXACT MATCH) ── */}
+      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] bg-[#121316] border border-white/10 p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.65)] transition-all duration-300">
+        {/* Wallet Label at Top Center */}
+        <div className="text-center pb-2">
+          <p className="text-xs font-semibold tracking-wider text-white/75 font-sans">
+            Wallet
           </p>
         </div>
 
-        {/* Card Footer: Embossed Number, Cardholder, Expiry & Hologram */}
-        <div className="spendly-credit-card__footer">
-          <div>
-            <p className="spendly-credit-card__number font-mono">
-              •••• &nbsp;•••• &nbsp;•••• &nbsp;{selectedMonth ? selectedMonth.replace('-', '') : '2026'}
+        {/* Layered Card Deck Stack with Frosted Front Pocket */}
+        <div className="relative mx-auto w-full h-[180px] sm:h-[195px] flex flex-col justify-end">
+          {/* Card 1 (Back Right): Sunset Peach/Pink Mastercard */}
+          <div
+            className="absolute inset-x-3 top-0 h-[115px] sm:h-[125px] rounded-2xl p-3 shadow-lg transform rotate-[4deg] translate-x-3 -translate-y-1 transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[5deg]"
+            style={{
+              background: 'linear-gradient(135deg, #fce7f3 0%, #f472b6 40%, #fb923c 100%)',
+            }}
+          >
+            <div className="flex items-center justify-between">
+              {/* Mastercard circles */}
+              <div className="flex -space-x-1.5 drop-shadow-sm">
+                <div className="h-4 w-4 rounded-full bg-[#eb001b]" />
+                <div className="h-4 w-4 rounded-full bg-[#f79e1b] opacity-95" />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2 (Middle Left): Frosted White/Silver Visa Card */}
+          <div
+            className="absolute inset-x-2 top-2 h-[115px] sm:h-[125px] rounded-2xl p-3 shadow-md transform -rotate-[3deg] -translate-x-2 translate-y-0.5 border border-white/60 transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:-rotate-[4deg]"
+            style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #fde68a 100%)',
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-black italic tracking-widest text-[#1a1f71] select-none font-sans drop-shadow-sm">
+                VISA
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3 (Foreground): Royal Electric Blue to Indigo Mastercard */}
+          <div
+            className="absolute inset-x-1 top-4 h-[115px] sm:h-[125px] rounded-2xl p-3 shadow-xl transform translate-y-2 border border-white/20 transition-transform duration-300 group-hover:translate-y-1"
+            style={{
+              background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #06b6d4 100%)',
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex -space-x-1.5 drop-shadow-sm">
+                <div className="h-4 w-4 rounded-full bg-[#eb001b]" />
+                <div className="h-4 w-4 rounded-full bg-[#f79e1b] opacity-95" />
+              </div>
+            </div>
+          </div>
+
+          {/* Frosted Glass Pocket / Sleeve (Front) */}
+          <div className="relative z-20 rounded-[1.85rem] border border-white/25 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/90 to-[#0e1014]/98 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
+            <p className="text-[11px] font-medium tracking-wide text-white/70">
+              Total Balance
             </p>
-            <div className="flex items-center gap-4 mt-1">
-              <div>
-                <p className="text-[7.5px] font-bold uppercase tracking-wider text-[#9ca3af]">Cardholder</p>
-                <p className="text-[11px] font-bold text-white uppercase tracking-wide truncate max-w-[130px]">
-                  {userName}
-                </p>
+            <div className="mt-0.5 flex items-baseline justify-center">
+              <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm font-sans" data-testid="spendly-total-balance">
+                {rupees(balance)}
+              </span>
+            </div>
+
+            {/* Income & Expense Badges */}
+            <div className="flex items-center justify-center gap-3 pt-2 mt-2 border-t border-white/10 text-[11px]">
+              <div className="flex items-center gap-1 font-bold text-emerald-400">
+                <ArrowDownLeft className="h-3 w-3 stroke-[2.5]" />
+                <span>{rupees(salary)}</span>
               </div>
-              <div>
-                <p className="text-[7.5px] font-bold uppercase tracking-wider text-[#9ca3af]">Valid Thru</p>
-                <p className="text-[11px] font-bold text-white font-mono tracking-wider">
-                  {selectedMonth ? selectedMonth.slice(5) : '09'}/29
-                </p>
+              <div className="h-2.5 w-[1px] bg-white/20" />
+              <div className="flex items-center gap-1 font-bold text-rose-400">
+                <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
+                <span>{rupees(spent)}</span>
               </div>
-            </div>
-          </div>
-
-          {/* Holographic Overlapping Spheres */}
-          <div className="spendly-card-network" title="Spendly Network">
-            <div className="spendly-card-network__circle spendly-card-network__circle--1" />
-            <div className="spendly-card-network__circle spendly-card-network__circle--2" />
-          </div>
-        </div>
-
-        {/* Dual Frosted Glass Badges: Income & Expenses */}
-        <div className="spendly-card-pills">
-          {/* Income Pill */}
-          <div className="spendly-card-pill spendly-card-pill--income">
-            <div className="spendly-card-pill__icon spendly-card-pill__icon--income">
-              <ArrowDownLeft className="h-3.5 w-3.5 stroke-[2.5]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="spendly-card-pill__label">Income</p>
-              <p className="spendly-card-pill__value truncate">{rupees(salary)}</p>
-            </div>
-          </div>
-
-          {/* Expenses Pill */}
-          <div className="spendly-card-pill spendly-card-pill--expense">
-            <div className="spendly-card-pill__icon spendly-card-pill__icon--expense">
-              <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="spendly-card-pill__label">Expenses</p>
-              <p className="spendly-card-pill__value truncate">{rupees(spent)}</p>
             </div>
           </div>
         </div>
@@ -3101,6 +3079,47 @@ function SpendlyMobileSummary({
     return new Set(expenses.map((e) => e.date)).size || (expenses.length ? 1 : 0);
   }, [expenses]);
 
+  // Weekly spending breakdown for mini bar chart (W1, W2, W3, W4)
+  const weeklySpendBars = useMemo(() => {
+    const weeks = [0, 0, 0, 0];
+    expenses.forEach((e) => {
+      const parts = e.date.split('-');
+      const day = parts[2] ? parseInt(parts[2], 10) : 1;
+      const idx = Math.min(3, Math.floor((day - 1) / 7));
+      weeks[idx] += e.amount;
+    });
+    const max = Math.max(...weeks, 1);
+    return weeks.map((amt, idx) => ({
+      label: `W${idx + 1}`,
+      amount: amt,
+      pct: Math.max(16, Math.round((amt / max) * 100)),
+    }));
+  }, [expenses]);
+
+  // Day-of-week cadence breakdown for mini activity rhythm (M, T, W, T, F, S, S)
+  const dayCadenceBars = useMemo(() => {
+    const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const sums = [0, 0, 0, 0, 0, 0, 0];
+    expenses.forEach((e) => {
+      const d = new Date(e.date + 'T00:00:00');
+      const idx = (d.getDay() + 6) % 7; // Monday = 0
+      sums[idx] += e.amount;
+    });
+    const max = Math.max(...sums, 1);
+    return labels.map((label, idx) => ({
+      label,
+      amount: sums[idx],
+      pct: Math.max(16, Math.round((sums[idx] / max) * 100)),
+    }));
+  }, [expenses]);
+
+  // Cyclic ring geometry
+  const cyclicRadius = 24;
+  const cyclicCircumference = 2 * Math.PI * cyclicRadius; // ~150.8
+  const budgetConsumedOffset = cyclicCircumference - (Math.min(100, Math.max(0, spentPct)) / 100) * cyclicCircumference;
+  const surplusPct = salary > 0 ? Math.max(0, Math.min(100, Math.round((Math.max(0, balance) / salary) * 100))) : 0;
+  const surplusOffset = cyclicCircumference - (surplusPct / 100) * cyclicCircumference;
+
   return (
     <div className="space-y-3.5">
       {/* ── Top Header Bar ── */}
@@ -3185,80 +3204,228 @@ function SpendlyMobileSummary({
         </div>
       </div>
 
-      {/* ── 4 Metric KPI Cards (2x2 Grid) ── */}
-      <div className="grid grid-cols-2 gap-2.5">
-        {/* TAKE-HOME */}
-        <div className="spendly-metric-card">
-          <div className="spendly-metric-card__header">
-            <span className="spendly-metric-card__label">TAKE-HOME</span>
-            <div className="spendly-metric-card__icon">
-              <Wallet className="h-4 w-4" />
+      {/* ── LONG MODERN GLASSMORPHISM TABS (CYCLIC & BAR GRAPHS) ── */}
+      <div className="space-y-2.5">
+        {/* ── Tab 1: Net Balance & Budget Pacer (Cyclic Graph) ── */}
+        <div className="spendly-glass-card !p-4 transition-all duration-300 hover:border-[#fbbf24]/35 shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20 shadow-sm">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#9ca3af]">
+                  Net Balance & Budget Pacer
+                </span>
+              </div>
+              <div>
+                <p
+                  className={`font-serif text-2xl font-bold tracking-tight ${balance < 0 ? 'text-[#f87171]' : 'text-white'}`}
+                  data-testid="mobile-summary-balance"
+                >
+                  {rupees(Math.abs(balance))}
+                </p>
+                <div className="flex items-center gap-1.5 text-[11px] text-[#9ca3af] mt-0.5">
+                  <span className={`h-1.5 w-1.5 rounded-full ${balance >= 0 ? 'bg-[#34d399]' : 'bg-[#f87171]'}`} />
+                  <span className="font-semibold text-white/90">{balance >= 0 ? 'Surplus intact' : 'Deficit alert'}</span>
+                  <span className="text-white/20">•</span>
+                  <span>{salary ? `${rupees(salary)} Take-Home` : 'Salary not set'}</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="spendly-metric-card__value text-white" data-testid="mobile-summary-salary">
-              {salary ? rupees(salary) : '₹0'}
-            </p>
-            <p className="spendly-metric-card__detail">
-              {salary ? `↑ Credited ${monthShortName} 1` : 'Set in Profile'}
-            </p>
+
+            {/* Cyclic Graph: Radial Donut Meter */}
+            <div className="relative shrink-0 flex flex-col items-center">
+              <div className="relative h-16 w-16">
+                <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 60 60">
+                  <circle
+                    cx="30"
+                    cy="30"
+                    r={cyclicRadius}
+                    fill="transparent"
+                    stroke="rgba(255, 255, 255, 0.08)"
+                    strokeWidth="5"
+                  />
+                  <circle
+                    cx="30"
+                    cy="30"
+                    r={cyclicRadius}
+                    fill="transparent"
+                    stroke="url(#cyclicBudgetGrad)"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray={cyclicCircumference}
+                    strokeDashoffset={budgetConsumedOffset}
+                    className="transition-all duration-700 ease-out"
+                  />
+                  <defs>
+                    <linearGradient id="cyclicBudgetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#34d399" />
+                      <stop offset="50%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#f59e0b" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[11px] font-black text-white leading-none">
+                    {spentPct}%
+                  </span>
+                  <span className="text-[7.5px] uppercase font-extrabold text-[#9ca3af] mt-0.5 tracking-tight">
+                    PACER
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* TOTAL SPEND */}
-        <div className="spendly-metric-card">
-          <div className="spendly-metric-card__header">
-            <span className="spendly-metric-card__label">TOTAL SPEND</span>
-            <div className="spendly-metric-card__icon">
-              <CreditCard className="h-4 w-4" />
+        {/* ── Tab 2: Total Spend & Weekly Trajectory (Bar Graph) ── */}
+        <div className="spendly-glass-card !p-4 transition-all duration-300 hover:border-[#fbbf24]/35 shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20 shadow-sm">
+                  <CreditCard className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#9ca3af]">
+                  Weekly Outflow Trajectory
+                </span>
+              </div>
+              <div>
+                <p className="font-serif text-2xl font-bold text-white tracking-tight" data-testid="mobile-summary-expenses">
+                  {rupees(spent)}
+                </p>
+                <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                  🗂 {expenses.length} {expenses.length === 1 ? 'ledger item' : 'ledger items'} logged • ~{rupees(dailyRunway)}/day pace
+                </p>
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="spendly-metric-card__value text-white" data-testid="mobile-summary-expenses">
-              {rupees(spent)}
-            </p>
-            <p className="spendly-metric-card__detail">
-              🗂 {expenses.length} {expenses.length === 1 ? 'ledger item' : 'ledger items'}
-            </p>
+
+            {/* Vertical Bar Graph (4 Weeks) */}
+            <div className="shrink-0 flex items-end gap-1.5 h-14 px-2.5 py-1.5 rounded-xl bg-black/25 border border-white/8">
+              {weeklySpendBars.map((bar) => (
+                <div key={bar.label} className="flex flex-col items-center gap-1 h-full justify-end" title={`${bar.label}: ${rupees(bar.amount)}`}>
+                  <div className="relative w-2.5 rounded-full bg-white/5 overflow-hidden flex flex-col justify-end h-8">
+                    <div
+                      className="w-full rounded-full bg-gradient-to-t from-[#d97706] to-[#fbbf24] transition-all duration-500"
+                      style={{ height: `${bar.pct}%` }}
+                    />
+                  </div>
+                  <span className="text-[8px] font-extrabold text-[#9ca3af] leading-none">
+                    {bar.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* NET BALANCE */}
-        <div className="spendly-metric-card">
-          <div className="spendly-metric-card__header">
-            <span className="spendly-metric-card__label">NET BALANCE</span>
-            <div className="spendly-metric-card__icon">
-              <TrendingUp className="h-4 w-4" />
+        {/* ── Tab 3: Take-Home & Retention Cycle (Cyclic Graph) ── */}
+        <div className="spendly-glass-card !p-4 transition-all duration-300 hover:border-[#fbbf24]/35 shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#34d399] border border-[#34d399]/20 shadow-sm">
+                  <Wallet className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#9ca3af]">
+                  Take-Home & Retention
+                </span>
+              </div>
+              <div>
+                <p className="font-serif text-2xl font-bold text-white tracking-tight" data-testid="mobile-summary-salary">
+                  {salary ? rupees(salary) : 'Not set'}
+                </p>
+                <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                  {salary > 0
+                    ? `↑ Credited ${monthShortName} 1 • ${surplusPct}% surplus retained (${rupees(Math.max(0, balance))})`
+                    : 'Set take-home in Profile to monitor savings retention'}
+                </p>
+              </div>
             </div>
-          </div>
-          <div>
-            <p
-              className={`spendly-metric-card__value ${balance < 0 ? 'text-[#f87171]' : 'text-[#fde68a]'}`}
-              data-testid="mobile-summary-balance"
-            >
-              {rupees(Math.abs(balance))}
-            </p>
-            <p className="spendly-metric-card__detail">
-              {balance >= 0 ? '✓ Surplus intact' : '⚠ Deficit alert'}
-            </p>
+
+            {/* Cyclic Graph: Retention Arc */}
+            <div className="relative shrink-0 flex flex-col items-center">
+              <div className="relative h-16 w-16">
+                <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 60 60">
+                  <circle
+                    cx="30"
+                    cy="30"
+                    r={cyclicRadius}
+                    fill="transparent"
+                    stroke="rgba(255, 255, 255, 0.08)"
+                    strokeWidth="5"
+                  />
+                  <circle
+                    cx="30"
+                    cy="30"
+                    r={cyclicRadius}
+                    fill="transparent"
+                    stroke="url(#cyclicRetainGrad)"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray={cyclicCircumference}
+                    strokeDashoffset={surplusOffset}
+                    className="transition-all duration-700 ease-out"
+                  />
+                  <defs>
+                    <linearGradient id="cyclicRetainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#059669" />
+                      <stop offset="100%" stopColor="#34d399" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[11px] font-black text-[#34d399] leading-none">
+                    {surplusPct}%
+                  </span>
+                  <span className="text-[7.5px] uppercase font-extrabold text-[#9ca3af] mt-0.5 tracking-tight">
+                    SAVED
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* AVG / ACTIVE TX */}
-        <div className="spendly-metric-card">
-          <div className="spendly-metric-card__header">
-            <span className="spendly-metric-card__label">AVG / ACTIVE TX</span>
-            <div className="spendly-metric-card__icon">
-              <Receipt className="h-4 w-4" />
+        {/* ── Tab 4: Transaction Cadence & Daily Rhythm (Bar Graph) ── */}
+        <div className="spendly-glass-card !p-4 transition-all duration-300 hover:border-[#fbbf24]/35 shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#818cf8] border border-[#818cf8]/20 shadow-sm">
+                  <Receipt className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#9ca3af]">
+                  Active Cadence & Daily Rhythm
+                </span>
+              </div>
+              <div>
+                <p className="font-serif text-2xl font-bold text-white tracking-tight" data-testid="mobile-summary-average">
+                  {expenses.length ? rupees(spent / expenses.length) : '₹0'}
+                </p>
+                <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                  ⚡ {activeDaysCount} active spend days • {Math.max(0, daysInMonth - activeDaysCount)} quiet tranquil days
+                </p>
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="spendly-metric-card__value text-white" data-testid="mobile-summary-average">
-              {expenses.length ? rupees(spent / expenses.length) : '₹0'}
-            </p>
-            <p className="spendly-metric-card__detail">
-              ⚡ {activeDaysCount} active days
-            </p>
+
+            {/* 7-Day Day-of-Week Rhythm Bar Chart */}
+            <div className="shrink-0 flex items-end gap-1 h-14 px-2 py-1.5 rounded-xl bg-black/25 border border-white/8">
+              {dayCadenceBars.map((bar, i) => (
+                <div key={`${bar.label}-${i}`} className="flex flex-col items-center gap-1 h-full justify-end" title={`${bar.label}: ${rupees(bar.amount)}`}>
+                  <div className="relative w-2 rounded-full bg-white/5 overflow-hidden flex flex-col justify-end h-8">
+                    <div
+                      className="w-full rounded-full bg-gradient-to-t from-[#6366f1] to-[#a5b4fc] transition-all duration-500"
+                      style={{ height: `${bar.pct}%` }}
+                    />
+                  </div>
+                  <span className="text-[7.5px] font-extrabold text-[#9ca3af] leading-none">
+                    {bar.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
