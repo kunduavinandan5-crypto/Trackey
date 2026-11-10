@@ -1398,7 +1398,7 @@ function SpendlyMobileHome({
           </div>
 
           {/* Frosted Glass Pocket / Sleeve (Front) */}
-          <div className="relative z-20 rounded-[1.85rem] border border-white/45 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/90 to-[#0e1014]/98 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
+          <div className="relative z-20 -mx-3.5 -mb-3 rounded-t-[1.85rem] rounded-b-[2.25rem] border border-white/45 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/90 to-[#0e1014]/98 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
             <p className="text-[11px] font-medium tracking-wide text-white/70">
               Total Balance
             </p>
