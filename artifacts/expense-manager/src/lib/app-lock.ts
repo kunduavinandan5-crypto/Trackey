@@ -61,12 +61,43 @@ function buf2hex(buffer: ArrayBuffer): string {
     .join('');
 }
 
-// Hash PIN with Salt using Web Crypto SHA-256
+// Simple djb2-based fallback hash for HTTP (non-HTTPS) dev environments
+function simpleFallbackHash(str: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const r1 = (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, '0');
+  // second pass with different seed
+  let h3 = 0x9e3779b9;
+  for (let i = str.length - 1; i >= 0; i--) {
+    h3 = Math.imul(h3 ^ str.charCodeAt(i), 2246822519);
+  }
+  h3 = h3 ^ (h3 >>> 15);
+  const r2 = (h3 >>> 0).toString(16).padStart(8, '0');
+  return r1 + r2;
+}
+
+// Hash PIN with Salt using Web Crypto SHA-256 (falls back to simple hash on HTTP)
 export async function hashPin(pin: string, salt: string): Promise<string> {
-  const enc = new TextEncoder();
-  const data = enc.encode(`${salt}:${pin}:spendly_secure_lock`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return buf2hex(hashBuffer);
+  const input = `${salt}:${pin}:spendly_secure_lock`;
+  // crypto.subtle requires HTTPS (secure context). Fall back gracefully on dev HTTP.
+  if (!crypto?.subtle) {
+    return simpleFallbackHash(input);
+  }
+  try {
+    const enc = new TextEncoder();
+    const data = enc.encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return buf2hex(hashBuffer);
+  } catch {
+    return simpleFallbackHash(input);
+  }
 }
 
 // Verify entered PIN against stored configuration
@@ -297,3 +328,4 @@ export async function authenticateBiometrics(): Promise<{ success: boolean; erro
     };
   }
 }
+

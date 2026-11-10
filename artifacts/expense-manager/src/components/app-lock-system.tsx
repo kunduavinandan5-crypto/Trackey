@@ -43,6 +43,13 @@ export function AppLockScreen({ onUnlock, notify }: AppLockScreenProps) {
   const [config, setConfig] = useState<AppLockConfig>(getAppLockConfig());
   const biometricAttemptedRef = useRef(false);
 
+  // Lock body scroll while this overlay is shown
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   useEffect(() => {
     setConfig(getAppLockConfig());
   }, []);
@@ -264,6 +271,14 @@ export function PinSetupDialog({ isOpen, onClose, onSuccess, notify }: PinSetupD
   const [error, setError] = useState('');
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Lock body scroll while dialog is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -556,12 +571,12 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
             type="button"
             onClick={handleToggleLock}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              config.enabled ? 'bg-gradient-to-r from-amber-500 to-[#fbbf24]' : 'bg-white/20'
+              config.enabled ? 'bg-gradient-to-r from-amber-500 to-[#fbbf24]' : 'bg-[#374151]'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                config.enabled ? 'translate-x-5 bg-neutral-900' : 'translate-x-0'
+                config.enabled ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -569,17 +584,17 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
 
         {/* Enabled Sub-options */}
         {config.enabled && (
-          <div className="space-y-3 pt-2 border-t border-white/10 text-xs">
+          <div className="space-y-3 pt-2 border-t border-[#374151] text-xs">
             {/* Phone Biometrics Row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Fingerprint className="h-4 w-4 text-[#fbbf24]" />
                 <div>
-                  <p className="font-semibold text-white">Phone Biometrics</p>
-                  <p className="text-[10px] text-neutral-400">
+                  <p className="font-semibold text-[#f1f5f3]">Phone Biometrics</p>
+                  <p className="text-[10px] text-[#9ca3af]">
                     {biometricSupported
                       ? 'Unlock using Fingerprint or Face ID'
-                      : 'Device biometrics unavailable or requires HTTPS'}
+                      : 'Needs HTTPS or localhost to work'}
                   </p>
                 </div>
               </div>
@@ -588,12 +603,12 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
                 disabled={!biometricSupported || isRegisteringBio}
                 onClick={handleToggleBiometrics}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  config.biometricEnabled ? 'bg-[#fbbf24]' : 'bg-white/20'
+                  config.biometricEnabled ? 'bg-[#fbbf24]' : 'bg-[#374151]'
                 } ${!biometricSupported ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
                 <span
                   className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    config.biometricEnabled ? 'translate-x-4 bg-neutral-900' : 'translate-x-0'
+                    config.biometricEnabled ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
@@ -604,8 +619,8 @@ export function AppLockSettingsCard({ notify, isMobile = false }: AppLockSetting
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-[#fbbf24]" />
                 <div>
-                  <p className="font-semibold text-white">Auto-Lock Timer</p>
-                  <p className="text-[10px] text-neutral-400">Lock app when backgrounded</p>
+                  <p className="font-semibold text-[#f1f5f3]">Auto-Lock Timer</p>
+                  <p className="text-[10px] text-[#9ca3af]">Lock app when backgrounded</p>
                 </div>
               </div>
 

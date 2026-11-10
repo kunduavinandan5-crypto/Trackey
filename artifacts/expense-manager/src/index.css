@@ -1861,3 +1861,31 @@ html:not(.dark) {
     color: #F5EAD4 !important;
   }
 }
+
+/* ── APP LOCK: Always dark regardless of theme ── */
+.app-lock-screen,
+.app-lock-dialog,
+.app-lock-screen *,
+.app-lock-dialog * {
+  color-scheme: dark !important;
+}
+.app-lock-screen [class*="text-white"],
+.app-lock-dialog [class*="text-white"] {
+  color: #ffffff !important;
+}
+.app-lock-screen [class*="text-neutral-"],
+.app-lock-dialog [class*="text-neutral-"] {
+  color: #9ca3af !important;
+}
+.app-lock-screen [class*="bg-white/"],
+.app-lock-dialog [class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+.app-lock-screen [class*="border-white/"],
+.app-lock-dialog [class*="border-white/"] {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.app-lock-dialog > div {
+  background: #111317 !important;
+  color: #ffffff !important;
+}
