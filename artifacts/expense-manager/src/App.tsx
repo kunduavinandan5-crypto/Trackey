@@ -1342,7 +1342,7 @@ function SpendlyMobileHome({
       </div>
 
       {/* ── SKEUOMORPHIC FROSTED WALLET CARD DECK HERO (IMAGE 1 EXACT MATCH) ── */}
-      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] bg-[#121316] border border-white/10 p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.65)] transition-all duration-300">
+      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] bg-[#121316] border-2 border-white/35 p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.12)] transition-all duration-300">
         {/* Wallet Label at Top Center */}
         <div className="text-center pb-2">
           <p className="text-xs font-semibold tracking-wider text-white/75 font-sans">
@@ -1351,10 +1351,10 @@ function SpendlyMobileHome({
         </div>
 
         {/* Layered Card Deck Stack with Frosted Front Pocket */}
-        <div className="relative mx-auto w-full h-[180px] sm:h-[195px] flex flex-col justify-end">
+        <div className="relative mx-auto w-full h-[230px] sm:h-[250px] flex flex-col justify-end">
           {/* Card 1 (Back Right): Sunset Peach/Pink Mastercard */}
           <div
-            className="absolute inset-x-3 top-0 h-[115px] sm:h-[125px] rounded-2xl p-3 shadow-lg transform rotate-[4deg] translate-x-3 -translate-y-1 transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[5deg]"
+            className="absolute inset-x-3 top-0 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-lg border border-white/30 transform rotate-[4deg] translate-x-3 -translate-y-1 transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[5deg]"
             style={{
               background: 'linear-gradient(135deg, #fce7f3 0%, #f472b6 40%, #fb923c 100%)',
             }}
@@ -1370,7 +1370,7 @@ function SpendlyMobileHome({
 
           {/* Card 2 (Middle Left): Frosted White/Silver Visa Card */}
           <div
-            className="absolute inset-x-2 top-2 h-[115px] sm:h-[125px] rounded-2xl p-3 shadow-md transform -rotate-[3deg] -translate-x-2 translate-y-0.5 border border-white/60 transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:-rotate-[4deg]"
+            className="absolute inset-x-2 top-2 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-md transform -rotate-[3deg] -translate-x-2 translate-y-0.5 border-2 border-white/70 transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:-rotate-[4deg]"
             style={{
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #fde68a 100%)',
             }}
@@ -1384,7 +1384,7 @@ function SpendlyMobileHome({
 
           {/* Card 3 (Foreground): Royal Electric Blue to Indigo Mastercard */}
           <div
-            className="absolute inset-x-1 top-4 h-[115px] sm:h-[125px] rounded-2xl p-3 shadow-xl transform translate-y-2 border border-white/20 transition-transform duration-300 group-hover:translate-y-1"
+            className="absolute inset-x-1 top-4 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-xl transform translate-y-2 border border-white/45 transition-transform duration-300 group-hover:translate-y-1"
             style={{
               background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #06b6d4 100%)',
             }}
@@ -1398,7 +1398,7 @@ function SpendlyMobileHome({
           </div>
 
           {/* Frosted Glass Pocket / Sleeve (Front) */}
-          <div className="relative z-20 rounded-[1.85rem] border border-white/25 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/90 to-[#0e1014]/98 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
+          <div className="relative z-20 rounded-[1.85rem] border border-white/45 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/90 to-[#0e1014]/98 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
             <p className="text-[11px] font-medium tracking-wide text-white/70">
               Total Balance
             </p>
