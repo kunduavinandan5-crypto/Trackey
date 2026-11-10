@@ -90,6 +90,13 @@ import {
 } from '@/lib/db-service';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { APP_VERSION, checkForAppUpdates, forceAppRefresh, subscribePwa, type PwaStatus } from '@/lib/pwa-update';
+import { AppLockScreen, AppLockSettingsCard } from '@/components/app-lock-system';
+import {
+  getAppLockConfig,
+  isSessionUnlocked,
+  shouldAutoLock,
+  recordLastActive,
+} from '@/lib/app-lock';
 
 type Expense = {
   id: string;
@@ -3931,6 +3938,9 @@ function SpendlyMobileSettings({
         </div>
       </div>
 
+      {/* ── APP LOCK & PHONE BIOMETRICS CARD ── */}
+      <AppLockSettingsCard notify={finance.notify} isMobile={true} />
+
       {/* ── APP VERSION & PWA UPDATE CARD ── */}
       <div className="spendly-glass-card space-y-3">
         <div className="flex items-center justify-between">
@@ -4178,6 +4188,9 @@ function SettingsPage({
           </Button>
         </div>
       </section>
+
+      {/* Security & App Lock */}
+      <AppLockSettingsCard notify={finance.notify} isMobile={false} />
 
       {/* App & Display Preferences */}
       <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
@@ -6084,11 +6097,40 @@ function Router() {
   const finance = useFinance();
   const { theme, toggleTheme } = useTheme();
 
+  const [isAppLocked, setIsAppLocked] = useState(() => {
+    const config = getAppLockConfig();
+    return config.enabled && !isSessionUnlocked();
+  });
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        recordLastActive();
+      } else {
+        const config = getAppLockConfig();
+        if (config.enabled && shouldAutoLock()) {
+          setIsAppLocked(true);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   useEffect(() => {
     const path = !user ? '/login' : location.startsWith('/add-expense/') ? '/edit-expense' : location;
     const page = PAGE_TITLES[path];
     document.title = page ? `${page} · Spendly` : DEFAULT_TITLE;
   }, [location, user]);
+
+  if (isAppLocked) {
+    return (
+      <AppLockScreen
+        onUnlock={() => setIsAppLocked(false)}
+        notify={finance.notify}
+      />
+    );
+  }
 
   if (loading) {
     return (
