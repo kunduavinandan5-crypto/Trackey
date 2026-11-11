@@ -1440,9 +1440,7 @@ function SpendlyMobileHome({
             <button
               type="button"
               onClick={openWallet}
-              className={`wallet-card-deck group relative w-full overflow-hidden rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300 text-left active:scale-[0.98] cursor-pointer ${
-                walletOpen || walletClosing ? 'opacity-0 pointer-events-none' : 'opacity-100'
-              }`}
+              className="wallet-card-deck group relative w-full overflow-hidden rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300 text-left active:scale-[0.98] cursor-pointer"
               aria-label="Open wallet"
             >
               {/* Wallet Label at Top Center */}
@@ -1549,9 +1547,9 @@ function SpendlyMobileHome({
                   }`}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Stacked Cards Frame (Flexible layout, overflow-hidden prevents horizontal blowout) */}
+                  {/* Stacked Cards Frame (Flexible layout with unclipped top peeking) */}
                   <div
-                    className="relative w-full max-w-[345px] sm:max-w-[360px] h-[225px] sm:h-[235px] overflow-hidden cursor-grab active:cursor-grabbing flex items-center justify-center"
+                    className="relative w-full max-w-[345px] sm:max-w-[360px] h-[240px] sm:h-[250px] pt-7 overflow-visible cursor-grab active:cursor-grabbing flex items-end justify-center"
                     onTouchStart={(e) => {
                       swipeTouchStartX.current = e.touches[0].clientX;
                       swipeTouchStartY.current = e.touches[0].clientY;
@@ -1590,15 +1588,15 @@ function SpendlyMobileHome({
                         let isClickable = false;
 
                         if (idx < activeCard) {
-                          // Card is UNDER active card — peeking symmetrically at top
+                          // Card is UNDER active card — peeking smoothly and symmetrically at top
                           const diff = activeCard - idx;
-                          const translateY = -diff * 14;
-                          const scale = 1 - diff * 0.04;
+                          const translateY = -diff * 11;
+                          const scale = 1 - diff * 0.025;
                           cardTransform = `translateY(${translateY}px) scale(${scale})`;
                           cardZIndex = 10 + idx * 5;
-                          cardOpacity = 0.88;
-                          cardFilter = 'brightness(0.86)';
-                          cardShadow = `${card.strokeRing}, 0 10px 24px -4px rgba(0,0,0,0.5), ${card.innerGlow}`;
+                          cardOpacity = 1;
+                          cardFilter = `brightness(${1 - diff * 0.05})`;
+                          cardShadow = `${card.strokeRing}, 0 8px 20px -4px rgba(0,0,0,0.38), ${card.innerGlow}`;
                           isClickable = true;
                         } else if (idx === activeCard) {
                           // Current ACTIVE card — crisp, overlapping all cards behind it
