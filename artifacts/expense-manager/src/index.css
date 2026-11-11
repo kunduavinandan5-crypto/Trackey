@@ -1900,6 +1900,37 @@ body {
     box-shadow: 0 0 14px rgba(245, 158, 11, 0.45);
   }
 
+  /* Spendly Profile / Settings Tab Switcher */
+  .spendly-tab-container {
+    background: #0e1424;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+  }
+
+  .spendly-tab-btn-inactive {
+    color: #9ca3af;
+  }
+
+  .spendly-tab-btn-active {
+    background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%);
+    color: #080c14 !important;
+    font-weight: 800 !important;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
   /* Spendly Category Carousel Container */
   .spendly-cat-carousel {
     display: flex !important;
@@ -2820,6 +2851,24 @@ html:not(.dark) {
     color: #080c14 !important;
     font-weight: 800 !important;
     box-shadow: 0 0 14px rgba(245, 158, 11, 0.45) !important;
+  }
+
+  /* Spendly Profile / Settings Tab Switcher (Light Mode) */
+  .spendly-tab-container {
+    background: #EDE2CD !important;
+    border-color: rgba(30, 59, 47, 0.18) !important;
+  }
+
+  .spendly-tab-btn-inactive {
+    color: #1E3B2F !important;
+    font-weight: 700 !important;
+  }
+
+  .spendly-tab-btn-active {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%) !important;
+    color: #080c14 !important;
+    font-weight: 800 !important;
+    box-shadow: 0 3px 10px rgba(217, 119, 6, 0.3) !important;
   }
 
   .spendly-chip {

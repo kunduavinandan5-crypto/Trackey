@@ -17,6 +17,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   CircleAlert,
   CircleDollarSign,
   ClipboardList,
@@ -3886,10 +3887,11 @@ function SpendlyMobileSettings({
   toggleTheme: () => void;
 }) {
   const { user, profile, signOut, isConfigured } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
+  const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(monthKey());
   const [salaryValue, setSalaryValue] = useState(String(finance.store.salaries[selectedMonth] ?? ''));
   const [newCategory, setNewCategory] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
     isChecking: false,
     hasUpdate: false,
@@ -3940,375 +3942,450 @@ function SpendlyMobileSettings({
         </div>
       </div>
 
-      {/* ── VIP DIGITAL MEMBER PROFILE CARD (HIGH-CONTRAST GOLD & EMERALD) ── */}
-      <div className="spendly-credit-card !p-4.5 overflow-hidden rounded-[1.85rem] relative">
-        <div className="spendly-credit-card__sheen" />
-        <div className="spendly-credit-card__mesh-pattern" />
+      {/* ── PROFILE & SETTINGS TAB SWITCHER ── */}
+      <div className="spendly-tab-container flex items-center gap-1.5 p-1 rounded-2xl">
+        <button
+          type="button"
+          onClick={() => setActiveTab('profile')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${
+            activeTab === 'profile'
+              ? 'spendly-tab-btn-active bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/25 scale-[1.01]'
+              : 'spendly-tab-btn-inactive text-[#9ca3af] hover:text-[#f1f5f3]'
+          }`}
+        >
+          <UserIcon className="h-3.5 w-3.5" />
+          <span>Profile</span>
+        </button>
 
-        <div className="relative z-10 flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            {/* Glowing Avatar */}
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-lg font-black text-[#080c14] shadow-[0_0_16px_rgba(245,158,11,0.6)] ring-2 ring-[#fbbf24] ring-offset-2 ring-offset-[#080c14]">
-              {userInitial}
+        <button
+          type="button"
+          onClick={() => setActiveTab('settings')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${
+            activeTab === 'settings'
+              ? 'spendly-tab-btn-active bg-gradient-to-r from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/25 scale-[1.01]'
+              : 'spendly-tab-btn-inactive text-[#9ca3af] hover:text-[#f1f5f3]'
+          }`}
+        >
+          <Settings className="h-3.5 w-3.5" />
+          <span>Settings</span>
+        </button>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          TAB 1: PROFILE
+          ═══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'profile' && (
+        <div className="space-y-3.5 animate-fadeIn">
+          {/* ── VIP DIGITAL MEMBER PROFILE CARD (HIGH-CONTRAST GOLD & EMERALD) ── */}
+          <div className="spendly-credit-card !p-4.5 overflow-hidden rounded-[1.85rem] relative">
+            <div className="spendly-credit-card__sheen" />
+            <div className="spendly-credit-card__mesh-pattern" />
+
+            <div className="relative z-10 flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                {/* Glowing Avatar */}
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-lg font-black text-[#080c14] shadow-[0_0_16px_rgba(245,158,11,0.6)] ring-2 ring-[#fbbf24] ring-offset-2 ring-offset-[#080c14]">
+                  {userInitial}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-extrabold text-white tracking-tight truncate drop-shadow-md">
+                      {userName}
+                    </h2>
+                    <span className="spendly-user-badge inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">
+                      PRIVATE WEALTH
+                    </span>
+                  </div>
+                  <p className="spendly-user-subtext text-[11px] truncate font-mono mt-0.5 drop-shadow-sm">
+                    {isRealSupabaseUser(user) ? user?.email : 'Offline Guest Mode'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Overlapping Hologram Circles */}
+              <div className="spendly-card-network opacity-85 shrink-0" title="Spendly Network">
+                <div className="spendly-card-network__circle spendly-card-network__circle--1" />
+                <div className="spendly-card-network__circle spendly-card-network__circle--2" />
+              </div>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-white tracking-tight truncate drop-shadow-md">
-                  {userName}
-                </h2>
-                <span className="spendly-user-badge inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">
-                  PRIVATE WEALTH
+
+            {/* Database & Session Status Row */}
+            <div className="relative z-10 mt-3 pt-2.5 border-t border-white/15 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${isRealSupabaseUser(user) ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]' : 'bg-amber-400 shadow-[0_0_6px_#fbbf24]'}`} />
+                <span className={`text-[11px] font-bold ${isRealSupabaseUser(user) ? 'text-emerald-300' : 'text-amber-300'}`}>
+                  {isRealSupabaseUser(user) ? 'Cloud Synced' : 'Private (Offline)'}
                 </span>
               </div>
-              <p className="spendly-user-subtext text-[11px] truncate font-mono mt-0.5 drop-shadow-sm">
-                {isRealSupabaseUser(user) ? user?.email : 'Offline Guest Mode'}
-              </p>
+
+              <div className="flex items-center gap-2">
+                {isRealSupabaseUser(user) ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={finance.syncWithSupabase}
+                      disabled={finance.isSyncing}
+                      className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${finance.isSyncing ? 'animate-spin' : ''}`} />
+                      <span>{finance.isSyncing ? 'Syncing...' : 'Sync'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                    >
+                      <LogOut className="h-3 w-3" />
+                      <span>Sign Out</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      title="Reset local guest data and return to login"
+                      className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                    >
+                      <LogOut className="h-3 w-3" />
+                      <span>Sign Out</span>
+                    </button>
+                    <Link
+                      href="/login"
+                      className="spendly-btn-signin rounded-xl px-3.5 py-1.5 text-[10.5px] font-extrabold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                    >
+                      <LogIn className="h-3 w-3 stroke-[2.5]" />
+                      <span>Sign In</span>
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Overlapping Hologram Circles */}
-          <div className="spendly-card-network opacity-85 shrink-0" title="Spendly Network">
-            <div className="spendly-card-network__circle spendly-card-network__circle--1" />
-            <div className="spendly-card-network__circle spendly-card-network__circle--2" />
+          {/* ── MONTHLY TAKE-HOME SALARY CARD ── */}
+          <div className="spendly-glass-card space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+                  <Banknote className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#f1f5f3]">Monthly Take-Home</p>
+                  <p className="text-[10px] text-[#9ca3af]">Calculates budget and savings pace</p>
+                </div>
+              </div>
+
+              {/* Month Selector Dropdown Pill */}
+              <div className="relative">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/25 px-2.5 py-1 pr-6 text-[10px] font-bold text-[#fde68a] outline-none"
+                >
+                  {getMonthOptions(selectedMonth).map((m) => (
+                    <option key={m} value={m} className="bg-[#0b0f19] text-[#f1f5f3]">
+                      {monthLabel(m)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-[#fbbf24]" />
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveSalary} className="flex gap-2 pt-0.5">
+              <div className="relative flex-1">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#fbbf24]">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={salaryValue}
+                  onChange={(e) => setSalaryValue(e.target.value)}
+                  placeholder="e.g. 50000"
+                  className="w-full rounded-xl bg-[#101626] border border-[#fbbf24]/25 py-2 pl-7 pr-3 text-xs font-semibold text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!Number(salaryValue)}
+                className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.35)] transition active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                Save
+              </button>
+            </form>
+          </div>
+
+          {/* ── SETTINGS ACTION BANNER (OPENS SETTINGS TAB TO MAKE CHANGES) ── */}
+          <div
+            onClick={() => setActiveTab('settings')}
+            className="spendly-glass-card cursor-pointer hover:border-[#fbbf24]/50 transition-all duration-200 active:scale-[0.99] group"
+            role="button"
+            tabIndex={0}
+            aria-label="Open Settings tab"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-md shadow-[#fbbf24]/20 group-hover:scale-105 transition-transform">
+                  <Settings className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-[#f1f5f3]">Settings & Preferences</p>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#fbbf24]/15 text-[#fde68a] border border-[#fbbf24]/25">
+                      Configure
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                    Manage categories, theme mode, biometrics & updates
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/25 px-3 py-1.5 text-xs font-bold text-[#fbbf24] group-hover:bg-[#222d48] transition-colors">
+                <span>Open</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </div>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Database & Session Status Row */}
-        <div className="relative z-10 mt-3 pt-2.5 border-t border-white/15 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 rounded-full ${isRealSupabaseUser(user) ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]' : 'bg-amber-400 shadow-[0_0_6px_#fbbf24]'}`} />
-            <span className={`text-[11px] font-bold ${isRealSupabaseUser(user) ? 'text-emerald-300' : 'text-amber-300'}`}>
-              {isRealSupabaseUser(user) ? 'Cloud Synced' : 'Private (Offline)'}
+      {/* ═══════════════════════════════════════════════════════════════════════
+          TAB 2: SETTINGS (WHERE USER MAKES ALL CHANGES)
+          ═══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'settings' && (
+        <div className="space-y-3.5 animate-fadeIn">
+          {/* Back Navigation Bar */}
+          <div className="flex items-center justify-between pb-0.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile')}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/20 px-3 py-1.5 text-xs font-bold text-[#fde68a] hover:bg-[#202b44] transition active:scale-95 cursor-pointer"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 text-[#fbbf24]" />
+              <span>Back to Profile</span>
+            </button>
+            <span className="text-[11px] font-semibold text-[#9ca3af]">
+              App Preferences
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isRealSupabaseUser(user) ? (
-              <>
-                <button
-                  type="button"
-                  onClick={finance.syncWithSupabase}
-                  disabled={finance.isSyncing}
-                  className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50 cursor-pointer"
-                >
-                  <RefreshCw className={`h-3 w-3 ${finance.isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{finance.isSyncing ? 'Syncing...' : 'Sync'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                >
-                  <LogOut className="h-3 w-3" />
-                  <span>Sign Out</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={signOut}
-                  title="Reset local guest data and return to login"
-                  className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                >
-                  <LogOut className="h-3 w-3" />
-                  <span>Sign Out</span>
-                </button>
-                <Link
-                  href="/login"
-                  className="spendly-btn-signin rounded-xl px-3.5 py-1.5 text-[10.5px] font-extrabold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                >
-                  <LogIn className="h-3 w-3 stroke-[2.5]" />
-                  <span>Sign In</span>
-                </Link>
-              </>
+          {/* 1. MANAGE CATEGORIES (DROPDOWN / ACCORDION) */}
+          <div className="spendly-glass-card space-y-3">
+            <div
+              onClick={() => setCategoriesDropdownOpen((prev) => !prev)}
+              className="flex items-center justify-between cursor-pointer select-none"
+              role="button"
+              tabIndex={0}
+              aria-expanded={categoriesDropdownOpen}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+                  <Tag className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-[#f1f5f3]">Manage Categories</p>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#fbbf24]/15 text-[#fde68a] border border-[#fbbf24]/25">
+                      {finance.categories.length} Categories
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[#9ca3af]">
+                    {categoriesDropdownOpen ? 'Tap to collapse category tags' : 'Tap to expand and edit tags'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-[#fbbf24]">
+                  {categoriesDropdownOpen ? 'Collapse' : 'Expand'}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 text-[#fbbf24] transition-transform duration-300 ${
+                    categoriesDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Dropdown Expandable Content */}
+            {categoriesDropdownOpen && (
+              <div className="space-y-3 pt-2.5 border-t border-white/10 animate-fadeIn">
+                {/* Categories Chips */}
+                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
+                  {finance.categories.map((cat) => {
+                    const Icon = getCategoryIcon(cat);
+                    return (
+                      <span
+                        key={cat}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#101626] border border-[#fbbf24]/20 px-2.5 py-1 text-[11px] font-semibold text-[#fde68a] transition-all hover:border-[#fbbf24]/40"
+                      >
+                        <Icon className="h-3 w-3 text-[#fbbf24]" />
+                        <span>{cat}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            finance.removeCategory(cat);
+                          }}
+                          className="ml-0.5 rounded-full p-0.5 text-[#9ca3af] hover:text-[#f87171] hover:bg-rose-950/40 transition active:scale-90 cursor-pointer"
+                          title={`Delete ${cat}`}
+                          aria-label={`Delete ${cat}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {/* Add Category Form */}
+                <form onSubmit={handleAddCategory} className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newCategory}
+                    maxLength={LIMITS.category}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Add new category tag..."
+                    className="flex-1 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-2 text-xs font-medium text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newCategory.trim()}
+                    className="rounded-xl bg-[#182033] border border-[#fbbf24]/30 px-3.5 py-2 text-xs font-bold text-[#fbbf24] transition active:scale-95 disabled:opacity-50 cursor-pointer hover:bg-[#202942]"
+                  >
+                    + Add
+                  </button>
+                </form>
+              </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* ── MONTHLY TAKE-HOME SALARY CARD ── */}
-      <div className="spendly-glass-card space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-              <Banknote className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-[#f1f5f3]">Monthly Take-Home</p>
-              <p className="text-[10px] text-[#9ca3af]">Calculates budget and savings pace</p>
-            </div>
-          </div>
+          {/* 2. THEME MODE */}
+          <div className="spendly-glass-card space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+                  <Smartphone className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#f1f5f3]">Theme Mode</p>
+                  <p className="text-[10px] text-[#9ca3af]">Currently {theme} mode</p>
+                </div>
+              </div>
 
-          {/* Month Selector Dropdown Pill */}
-          <div className="relative">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="appearance-none rounded-full bg-[#101626] border border-[#fbbf24]/25 px-2.5 py-1 pr-6 text-[10px] font-bold text-[#fde68a] outline-none"
-            >
-              {getMonthOptions(selectedMonth).map((m) => (
-                <option key={m} value={m} className="bg-[#0b0f19] text-[#f1f5f3]">
-                  {monthLabel(m)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-[#fbbf24]" />
-          </div>
-        </div>
-
-        <form onSubmit={handleSaveSalary} className="flex gap-2 pt-0.5">
-          <div className="relative flex-1">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#fbbf24]">₹</span>
-            <input
-              type="number"
-              min="0"
-              value={salaryValue}
-              onChange={(e) => setSalaryValue(e.target.value)}
-              placeholder="e.g. 50000"
-              className="w-full rounded-xl bg-[#101626] border border-[#fbbf24]/25 py-2 pl-7 pr-3 text-xs font-semibold text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={!Number(salaryValue)}
-            className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.35)] transition active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            Save
-          </button>
-        </form>
-      </div>
-
-      {/* ── CUSTOM CATEGORIES CARD ── */}
-      <div className="spendly-glass-card space-y-2.5">
-        <div className="flex items-center gap-2">
-          <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-            <Tag className="h-3.5 w-3.5" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-[#f1f5f3]">Manage Categories</p>
-            <p className="text-[10px] text-[#9ca3af]">Custom tags and everyday buckets</p>
-          </div>
-        </div>
-
-        {/* Categories Chips */}
-        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
-          {finance.categories.map((cat) => {
-            const Icon = getCategoryIcon(cat);
-            return (
-              <span
-                key={cat}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#101626] border border-[#fbbf24]/20 px-2.5 py-1 text-[11px] font-semibold text-[#fde68a] transition-all hover:border-[#fbbf24]/40"
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-1.5 text-xs font-bold text-[#f1f5f3] transition active:scale-95 cursor-pointer"
               >
-                <Icon className="h-3 w-3 text-[#fbbf24]" />
-                <span>{cat}</span>
-                <button
-                  type="button"
-                  onClick={() => finance.removeCategory(cat)}
-                  className="ml-0.5 rounded-full p-0.5 text-[#9ca3af] hover:text-[#f87171] hover:bg-rose-950/40 transition active:scale-90 cursor-pointer"
-                  title={`Delete ${cat}`}
-                  aria-label={`Delete ${cat}`}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Add Category Form */}
-        <form onSubmit={handleAddCategory} className="flex gap-2 pt-0.5">
-          <input
-            type="text"
-            value={newCategory}
-            maxLength={LIMITS.category}
-            onChange={(e) => setNewCategory(e.target.value)}
-            placeholder="Add new category..."
-            className="flex-1 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-2 text-xs font-medium text-[#f1f5f3] outline-none focus:border-[#fbbf24]"
-          />
-          <button
-            type="submit"
-            disabled={!newCategory.trim()}
-            className="rounded-xl bg-[#182033] border border-[#fbbf24]/30 px-3.5 py-2 text-xs font-bold text-[#fbbf24] transition active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            + Add
-          </button>
-        </form>
-      </div>
-
-      {/* ── SETTINGS OPTION (CONTAINS ALL REST SYSTEM SETTINGS) ── */}
-      <div className="space-y-3">
-        <div
-          onClick={() => setShowSettings((prev) => !prev)}
-          className={`spendly-glass-card cursor-pointer transition-all duration-300 ${
-            showSettings ? 'ring-2 ring-[#fbbf24]/50 border-[#fbbf24]/50' : 'hover:border-[#fbbf24]/35'
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-expanded={showSettings}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${
-                showSettings
-                  ? 'bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.45)]'
-                  : 'bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20'
-              }`}>
-                <Settings className={`h-4 w-4 transition-transform duration-300 ${showSettings ? 'rotate-90' : ''}`} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-bold text-[#f1f5f3]">Settings</p>
-                  <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full transition-all ${
-                    showSettings
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                      : 'bg-[#fbbf24]/15 text-[#fde68a] border border-[#fbbf24]/25'
-                  }`}>
-                    {showSettings ? 'Active' : 'Preferences'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-[#9ca3af]">Theme, biometric lock, updates & power switch</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-[#fbbf24]">
-                {showSettings ? 'Hide' : 'Open'}
-              </span>
-              <ChevronDown className={`h-4 w-4 text-[#fbbf24] transition-transform duration-300 ${showSettings ? 'rotate-180' : ''}`} />
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Light</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-3.5 w-3.5 text-[#fbbf24]" />
+                    <span>Dark</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* ── THE REST OPTIONS INSIDE SETTINGS ── */}
-        {showSettings && (
-          <div className="space-y-3 pt-1 animate-fadeIn">
-            {/* 1. Theme Mode */}
-            <div className="spendly-glass-card space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-                    <Smartphone className="h-3.5 w-3.5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[#f1f5f3]">Theme Mode</p>
-                    <p className="text-[10px] text-[#9ca3af]">Currently {theme} mode</p>
-                  </div>
-                </div>
+          {/* 3. APP LOCK & PHONE BIOMETRICS */}
+          <AppLockSettingsCard notify={finance.notify} isMobile={true} userId={user?.id} />
 
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-1.5 text-xs font-bold text-[#f1f5f3] transition active:scale-95 cursor-pointer"
-                >
-                  {theme === 'dark' ? (
-                    <>
-                      <Sun className="h-3.5 w-3.5 text-amber-400" />
-                      <span>Light</span>
-                    </>
-                  ) : (
-                    <>
-                      <Moon className="h-3.5 w-3.5 text-[#fbbf24]" />
-                      <span>Dark</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* 2. App Lock & Phone Biometrics */}
-            <AppLockSettingsCard notify={finance.notify} isMobile={true} userId={user?.id} />
-
-            {/* 3. App Version & Updates */}
-            <div className="spendly-glass-card space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-                    <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[#f1f5f3]">App Version & Updates</p>
-                    <p className="text-[10px] text-[#9ca3af]">
-                      {APP_VERSION} • {pwaStatus.hasUpdate ? 'Update Available' : 'Running latest build'}
-                    </p>
-                  </div>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#10b981]/15 px-2 py-0.5 text-[10px] font-bold text-[#34d399] border border-[#10b981]/25">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#34d399] animate-pulse" />
-                  Live PWA
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-0.5">
-                <button
-                  type="button"
-                  disabled={pwaStatus.isChecking}
-                  onClick={async () => {
-                    const res = await checkForAppUpdates();
-                    finance.notify(res.message, res.updated ? 'success' : undefined);
-                  }}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] py-2 px-3 text-xs font-bold text-[#080c14] transition active:scale-95 disabled:opacity-50 shadow-[0_0_12px_rgba(245,158,11,0.25)] cursor-pointer"
-                >
+          {/* 4. APP VERSION & UPDATES */}
+          <div className="spendly-glass-card space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
                   <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
-                  <span>{pwaStatus.isChecking ? 'Checking...' : 'Check Update'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={async () => {
-                    finance.notify('Clearing cache and reloading fresh...');
-                    await forceAppRefresh();
-                  }}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/30 py-2 px-3 text-xs font-bold text-[#fde68a] transition active:scale-95 hover:bg-[#202942] cursor-pointer"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />
-                  <span>Force Reload</span>
-                </button>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#f1f5f3]">App Version & Updates</p>
+                  <p className="text-[10px] text-[#9ca3af]">
+                    {APP_VERSION} • {pwaStatus.hasUpdate ? 'Update Available' : 'Running latest build'}
+                  </p>
+                </div>
               </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#10b981]/15 px-2 py-0.5 text-[10px] font-bold text-[#34d399] border border-[#10b981]/25">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#34d399] animate-pulse" />
+                Live PWA
+              </span>
             </div>
 
-            {/* 4. Realistic Switch (Master Fuse Switch) */}
-            <div className="spendly-glass-card space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-                    <Zap className="h-3.5 w-3.5 text-[#fbbf24]" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[#f1f5f3]">Realistic Switch</p>
-                    <p className="text-[10px] text-[#9ca3af]">Master power switch with Web Audio click</p>
-                  </div>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#fbbf24]/15 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] border border-[#fbbf24]/30">
-                  Evil Buttons
-                </span>
-              </div>
-
-              {/* Live Interactive Switch with Dark Spotlight Fuse Stage */}
-              <div
-                className="rounded-2xl border border-white/10 p-6 flex flex-col items-center justify-center gap-3 transition-colors duration-500 shadow-inner"
-                style={{
-                  background: 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.45) 0%, rgba(8, 12, 20, 0.95) 75%)',
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <button
+                type="button"
+                disabled={pwaStatus.isChecking}
+                onClick={async () => {
+                  const res = await checkForAppUpdates();
+                  finance.notify(res.message, res.updated ? 'success' : undefined);
                 }}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] py-2 px-3 text-xs font-bold text-[#080c14] transition active:scale-95 disabled:opacity-50 shadow-[0_0_12px_rgba(245,158,11,0.25)] cursor-pointer"
               >
-                <RealisticSwitch
-                  size="lg"
-                  sound
-                  checked={theme === 'dark'}
-                  color="#e1261c"
-                  aria-label="Master theme power switch"
-                  onCheckedChange={(on) => {
-                    if (toggleTheme) toggleTheme();
-                  }}
-                />
-                <p className="text-[11px] font-mono text-[#9ca3af] text-center tracking-wide">
-                  Press to sink into socket &bull; Springs up on release
-                </p>
-              </div>
+                <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
+                <span>{pwaStatus.isChecking ? 'Checking...' : 'Check Update'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  finance.notify('Clearing cache and reloading fresh...');
+                  await forceAppRefresh();
+                }}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/30 py-2 px-3 text-xs font-bold text-[#fde68a] transition active:scale-95 hover:bg-[#202942] cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />
+                <span>Force Reload</span>
+              </button>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* 5. REALISTIC SWITCH (MASTER FUSE SWITCH) */}
+          <div className="spendly-glass-card space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+                  <Zap className="h-3.5 w-3.5 text-[#fbbf24]" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#f1f5f3]">Realistic Switch</p>
+                  <p className="text-[10px] text-[#9ca3af]">Master power switch with Web Audio click</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#fbbf24]/15 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] border border-[#fbbf24]/30">
+                Evil Buttons
+              </span>
+            </div>
+
+            {/* Live Interactive Switch with Dark Spotlight Fuse Stage */}
+            <div
+              className="rounded-2xl border border-white/10 p-6 flex flex-col items-center justify-center gap-3 transition-colors duration-500 shadow-inner"
+              style={{
+                background: 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.45) 0%, rgba(8, 12, 20, 0.95) 75%)',
+              }}
+            >
+              <RealisticSwitch
+                size="lg"
+                sound
+                checked={theme === 'dark'}
+                color="#e1261c"
+                aria-label="Master theme power switch"
+                onCheckedChange={() => {
+                  if (toggleTheme) toggleTheme();
+                }}
+              />
+              <p className="text-[11px] font-mono text-[#9ca3af] text-center tracking-wide">
+                Press to sink into socket &bull; Springs up on release
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
