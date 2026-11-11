@@ -1575,15 +1575,16 @@ html:not(.dark) {
     color: #9ca3af !important;
   }
 
-  /* Wallet Card Deck: Glassmorphism Transparent */
+  /* Wallet Card Deck: Light Green with Transparency */
   .wallet-card-deck {
-    background: rgba(255, 255, 255, 0.45) !important;
-    backdrop-filter: blur(28px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
-    border: 1.5px solid rgba(255, 255, 255, 0.75) !important;
+    background: linear-gradient(155deg, rgba(30, 59, 47, 0.16) 0%, rgba(46, 85, 68, 0.10) 50%, rgba(30, 59, 47, 0.14) 100%) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+    border: 1.5px solid rgba(30, 59, 47, 0.24) !important;
     box-shadow:
-      0 16px 42px -8px rgba(30, 59, 47, 0.12),
-      inset 0 1.5px 2px rgba(255, 255, 255, 0.95) !important;
+      0 18px 45px -8px rgba(30, 59, 47, 0.16),
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.55),
+      inset 0 -1px 2px rgba(30, 59, 47, 0.1) !important;
   }
   .wallet-card-deck__label {
     color: #1E3B2F !important;
