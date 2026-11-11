@@ -1,4 +1,5 @@
 import { type ChangeEvent, type FormEvent, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, Route, Router as WouterRouter, Switch, useLocation, useParams } from 'wouter';
 import {
   Activity,
@@ -1521,30 +1522,34 @@ function SpendlyMobileHome({
               </div>
             </button>
 
-            {/* ── FLOATING POP-OUT WALLET CARD MODAL — Stacked Overlapping Cards with Blurred Backdrop ── */}
-            {(walletOpen || walletClosing) && (
+            {/* ── FLOATING POP-OUT WALLET CARD MODAL — Fullscreen Blurred Backdrop with Centered Stack ── */}
+            {typeof document !== 'undefined' && (walletOpen || walletClosing) && createPortal(
               <div
-                className="wallet-modal-overlay fixed inset-0 z-[999] overflow-hidden w-full max-w-full h-full flex flex-col items-center justify-center p-4 touch-none select-none"
+                className="wallet-modal-overlay fixed inset-0 z-[99999] w-full h-[100dvh] overflow-hidden flex flex-col items-center justify-center p-4 touch-none select-none"
                 onClick={(e) => { if (e.target === e.currentTarget) closeWallet(); }}
               >
-                {/* Full-screen backdrop blur — tap anywhere to close */}
+                {/* Full-screen backdrop blur — edge-to-edge covering entire viewport */}
                 <div
-                  className={`absolute inset-0 bg-black/80 backdrop-blur-2xl transition-opacity duration-300 ${
+                  className={`fixed inset-0 w-full h-full bg-black/75 transition-opacity duration-300 ${
                     walletClosing ? 'wallet-modal-backdrop--out' : 'wallet-modal-backdrop'
                   }`}
+                  style={{
+                    backdropFilter: 'blur(28px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+                  }}
                   onClick={closeWallet}
                 />
 
-                {/* Floating Stack Container — Centered, No Sheet Background, Pure Floating Stack */}
+                {/* Floating Stack Container — Centered directly in the middle of the phone screen */}
                 <div
-                  className={`relative z-10 w-full max-w-[340px] sm:max-w-[365px] flex flex-col items-center select-none pt-4 pb-2 ${
+                  className={`relative z-10 w-full max-w-[345px] sm:max-w-[360px] flex flex-col items-center justify-center select-none ${
                     walletClosing ? 'wallet-float-out' : 'wallet-float-in'
                   }`}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Stacked Cards Frame (Overflow hidden prevents any horizontal scrollbar on mobile) */}
+                  {/* Stacked Cards Frame (Flexible layout, overflow-hidden prevents horizontal blowout) */}
                   <div
-                    className="relative w-full max-w-[340px] sm:max-w-[365px] h-[235px] sm:h-[245px] overflow-hidden pt-6 cursor-grab active:cursor-grabbing"
+                    className="relative w-full max-w-[345px] sm:max-w-[360px] h-[225px] sm:h-[235px] overflow-hidden cursor-grab active:cursor-grabbing flex items-center justify-center"
                     onTouchStart={(e) => {
                       swipeTouchStartX.current = e.touches[0].clientX;
                       swipeTouchStartY.current = e.touches[0].clientY;
@@ -1572,7 +1577,7 @@ function SpendlyMobileHome({
                     onMouseLeave={() => { swipeDragging.current = false; }}
                   >
                     {/* Inner card viewport */}
-                    <div className="relative w-full h-[205px] sm:h-[215px]">
+                    <div className="relative w-full h-[200px] sm:h-[210px]">
                       {walletCards.map((card, idx) => {
                         // Symmetrical physical stack layering & overlapping
                         let cardTransform = '';
@@ -1693,12 +1698,13 @@ function SpendlyMobileHome({
                       <span>•••• {walletCards[activeCard].last4}</span>
                     </div>
 
-                    <p className="text-[11px] text-white/65 font-medium tracking-wide drop-shadow-md">
+                    <p className="text-[11px] text-white/65 font-medium tracking-wide drop-shadow-md text-center">
                       Swipe left or right to overlap cards • Tap outside to close
                     </p>
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </>
         );
