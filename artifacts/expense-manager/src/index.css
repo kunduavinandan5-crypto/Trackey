@@ -102,15 +102,19 @@
   html {
     background: hsl(var(--background));
     -webkit-text-size-adjust: 100%;
-    touch-action: pan-x pan-y;
+    overflow-x: hidden !important;
+    width: 100%;
+    max-width: 100vw;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
     min-width: 320px;
     overscroll-behavior-y: none;
+    overflow-x: hidden !important;
+    width: 100%;
+    max-width: 100vw;
     -webkit-font-smoothing: antialiased;
-    touch-action: pan-x pan-y;
   }
 
   button,
@@ -2939,63 +2943,93 @@ html:not(.dark) {
 
 
 /* ═══════════════════════════════════════════════════════════════
-   WALLET POP-IN & POP-OUT ANIMATIONS (Spring Physics)
+   WALLET FLOATING CARD POP-IN & POP-OUT ANIMATIONS
 ═══════════════════════════════════════════════════════════════ */
 
-/* Backdrop fade in/out */
+/* Backdrop fade in/out with deep blur */
 @keyframes wallet-backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+  }
 }
 
 @keyframes wallet-backdrop-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  from {
+    opacity: 1;
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
 }
 
-/* Bottom sheet pop in with bounce */
-@keyframes wallet-sheet-in {
-  0%   { opacity: 0; transform: translateY(100%) scale(0.92); }
-  60%  { opacity: 1; transform: translateY(-8px) scale(1.015); }
-  80%  { transform: translateY(3px) scale(0.995); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+/* Floating card spring pop-in */
+@keyframes wallet-float-in {
+  0% {
+    opacity: 0;
+    transform: translateY(60px) scale(0.72) rotateX(12deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.03) rotateX(-2deg);
+  }
+  80% {
+    transform: translateY(2px) scale(0.995) rotateX(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0deg);
+  }
 }
 
-/* Bottom sheet pop out */
-@keyframes wallet-sheet-out {
-  0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(100%) scale(0.94); }
-}
-
-/* Card pop-in stagger */
-@keyframes wallet-card-pop {
-  0%   { opacity: 0; transform: scale(0.78) translateY(36px) rotate(-4deg); }
-  65%  { opacity: 1; transform: scale(1.04) translateY(-5px) rotate(0.8deg); }
-  85%  { transform: scale(0.98) translateY(2px); }
-  100% { opacity: 1; transform: scale(1) translateY(0) rotate(0); }
+/* Floating card spring pop-out */
+@keyframes wallet-float-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(70px) scale(0.75);
+  }
 }
 
 .wallet-modal-backdrop {
-  animation: wallet-backdrop-in 0.28s ease forwards;
+  animation: wallet-backdrop-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .wallet-modal-backdrop--out {
-  animation: wallet-backdrop-out 0.28s ease forwards;
+  animation: wallet-backdrop-out 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-.wallet-modal-sheet {
-  animation: wallet-sheet-in 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+.wallet-float-in {
+  animation: wallet-float-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  perspective: 1000px;
 }
 
-.wallet-modal-sheet--out {
-  animation: wallet-sheet-out 0.26s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.wallet-float-out {
+  animation: wallet-float-out 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-.wallet-popup-card {
-  animation: wallet-card-pop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-/* Dot indicators */
-.wallet-modal-sheet button[class*="rounded-full"] {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* Overlapping stacked card transitions with crisp antialiased hardware rendering */
+.wallet-stack-card {
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.38s ease,
+              box-shadow 0.38s ease,
+              filter 0.38s ease;
+  will-change: transform, opacity;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
 }
