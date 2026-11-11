@@ -1,7 +1,23 @@
 User-agent: *
-Allow: /$
-Disallow: /expenses
-Disallow: /add-expense
-Disallow: /summary
-Disallow: /settings
 Allow: /
+Disallow: /settings
+Disallow: /add-expense
+
+# AI Search & Generative Engine Optimization (GEO)
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# Sitemap
+Sitemap: https://spendly-three-lemon.vercel.app/sitemap.xml
