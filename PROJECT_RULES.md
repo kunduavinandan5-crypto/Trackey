@@ -18,6 +18,7 @@
 5. **COMMIT**: One task = one commit, message format: `type(scope): description`
 
 **Planning Lock**: No implementation code until SPEC.md contains "Status: FINALIZED".
+**Security Directive**: All code changes must strictly adhere to **[secure.md](./secure.md)** across all 6 core disciplines (Secure Deployment, Input Sanitization, Secret Hygiene, Abuse/Rate Limiting, Authentication Security, and IDOR/RLS Access Control).
 
 ---
 

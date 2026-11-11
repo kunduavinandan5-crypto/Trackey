@@ -20,6 +20,7 @@ This file provides Gemini-specific integration. For the complete methodology, se
 2. **State Is Sacred** — Every action updates persistent memory
 3. **Context Is Limited** — Prevent degradation through hygiene
 4. **Verify Empirically** — No "trust me, it works"
+5. **Security Is Mandatory** — Strictly follow all 6 security directives in [secure.md](../secure.md)
 
 ---
 
