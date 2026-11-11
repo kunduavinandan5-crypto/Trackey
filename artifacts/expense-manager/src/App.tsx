@@ -4270,7 +4270,7 @@ function SpendlyMobileSettings({
         </div>
       </div>
 
-      {/* ── REALISTIC LATCHING SWITCH CARD (SETTINGS END) ── */}
+      {/* ── MAIN FUSE SWITCH CARD (SETTINGS END) ── */}
       <div className="spendly-glass-card space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -4278,28 +4278,48 @@ function SpendlyMobileSettings({
               <Zap className="h-3.5 w-3.5 text-[#fbbf24]" />
             </div>
             <div>
-              <p className="text-xs font-bold text-[#f1f5f3]">Realistic Switch</p>
-              <p className="text-[10px] text-[#9ca3af]">Latching push switch with Web Audio click</p>
+              <p className="text-xs font-bold text-[#f1f5f3]">Main Fuse Switch</p>
+              <p className="text-[10px] text-[#9ca3af]">Master breaker &bull; Flip to cut lights</p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full bg-[#fbbf24]/15 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] border border-[#fbbf24]/30">
-            Evil Buttons
+            {theme === 'dark' ? 'Fuse ON (Dark)' : 'Fuse OFF (Light)'}
           </span>
         </div>
 
-        {/* Live Interactive Switch */}
-        <div className="rounded-xl border border-border/40 bg-muted/20 dark:bg-black/30 p-6 flex flex-col items-center justify-center gap-3">
-          <RealisticSwitch
-            size="lg"
-            sound
-            aria-label="Main power switch"
-            onCheckedChange={(on) => {
-              finance.notify(on ? 'Power ON (latched down with glow)' : 'Power OFF (released up)', on ? 'success' : undefined);
+        {/* Dark Fuse Stage with Ambient Radial Spotlight */}
+        <div className="relative overflow-hidden rounded-2xl bg-[#030712] border border-white/10 p-6 flex flex-col items-center justify-center min-h-[200px] shadow-[inset_0_4px_24px_rgba(0,0,0,0.9)]">
+          {/* Circular Spotlight Beam */}
+          <div
+            className="pointer-events-none absolute inset-0 transition-opacity duration-700"
+            style={{
+              background: theme === 'dark'
+                ? 'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16) 0%, rgba(225, 38, 28, 0.22) 30%, rgba(3, 7, 18, 0.95) 70%)'
+                : 'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0%, rgba(3, 7, 18, 0.98) 65%)',
             }}
           />
-          <p className="text-[11px] font-mono text-[#9ca3af] text-center">
-            Press to sink into socket &bull; Springs up on release
-          </p>
+
+          <div className="relative z-10 flex flex-col items-center gap-3">
+            <RealisticSwitch
+              size="lg"
+              sound
+              checked={theme === 'dark'}
+              color="#e1261c"
+              aria-label="Master Fuse Power Switch"
+              onCheckedChange={(isDark) => {
+                if ((isDark && theme !== 'dark') || (!isDark && theme !== 'light')) {
+                  toggleTheme();
+                  finance.notify(isDark ? '⚡ Lights Out: Dark Mode Active' : '☀️ Power Restored: Light Mode Active', 'success');
+                }
+              }}
+            />
+            <p
+              className="text-[11px] font-mono tracking-wider uppercase transition-colors duration-300 text-center"
+              style={{ color: theme === 'dark' ? '#fca5a5' : '#9ca3af' }}
+            >
+              {theme === 'dark' ? '• LIGHTS OUT • FUSE ENGAGED' : '• LIGHTS ON • PRESS FUSE TO CUT LIGHTS'}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -4572,7 +4592,7 @@ function SettingsPage({
         </div>
       </section>
 
-      {/* ── REALISTIC LATCHING SWITCH SECTION (DESKTOP SETTINGS END) ── */}
+      {/* ── MAIN FUSE SWITCH SECTION (DESKTOP SETTINGS END) ── */}
       <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
@@ -4580,30 +4600,50 @@ function SettingsPage({
               <Zap className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-display text-2xl">Realistic Switch</h2>
+              <h2 className="font-display text-2xl">Main Fuse Switch</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                A tactile latching push switch with physical socket depth, incandescent illumination, and Web Audio synthesized mechanical clicks.
+                Industrial master circuit breaker &bull; Flip to cut the lights across the app and engage Dark Mode.
               </p>
             </div>
           </div>
           <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-500 border border-amber-500/20">
-            Evil Buttons
+            {theme === 'dark' ? 'Fuse Engaged (Dark)' : 'Fuse Disengaged (Light)'}
           </span>
         </div>
 
-        <div className="mt-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-muted/30 p-8 max-w-xl mx-auto">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Interactive Switch</p>
-          <RealisticSwitch
-            size="lg"
-            sound
-            aria-label="Power switch"
-            onCheckedChange={(on) => {
-              finance.notify(on ? 'Power ON (latched down with glow)' : 'Power OFF (released up)', on ? 'success' : undefined);
+        {/* Dark Fuse Stage with Ambient Radial Spotlight */}
+        <div className="mt-6 relative overflow-hidden rounded-2xl bg-[#030712] border border-white/10 p-10 flex flex-col items-center justify-center min-h-[260px] max-w-xl mx-auto shadow-[inset_0_4px_30px_rgba(0,0,0,0.9)]">
+          {/* Circular Spotlight Beam */}
+          <div
+            className="pointer-events-none absolute inset-0 transition-opacity duration-700"
+            style={{
+              background: theme === 'dark'
+                ? 'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16) 0%, rgba(225, 38, 28, 0.22) 30%, rgba(3, 7, 18, 0.95) 70%)'
+                : 'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0%, rgba(3, 7, 18, 0.98) 65%)',
             }}
           />
-          <p className="text-xs font-mono text-muted-foreground text-center">
-            Click to sink into socket &bull; Synthesizes mechanical audio
-          </p>
+
+          <div className="relative z-10 flex flex-col items-center gap-4">
+            <RealisticSwitch
+              size="lg"
+              sound
+              checked={theme === 'dark'}
+              color="#e1261c"
+              aria-label="Master Fuse Power Switch"
+              onCheckedChange={(isDark) => {
+                if ((isDark && theme !== 'dark') || (!isDark && theme !== 'light')) {
+                  toggleTheme();
+                  finance.notify(isDark ? '⚡ Lights Out: Dark Mode Active' : '☀️ Power Restored: Light Mode Active', 'success');
+                }
+              }}
+            />
+            <p
+              className="text-xs font-mono tracking-wider uppercase transition-colors duration-300 text-center"
+              style={{ color: theme === 'dark' ? '#fca5a5' : '#9ca3af' }}
+            >
+              {theme === 'dark' ? '• LIGHTS OUT • FUSE ENGAGED' : '• LIGHTS ON • PRESS FUSE TO CUT LIGHTS'}
+            </p>
+          </div>
         </div>
       </section>
     </div>
