@@ -4320,6 +4320,8 @@ type EmiItem = {
 
 function ServicesPage() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [location, setLocation] = useLocation();
   const params = useParams<{ subpage?: string }>();
 
@@ -5546,14 +5548,23 @@ function ServicesPage() {
                 setActiveTab(svc.id);
                 setLocation('/services/' + svc.id);
               }}
-              className={`group relative flex flex-col justify-between rounded-2xl p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[145px] sm:min-h-[165px] text-left active:scale-[0.98] shadow-lg hover:shadow-xl ${
+              className={`group spendly-service-card relative flex flex-col justify-between rounded-2xl p-3.5 sm:p-4.5 backdrop-blur-xl transition-all duration-300 min-h-[145px] sm:min-h-[165px] text-left active:scale-[0.98] shadow-lg hover:shadow-xl ${
                 isSelected
-                  ? 'border-2 border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.25)]'
-                  : 'border border-white/[0.06] hover:border-white/[0.18]'
+                  ? isDark
+                    ? 'border-2 border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.25)]'
+                    : 'border-2 border-[#1E3B2F]/60 shadow-[0_0_20px_rgba(30,59,47,0.18)]'
+                  : isDark
+                    ? 'border border-white/[0.06] hover:border-white/[0.18]'
+                    : 'border border-white/80 hover:border-[#1E3B2F]/30 shadow-[0_4px_24px_rgba(30,59,47,0.08),inset_0_1px_1px_rgba(255,255,255,0.9)]'
               }`}
-              style={{
-                background: `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.85) 75%)`,
-              }}
+              style={isDark
+                ? { background: `radial-gradient(ellipse at 50% 0%, ${svc.glow} 0%, rgba(12,16,28,0.85) 75%)` }
+                : {
+                    background: `linear-gradient(145deg, rgba(255,255,255,0.72) 0%, rgba(240,248,244,0.60) 100%)`,
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                  }
+              }
             >
               <div className="flex items-start justify-between w-full">
                 <div
@@ -5570,11 +5581,11 @@ function ServicesPage() {
                 </span>
               </div>
               <div className="my-2">
-                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
+                <h3 className={`text-sm sm:text-base font-bold tracking-tight flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-[#1E3B2F]'}`}>
                   <span>{svc.label}</span>
                   <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: svc.color }} />
                 </h3>
-                <p className="mt-0.5 text-[11px] leading-snug text-[#9ca3af] line-clamp-1">{svc.desc}</p>
+                <p className={`mt-0.5 text-[11px] leading-snug line-clamp-1 ${isDark ? 'text-[#9ca3af]' : 'text-[#4A6356]'}`}>{svc.desc}</p>
               </div>
               <div className="flex items-center pt-0.5">
                 <span
@@ -6050,31 +6061,6 @@ function ServicesPage() {
           </div>
         </div>
       )}
-
-      {/* ── Transaction Ledger Banner (Bottom of Services Page) ── */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0c101c]/80 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),_inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#182033] border border-[#fbbf24]/20 text-[#fbbf24]">
-            <ScrollText className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm sm:text-base font-bold text-[#f1f5f3]">
-              Transaction Ledger
-            </p>
-            <p className="text-[11px] sm:text-xs text-[#9ca3af]">
-              View, filter, and inspect all recorded transactions & monthly ledgers
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href="/expenses"
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-4 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:opacity-95 active:scale-95 transition shrink-0"
-        >
-          <span>Open Ledger</span>
-          <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
-        </Link>
-      </div>
     </div>
   );
 }

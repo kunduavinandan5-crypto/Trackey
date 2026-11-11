@@ -2699,22 +2699,52 @@ html:not(.dark) {
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     SERVICE CARDS (Top 4 on /services)
+     SERVICE CARDS (Top 4 on /services) — Light Mode Glassmorphism
+     Background is now set via JS (isDark conditional), CSS handles
+     border, shadow, and text colour reinforcement only.
   ═══════════════════════════════════════════════════════════════ */
-  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"] {
+  .spendly-service-card {
+    border: 1.5px solid rgba(255, 255, 255, 0.82) !important;
+    box-shadow:
+      0 0 0 1px rgba(30, 59, 47, 0.07),
+      0 8px 32px -4px rgba(30, 59, 47, 0.12),
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.90) !important;
+    color: #1E3B2F !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  .spendly-service-card:hover {
+    border-color: rgba(30, 59, 47, 0.28) !important;
+    box-shadow:
+      0 0 0 1px rgba(30, 59, 47, 0.14),
+      0 14px 36px -4px rgba(30, 59, 47, 0.16),
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.90) !important;
+  }
+
+  .spendly-service-card h3 {
+    color: #1E3B2F !important;
+  }
+
+  .spendly-service-card p {
+    color: #4A6356 !important;
+  }
+
+  /* Legacy selector kept for any other .group cards on other pages */
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"]:not(.spendly-service-card) {
     background-color: #FAF5EC !important;
     border-color: rgba(30, 59, 47, 0.15) !important;
   }
 
-  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"]:hover {
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"]:not(.spendly-service-card):hover {
     border-color: #1E3B2F !important;
   }
 
-  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"] h3 {
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"]:not(.spendly-service-card) h3 {
     color: #1E3B2F !important;
   }
 
-  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"] p {
+  .group[class*="backdrop-blur-xl"][class*="rounded-2xl"]:not(.spendly-service-card) p {
     color: #4A6356 !important;
   }
 
