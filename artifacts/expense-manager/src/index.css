@@ -2400,12 +2400,20 @@ html:not(.dark) {
   h4:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
   h5:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
   h6:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-white"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#ffffff]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#f1f5f3]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#f3f4f6]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#e2e8f0]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *) {
+  [class*="text-white"]:not(.wallet-card-deck *):not(.wallet-modal-overlay *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#ffffff]"]:not(.wallet-card-deck *):not(.wallet-modal-overlay *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#f1f5f3]"]:not(.wallet-card-deck *):not(.wallet-modal-overlay *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#f3f4f6]"]:not(.wallet-card-deck *):not(.wallet-modal-overlay *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#e2e8f0]"]:not(.wallet-card-deck *):not(.wallet-modal-overlay *):not(.app-lock-screen *):not(.app-lock-dialog *) {
     color: #1E3B2F !important;
+  }
+
+  .wallet-modal-overlay [class*="text-white"] {
+    color: #ffffff !important;
+  }
+
+  .wallet-modal-overlay [class*="text-white/"] {
+    color: rgba(255, 255, 255, 0.75) !important;
   }
 
   .app-lock-screen [class*="text-white"],
@@ -2479,8 +2487,8 @@ html:not(.dark) {
   }
 
   /* Universal Borders (excluding custom hero glass components) */
-  [class*="border-white/"]:not(.wallet-card-deck):not(.wallet-front-pocket):not(.spendly-sheet),
-  [class*="border-white\\["]:not(.wallet-card-deck):not(.wallet-front-pocket):not(.spendly-sheet) {
+  [class*="border-white/"]:not(.wallet-card-deck):not(.wallet-front-pocket):not(.spendly-sheet):not(.wallet-modal-overlay *),
+  [class*="border-white\\["]:not(.wallet-card-deck):not(.wallet-front-pocket):not(.spendly-sheet):not(.wallet-modal-overlay *) {
     border-color: rgba(30, 59, 47, 0.14) !important;
   }
 
@@ -2965,9 +2973,9 @@ html:not(.dark) {
   width: 100vw !important;
   height: 100vh !important;
   height: 100dvh !important;
-  background: rgba(0, 0, 0, 0.78) !important;
-  backdrop-filter: blur(28px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  background: rgba(10, 16, 26, 0.84) !important;
+  backdrop-filter: blur(36px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(190%) !important;
   animation: wallet-fade-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
@@ -2977,9 +2985,9 @@ html:not(.dark) {
   width: 100vw !important;
   height: 100vh !important;
   height: 100dvh !important;
-  background: rgba(0, 0, 0, 0.78) !important;
-  backdrop-filter: blur(28px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  background: rgba(10, 16, 26, 0.84) !important;
+  backdrop-filter: blur(36px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(190%) !important;
   animation: wallet-fade-out 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 

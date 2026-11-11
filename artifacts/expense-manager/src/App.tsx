@@ -1440,7 +1440,9 @@ function SpendlyMobileHome({
             <button
               type="button"
               onClick={openWallet}
-              className="wallet-card-deck group relative w-full overflow-hidden rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300 text-left active:scale-[0.98] cursor-pointer"
+              className={`wallet-card-deck group relative w-full overflow-hidden rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300 text-left active:scale-[0.98] cursor-pointer ${
+                walletOpen || walletClosing ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              }`}
               aria-label="Open wallet"
             >
               {/* Wallet Label at Top Center */}
@@ -1604,7 +1606,7 @@ function SpendlyMobileHome({
                           cardZIndex = 40;
                           cardOpacity = 1;
                           cardFilter = 'brightness(1)';
-                          cardShadow = `${card.strokeRing}, 0 25px 60px -8px rgba(0,0,0,0.72), ${card.innerGlow}`;
+                          cardShadow = `${card.strokeRing}, 0 16px 36px -8px rgba(0,0,0,0.38), ${card.innerGlow}`;
                         } else {
                           // Upcoming card waiting to slide in OVER the active card
                           cardTransform = 'translateX(104%) translateY(0px) scale(0.98)';
