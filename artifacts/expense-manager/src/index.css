@@ -1870,6 +1870,36 @@ body {
     margin-top: 0.15rem;
   }
 
+  /* Spendly VIP Profile Card Elements */
+  .spendly-credit-card .spendly-user-badge {
+    background: rgba(15, 20, 15, 0.9);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    color: #fde68a;
+  }
+
+  .spendly-credit-card .spendly-user-subtext {
+    color: #cbd5e1;
+  }
+
+  .spendly-credit-card .spendly-btn-signout {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+  }
+
+  .spendly-credit-card .spendly-btn-signout:hover {
+    background: rgba(225, 29, 72, 0.35);
+    border-color: rgba(251, 113, 133, 0.5);
+    color: #fecdd3;
+  }
+
+  .spendly-credit-card .spendly-btn-signin {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%);
+    color: #080c14;
+    font-weight: 800;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.45);
+  }
+
   /* Spendly Category Carousel Container */
   .spendly-cat-carousel {
     display: flex !important;
@@ -2379,32 +2409,32 @@ html:not(.dark) {
   }
 
   /* Sub-Panels, Elevated Containers, Table Header Bars, Metric Mini-Boxes */
-  [class*="bg-[#182033]"],
-  [class*="bg-[#1e1c12]"],
-  [class*="bg-[#151c2e]"],
-  [class*="bg-[#161e30]"],
-  [class*="bg-[#131927]"],
-  [class*="bg-[#0d1322]"],
-  [class*="bg-white/[0.02]"],
-  [class*="bg-white/[0.04]"],
-  [class*="bg-white/[0.05]"] {
+  [class*="bg-[#182033]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-[#1e1c12]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-[#151c2e]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-[#161e30]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-[#131927]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-[#0d1322]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-white/[0.02]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-white/[0.04]"]:not(.spendly-credit-card *):not(.wallet-card-deck *),
+  [class*="bg-white/[0.05]"]:not(.spendly-credit-card *):not(.wallet-card-deck *) {
     background-color: #EDE2CD !important;
     border-color: rgba(30, 59, 47, 0.14) !important;
     color: #1E3B2F !important;
   }
 
   /* Typography: Forest Green Hierarchy */
-  h1:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  h2:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  h3:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  h4:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  h5:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  h6:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-white"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#ffffff]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#f1f5f3]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#f3f4f6]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *),
-  [class*="text-[#e2e8f0]"]:not(.wallet-card-deck *):not(.app-lock-screen *):not(.app-lock-dialog *) {
+  h1:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  h2:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  h3:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  h4:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  h5:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  h6:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-white"]:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#ffffff]"]:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#f1f5f3]"]:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#f3f4f6]"]:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *),
+  [class*="text-[#e2e8f0]"]:not(.wallet-card-deck *):not(.spendly-credit-card *):not(.app-lock-screen *):not(.app-lock-dialog *) {
     color: #1E3B2F !important;
   }
 
@@ -2750,16 +2780,46 @@ html:not(.dark) {
      SPENDLY CREDIT CARD HERO (Forest Green Premier Metal)
   ═══════════════════════════════════════════════════════════════ */
   .spendly-credit-card {
-    background: linear-gradient(145deg, #122820 0%, #1E3B2F 45%, #183328 80%, #0F2119 100%) !important;
-    border: 1px solid rgba(245, 234, 212, 0.45) !important;
-    color: #F5EAD4 !important;
+    background: linear-gradient(145deg, #091c13 0%, #133324 45%, #0d261b 80%, #06140d 100%) !important;
+    border: 1.5px solid rgba(251, 191, 36, 0.4) !important;
+    color: #ffffff !important;
     box-shadow:
-      0 16px 36px -8px rgba(30, 59, 47, 0.4),
-      inset 0 1px 1px rgba(245, 234, 212, 0.35) !important;
+      0 16px 36px -8px rgba(10, 32, 22, 0.55),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.25) !important;
   }
 
-  .spendly-credit-card * {
-    color: #F5EAD4 !important;
+  .spendly-credit-card h2,
+  .spendly-credit-card [class*="text-white"] {
+    color: #ffffff !important;
+  }
+
+  .spendly-credit-card .spendly-user-badge {
+    background: rgba(15, 20, 15, 0.9) !important;
+    border: 1px solid rgba(251, 191, 36, 0.5) !important;
+    color: #fde68a !important;
+  }
+
+  .spendly-credit-card .spendly-user-subtext {
+    color: #cbd5e1 !important;
+  }
+
+  .spendly-credit-card .spendly-btn-signout {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+  }
+
+  .spendly-credit-card .spendly-btn-signout:hover {
+    background: rgba(225, 29, 72, 0.35) !important;
+    border-color: rgba(251, 113, 133, 0.5) !important;
+    color: #fecdd3 !important;
+  }
+
+  .spendly-credit-card .spendly-btn-signin {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%) !important;
+    color: #080c14 !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.45) !important;
   }
 
   .spendly-chip {

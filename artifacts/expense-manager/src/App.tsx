@@ -44,6 +44,7 @@ import {
   RotateCcw,
   ScrollText,
   Search,
+  Settings,
   Settings2,
   Shield,
   ShieldCheck,
@@ -3888,6 +3889,7 @@ function SpendlyMobileSettings({
   const [selectedMonth, setSelectedMonth] = useState(monthKey());
   const [salaryValue, setSalaryValue] = useState(String(finance.store.salaries[selectedMonth] ?? ''));
   const [newCategory, setNewCategory] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
     isChecking: false,
     hasUpdate: false,
@@ -3938,44 +3940,44 @@ function SpendlyMobileSettings({
         </div>
       </div>
 
-      {/* ── VIP DIGITAL MEMBER PROFILE CARD ── */}
-      <div className="spendly-credit-card !p-4">
+      {/* ── VIP DIGITAL MEMBER PROFILE CARD (HIGH-CONTRAST GOLD & EMERALD) ── */}
+      <div className="spendly-credit-card !p-4.5 overflow-hidden rounded-[1.85rem] relative">
         <div className="spendly-credit-card__sheen" />
         <div className="spendly-credit-card__mesh-pattern" />
 
         <div className="relative z-10 flex items-start justify-between">
           <div className="flex items-center gap-3">
             {/* Glowing Avatar */}
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-lg font-black text-[#080c14] shadow-[0_0_16px_rgba(245,158,11,0.5)] ring-2 ring-[#fbbf24] ring-offset-2 ring-offset-[#080c14]">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-lg font-black text-[#080c14] shadow-[0_0_16px_rgba(245,158,11,0.6)] ring-2 ring-[#fbbf24] ring-offset-2 ring-offset-[#080c14]">
               {userInitial}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-sm font-extrabold text-white tracking-tight truncate">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-white tracking-tight truncate drop-shadow-md">
                   {userName}
                 </h2>
-                <span className="rounded-full bg-[#1e1c12] border border-[#fbbf24]/40 px-1.5 py-0.2 text-[7.5px] font-extrabold uppercase tracking-wider text-[#fde68a]">
+                <span className="spendly-user-badge inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">
                   PRIVATE WEALTH
                 </span>
               </div>
-              <p className="text-[11px] text-[#fde68a]/80 truncate font-mono mt-0.5">
+              <p className="spendly-user-subtext text-[11px] truncate font-mono mt-0.5 drop-shadow-sm">
                 {isRealSupabaseUser(user) ? user?.email : 'Offline Guest Mode'}
               </p>
             </div>
           </div>
 
           {/* Overlapping Hologram Circles */}
-          <div className="spendly-card-network opacity-80 shrink-0" title="Spendly Network">
+          <div className="spendly-card-network opacity-85 shrink-0" title="Spendly Network">
             <div className="spendly-card-network__circle spendly-card-network__circle--1" />
             <div className="spendly-card-network__circle spendly-card-network__circle--2" />
           </div>
         </div>
 
         {/* Database & Session Status Row */}
-        <div className="relative z-10 mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
+        <div className="relative z-10 mt-3 pt-2.5 border-t border-white/15 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 rounded-full ${isRealSupabaseUser(user) ? 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]' : 'bg-amber-400'}`} />
-            <span className={`text-[10.5px] font-semibold ${isRealSupabaseUser(user) ? 'text-emerald-300' : 'text-amber-200/90'}`}>
+            <span className={`h-2 w-2 rounded-full ${isRealSupabaseUser(user) ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]' : 'bg-amber-400 shadow-[0_0_6px_#fbbf24]'}`} />
+            <span className={`text-[11px] font-bold ${isRealSupabaseUser(user) ? 'text-emerald-300' : 'text-amber-300'}`}>
               {isRealSupabaseUser(user) ? 'Cloud Synced' : 'Private (Offline)'}
             </span>
           </div>
@@ -3987,7 +3989,7 @@ function SpendlyMobileSettings({
                   type="button"
                   onClick={finance.syncWithSupabase}
                   disabled={finance.isSyncing}
-                  className="rounded-lg bg-[#182033] border border-[#fbbf24]/30 px-2.5 py-1 text-[10px] font-bold text-[#fde68a] flex items-center gap-1 transition active:scale-95 disabled:opacity-50"
+                  className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
                   <RefreshCw className={`h-3 w-3 ${finance.isSyncing ? 'animate-spin' : ''}`} />
                   <span>{finance.isSyncing ? 'Syncing...' : 'Sync'}</span>
@@ -3995,7 +3997,7 @@ function SpendlyMobileSettings({
                 <button
                   type="button"
                   onClick={signOut}
-                  className="rounded-lg bg-rose-950/80 border border-rose-400/30 px-2.5 py-1 text-[10px] font-bold text-rose-300 flex items-center gap-1 transition active:scale-95"
+                  className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
                 >
                   <LogOut className="h-3 w-3" />
                   <span>Sign Out</span>
@@ -4007,16 +4009,16 @@ function SpendlyMobileSettings({
                   type="button"
                   onClick={signOut}
                   title="Reset local guest data and return to login"
-                  className="rounded-lg bg-[#182033] border border-white/15 px-2.5 py-1 text-[10px] font-bold text-neutral-300 flex items-center gap-1 transition active:scale-95 hover:bg-rose-950/50 hover:text-rose-300 hover:border-rose-400/30"
+                  className="spendly-btn-signout rounded-xl px-3 py-1.5 text-[10.5px] font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
                 >
                   <LogOut className="h-3 w-3" />
                   <span>Sign Out</span>
                 </button>
                 <Link
                   href="/login"
-                  className="rounded-lg bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-2.5 py-1 text-[10px] font-bold text-[#080c14] flex items-center gap-1 shadow-[0_0_10px_rgba(245,158,11,0.35)] transition active:scale-95"
+                  className="spendly-btn-signin rounded-xl px-3.5 py-1.5 text-[10.5px] font-extrabold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
                 >
-                  <LogIn className="h-3 w-3" />
+                  <LogIn className="h-3 w-3 stroke-[2.5]" />
                   <span>Sign In</span>
                 </Link>
               </>
@@ -4070,7 +4072,7 @@ function SpendlyMobileSettings({
           <button
             type="submit"
             disabled={!Number(salaryValue)}
-            className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.35)] transition active:scale-95 disabled:opacity-50"
+            className="rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] px-3.5 py-2 text-xs font-bold text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.35)] transition active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             Save
           </button>
@@ -4103,7 +4105,7 @@ function SpendlyMobileSettings({
                 <button
                   type="button"
                   onClick={() => finance.removeCategory(cat)}
-                  className="ml-0.5 rounded-full p-0.5 text-[#9ca3af] hover:text-[#f87171] hover:bg-rose-950/40 transition active:scale-90"
+                  className="ml-0.5 rounded-full p-0.5 text-[#9ca3af] hover:text-[#f87171] hover:bg-rose-950/40 transition active:scale-90 cursor-pointer"
                   title={`Delete ${cat}`}
                   aria-label={`Delete ${cat}`}
                 >
@@ -4127,128 +4129,185 @@ function SpendlyMobileSettings({
           <button
             type="submit"
             disabled={!newCategory.trim()}
-            className="rounded-xl bg-[#182033] border border-[#fbbf24]/30 px-3.5 py-2 text-xs font-bold text-[#fbbf24] transition active:scale-95 disabled:opacity-50"
+            className="rounded-xl bg-[#182033] border border-[#fbbf24]/30 px-3.5 py-2 text-xs font-bold text-[#fbbf24] transition active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             + Add
           </button>
         </form>
       </div>
 
-      {/* ── THEME & DISPLAY PREFERENCES ── */}
-      <div className="spendly-glass-card space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-              <Smartphone className="h-3.5 w-3.5" />
+      {/* ── SETTINGS OPTION (CONTAINS ALL REST SYSTEM SETTINGS) ── */}
+      <div className="space-y-3">
+        <div
+          onClick={() => setShowSettings((prev) => !prev)}
+          className={`spendly-glass-card cursor-pointer transition-all duration-300 ${
+            showSettings ? 'ring-2 ring-[#fbbf24]/50 border-[#fbbf24]/50' : 'hover:border-[#fbbf24]/35'
+          }`}
+          role="button"
+          tabIndex={0}
+          aria-expanded={showSettings}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${
+                showSettings
+                  ? 'bg-gradient-to-tr from-[#d97706] to-[#fbbf24] text-[#080c14] shadow-[0_0_12px_rgba(245,158,11,0.45)]'
+                  : 'bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20'
+              }`}>
+                <Settings className={`h-4 w-4 transition-transform duration-300 ${showSettings ? 'rotate-90' : ''}`} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold text-[#f1f5f3]">Settings</p>
+                  <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full transition-all ${
+                    showSettings
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                      : 'bg-[#fbbf24]/15 text-[#fde68a] border border-[#fbbf24]/25'
+                  }`}>
+                    {showSettings ? 'Active' : 'Preferences'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#9ca3af]">Theme, biometric lock, updates & power switch</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-[#f1f5f3]">Theme Mode</p>
-              <p className="text-[10px] text-[#9ca3af]">Currently {theme} mode</p>
-            </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-1.5 text-xs font-bold text-[#f1f5f3] transition active:scale-95"
-          >
-            {theme === 'dark' ? (
-              <>
-                <Sun className="h-3.5 w-3.5 text-amber-400" />
-                <span>Light</span>
-              </>
-            ) : (
-              <>
-                <Moon className="h-3.5 w-3.5 text-[#fbbf24]" />
-                <span>Dark</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* ── APP LOCK & PHONE BIOMETRICS CARD ── */}
-      <AppLockSettingsCard notify={finance.notify} isMobile={true} userId={user?.id} />
-
-      {/* ── APP VERSION & PWA UPDATE CARD ── */}
-      <div className="spendly-glass-card space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-              <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-[#f1f5f3]">App Version & Updates</p>
-              <p className="text-[10px] text-[#9ca3af]">
-                {APP_VERSION} • {pwaStatus.hasUpdate ? 'Update Available' : 'Running latest build'}
-              </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-[#fbbf24]">
+                {showSettings ? 'Hide' : 'Open'}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-[#fbbf24] transition-transform duration-300 ${showSettings ? 'rotate-180' : ''}`} />
             </div>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#10b981]/15 px-2 py-0.5 text-[10px] font-bold text-[#34d399] border border-[#10b981]/25">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#34d399] animate-pulse" />
-            Live PWA
-          </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-0.5">
-          <button
-            type="button"
-            disabled={pwaStatus.isChecking}
-            onClick={async () => {
-              const res = await checkForAppUpdates();
-              finance.notify(res.message, res.updated ? 'success' : undefined);
-            }}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] py-2 px-3 text-xs font-bold text-[#080c14] transition active:scale-95 disabled:opacity-50 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
-            <span>{pwaStatus.isChecking ? 'Checking...' : 'Check Update'}</span>
-          </button>
+        {/* ── THE REST OPTIONS INSIDE SETTINGS ── */}
+        {showSettings && (
+          <div className="space-y-3 pt-1 animate-fadeIn">
+            {/* 1. Theme Mode */}
+            <div className="spendly-glass-card space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+                    <Smartphone className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[#f1f5f3]">Theme Mode</p>
+                    <p className="text-[10px] text-[#9ca3af]">Currently {theme} mode</p>
+                  </div>
+                </div>
 
-          <button
-            type="button"
-            onClick={async () => {
-              finance.notify('Clearing cache and reloading fresh...');
-              await forceAppRefresh();
-            }}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/30 py-2 px-3 text-xs font-bold text-[#fde68a] transition active:scale-95 hover:bg-[#202942]"
-          >
-            <RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />
-            <span>Force Reload</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── REALISTIC LATCHING SWITCH CARD (SETTINGS END) ── */}
-      <div className="spendly-glass-card space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
-              <Zap className="h-3.5 w-3.5 text-[#fbbf24]" />
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#101626] border border-[#fbbf24]/25 px-3 py-1.5 text-xs font-bold text-[#f1f5f3] transition active:scale-95 cursor-pointer"
+                >
+                  {theme === 'dark' ? (
+                    <>
+                      <Sun className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Light</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="h-3.5 w-3.5 text-[#fbbf24]" />
+                      <span>Dark</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-[#f1f5f3]">Realistic Switch</p>
-              <p className="text-[10px] text-[#9ca3af]">Latching push switch with Web Audio click</p>
+
+            {/* 2. App Lock & Phone Biometrics */}
+            <AppLockSettingsCard notify={finance.notify} isMobile={true} userId={user?.id} />
+
+            {/* 3. App Version & Updates */}
+            <div className="spendly-glass-card space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+                    <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[#f1f5f3]">App Version & Updates</p>
+                    <p className="text-[10px] text-[#9ca3af]">
+                      {APP_VERSION} • {pwaStatus.hasUpdate ? 'Update Available' : 'Running latest build'}
+                    </p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#10b981]/15 px-2 py-0.5 text-[10px] font-bold text-[#34d399] border border-[#10b981]/25">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#34d399] animate-pulse" />
+                  Live PWA
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <button
+                  type="button"
+                  disabled={pwaStatus.isChecking}
+                  onClick={async () => {
+                    const res = await checkForAppUpdates();
+                    finance.notify(res.message, res.updated ? 'success' : undefined);
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#fbbf24] py-2 px-3 text-xs font-bold text-[#080c14] transition active:scale-95 disabled:opacity-50 shadow-[0_0_12px_rgba(245,158,11,0.25)] cursor-pointer"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${pwaStatus.isChecking ? 'animate-spin' : ''}`} />
+                  <span>{pwaStatus.isChecking ? 'Checking...' : 'Check Update'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    finance.notify('Clearing cache and reloading fresh...');
+                    await forceAppRefresh();
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-[#182033] border border-[#fbbf24]/30 py-2 px-3 text-xs font-bold text-[#fde68a] transition active:scale-95 hover:bg-[#202942] cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-[#fbbf24]" />
+                  <span>Force Reload</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4. Realistic Switch (Master Fuse Switch) */}
+            <div className="spendly-glass-card space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+                    <Zap className="h-3.5 w-3.5 text-[#fbbf24]" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[#f1f5f3]">Realistic Switch</p>
+                    <p className="text-[10px] text-[#9ca3af]">Master power switch with Web Audio click</p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#fbbf24]/15 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] border border-[#fbbf24]/30">
+                  Evil Buttons
+                </span>
+              </div>
+
+              {/* Live Interactive Switch with Dark Spotlight Fuse Stage */}
+              <div
+                className="rounded-2xl border border-white/10 p-6 flex flex-col items-center justify-center gap-3 transition-colors duration-500 shadow-inner"
+                style={{
+                  background: 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.45) 0%, rgba(8, 12, 20, 0.95) 75%)',
+                }}
+              >
+                <RealisticSwitch
+                  size="lg"
+                  sound
+                  checked={theme === 'dark'}
+                  color="#e1261c"
+                  aria-label="Master theme power switch"
+                  onCheckedChange={(on) => {
+                    if (toggleTheme) toggleTheme();
+                  }}
+                />
+                <p className="text-[11px] font-mono text-[#9ca3af] text-center tracking-wide">
+                  Press to sink into socket &bull; Springs up on release
+                </p>
+              </div>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#fbbf24]/15 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] border border-[#fbbf24]/30">
-            Evil Buttons
-          </span>
-        </div>
-
-        {/* Live Interactive Switch */}
-        <div className="rounded-xl border border-border/40 bg-muted/20 dark:bg-black/30 p-6 flex flex-col items-center justify-center gap-3">
-          <RealisticSwitch
-            size="lg"
-            sound
-            aria-label="Main power switch"
-            onCheckedChange={(on) => {
-              finance.notify(on ? 'Power ON (latched down with glow)' : 'Power OFF (released up)', on ? 'success' : undefined);
-            }}
-          />
-          <p className="text-[11px] font-mono text-[#9ca3af] text-center">
-            Press to sink into socket &bull; Springs up on release
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );
