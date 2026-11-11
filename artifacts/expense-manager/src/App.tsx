@@ -62,7 +62,9 @@ import {
   UtensilsCrossed,
   Wallet,
   X,
+  Zap,
 } from 'lucide-react';
+import { RealisticSwitch } from '@/components/evil-buttons/realistic-switch';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import LoginPage from '@/pages/login';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -4267,6 +4269,50 @@ function SpendlyMobileSettings({
           </button>
         </div>
       </div>
+
+      {/* ── REALISTIC LATCHING SWITCH CARD (SETTINGS END) ── */}
+      <div className="spendly-glass-card space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="grid h-7 w-7 place-items-center rounded-lg bg-[#182033] text-[#fbbf24] border border-[#fbbf24]/20">
+              <Zap className="h-3.5 w-3.5 text-[#fbbf24]" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#f1f5f3]">Realistic Switch</p>
+              <p className="text-[10px] text-[#9ca3af]">Latching push switch with Web Audio click</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#fbbf24]/15 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] border border-[#fbbf24]/30">
+            Interactive
+          </span>
+        </div>
+
+        {/* Live Interactive Switch */}
+        <div className="rounded-xl border border-white/10 bg-[#0d121d] p-4 flex flex-col items-center justify-center gap-2.5">
+          <RealisticSwitch
+            size="lg"
+            sound
+            aria-label="Main power switch"
+            onCheckedChange={(on) => {
+              finance.notify(on ? 'Switch latched ON (sound + glow active)' : 'Switch released OFF', on ? 'success' : undefined);
+            }}
+          />
+          <p className="text-[11px] font-mono text-[#9ca3af] text-center">
+            Press to sink into socket &bull; Springs up on release
+          </p>
+        </div>
+
+        {/* Color & Size Showcase */}
+        <div className="pt-1 flex flex-col gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#9ca3af]">Colors & Sizes</p>
+          <div className="flex items-center justify-center gap-3.5 py-1">
+            <RealisticSwitch size="sm" sound color="#e1261c" defaultChecked aria-label="Red switch" />
+            <RealisticSwitch size="default" sound color="#1f6feb" defaultChecked aria-label="Blue switch" />
+            <RealisticSwitch size="lg" sound color="#10b981" defaultChecked aria-label="Emerald switch" />
+            <RealisticSwitch size="default" sound color="#f5f5f5" markColor="#1e293b" illuminated={false} aria-label="White switch" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -4532,6 +4578,66 @@ function SettingsPage({
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Force reload
               </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── REALISTIC LATCHING SWITCH SECTION (DESKTOP SETTINGS END) ── */}
+      <section className="rounded-2xl border border-card-border bg-card p-5 shadow-[var(--shadow-card)] sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-500/15 text-amber-500">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl">Realistic Switch</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                A tactile latching push switch with physical socket depth, incandescent illumination, and Web Audio synthesized mechanical clicks.
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-500 border border-amber-500/20">
+            Evil Buttons
+          </span>
+        </div>
+
+        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          {/* Main interactive switch */}
+          <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-muted/30 p-6">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Interactive Preview</p>
+            <RealisticSwitch
+              size="lg"
+              sound
+              aria-label="Power switch"
+              onCheckedChange={(on) => {
+                finance.notify(on ? 'Switch latched ON (sound + glow active)' : 'Switch released OFF', on ? 'success' : undefined);
+              }}
+            />
+            <p className="text-xs font-mono text-muted-foreground text-center">
+              Click to sink into socket &bull; Synthesizes mechanical audio
+            </p>
+          </div>
+
+          {/* Color & Size Showcase */}
+          <div className="flex flex-col justify-center gap-4 rounded-xl border border-border bg-muted/30 p-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Color Variants</p>
+              <div className="flex items-center gap-5">
+                <RealisticSwitch size="default" sound color="#e1261c" defaultChecked aria-label="Red switch" />
+                <RealisticSwitch size="default" sound color="#1f6feb" defaultChecked aria-label="Blue switch" />
+                <RealisticSwitch size="default" sound color="#10b981" defaultChecked aria-label="Emerald switch" />
+                <RealisticSwitch size="default" sound color="#f5f5f5" markColor="#1e293b" illuminated={false} aria-label="White switch" />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-border">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Size Variants (sm, default, lg)</p>
+              <div className="flex items-center gap-5">
+                <RealisticSwitch size="sm" sound aria-label="Small switch" />
+                <RealisticSwitch size="default" sound aria-label="Default switch" />
+                <RealisticSwitch size="lg" sound aria-label="Large switch" />
+              </div>
             </div>
           </div>
         </div>
