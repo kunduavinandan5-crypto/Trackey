@@ -2424,17 +2424,26 @@ html:not(.dark) {
     color: #9ca3af !important;
   }
 
-  /* Wallet Card Deck: Darker Green with Transparency & Light Crisp Boundary */
+  /* Wallet Card Deck: Darker Green with Transparency & Crisp White Boundary */
   .wallet-card-deck {
     background: linear-gradient(155deg, rgba(22, 46, 36, 0.38) 0%, rgba(30, 59, 47, 0.28) 50%, rgba(18, 38, 30, 0.34) 100%) !important;
     backdrop-filter: blur(28px) saturate(190%) !important;
     -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
-    border: 2px solid rgba(255, 255, 255, 0.85) !important;
+    border: 2px solid rgba(255, 255, 255, 0.95) !important;
+    border-color: rgba(255, 255, 255, 0.95) !important;
     box-shadow:
-      0 0 0 1px rgba(30, 59, 47, 0.18),
+      0 0 0 1px rgba(30, 59, 47, 0.12),
       0 18px 45px -8px rgba(30, 59, 47, 0.24),
-      inset 0 1.5px 2px rgba(255, 255, 255, 0.75),
-      inset 0 -1px 2px rgba(30, 59, 47, 0.15) !important;
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
+      inset 0 -1.5px 2px rgba(30, 59, 47, 0.1) !important;
+  }
+
+  .wallet-front-pocket {
+    border: 1.5px solid rgba(255, 255, 255, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.75) !important;
+    box-shadow:
+      0 14px 32px rgba(30, 59, 47, 0.35),
+      inset 0 1.5px 1.5px rgba(255, 255, 255, 0.65) !important;
   }
 
   .wallet-card-deck__label {
@@ -2475,9 +2484,9 @@ html:not(.dark) {
     color: #184A3B !important;
   }
 
-  /* Universal Borders */
-  [class*="border-white/"],
-  [class*="border-white\\["] {
+  /* Universal Borders (excluding custom hero glass components) */
+  [class*="border-white/"]:not(.wallet-card-deck):not(.wallet-front-pocket):not(.spendly-sheet),
+  [class*="border-white\\["]:not(.wallet-card-deck):not(.wallet-front-pocket):not(.spendly-sheet) {
     border-color: rgba(30, 59, 47, 0.14) !important;
   }
 

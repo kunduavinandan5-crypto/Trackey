@@ -1350,7 +1350,7 @@ function SpendlyMobileHome({
       </div>
 
       {/* ── SKEUOMORPHIC FROSTED WALLET CARD DECK HERO (GLASSMORPHISM TRANSPARENT) ── */}
-      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] bg-white/[0.04] backdrop-blur-2xl border border-white/25 p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300">
+      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300">
         {/* Wallet Label at Top Center */}
         <div className="text-center pb-2">
           <p className="wallet-card-deck__label text-xs font-semibold tracking-wider text-white/75 font-sans">
