@@ -898,7 +898,7 @@ function AppShell({
       <MobileBottomNav location={location} theme={theme} toggleTheme={toggleTheme} />
 
       {/* ── Main Content ── */}
-      <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-[1420px] px-3.5 pb-36 pt-3 sm:px-8 sm:pb-16 sm:pt-6 lg:px-12">
+      <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-[1420px] px-3.5 pb-20 pt-3 sm:px-8 sm:pb-16 sm:pt-6 lg:px-12">
         {children}
       </main>
 
@@ -1318,7 +1318,7 @@ function SpendlyMobileHome({
   }, [expenses]);
 
   return (
-    <div className="space-y-3.5 pb-24">
+    <div className="space-y-3.5">
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pt-1">
         <div>
@@ -2305,7 +2305,7 @@ function SpendlyMobileExpenses({
   const totalSpent = expenses.reduce((sum, item) => sum + item.amount, 0);
 
   return (
-    <div className="space-y-3.5 pb-24">
+    <div className="space-y-3.5">
       {/* Header */}
       <div className="flex items-center justify-between pt-1">
         <div>
@@ -2714,7 +2714,7 @@ function SpendlyMobileAddTransaction({
   };
 
   return (
-    <div className="space-y-3.5 pb-24">
+    <div className="space-y-3.5">
       {/* Header with Back Button */}
       <div className="flex items-center justify-between pt-1">
         <button
@@ -3407,7 +3407,7 @@ function SpendlyMobileSummary({
   const surplusOffset = cyclicCircumference - (surplusPct / 100) * cyclicCircumference;
 
   return (
-    <div className="space-y-3.5 pb-24">
+    <div className="space-y-3.5">
       {/* ── Top Header Bar ── */}
       <div className="flex items-center justify-between pt-1">
         {/* Month Selector Pill */}
@@ -3974,7 +3974,7 @@ function SpendlyMobileSettings({
   };
 
   return (
-    <div className="space-y-3.5 pb-24">
+    <div className="space-y-3.5">
       {/* Top Header */}
       <div className="flex items-center justify-between pt-1">
         <div>
