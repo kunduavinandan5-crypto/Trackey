@@ -1270,6 +1270,30 @@ function SpendlyMobileHome({
   const { user, profile } = useAuth();
   const [, setLocation] = useLocation();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [walletClosing, setWalletClosing] = useState(false);
+  const [activeCard, setActiveCard] = useState(0);
+  const isDark = theme !== 'light';
+
+  // Swipe tracking refs
+  const swipeTouchStartX = useRef(0);
+  const swipeTouchStartY = useRef(0);
+  const swipeMouseStartX = useRef(0);
+  const swipeDragging = useRef(false);
+
+  const openWallet = () => {
+    setWalletClosing(false);
+    setWalletOpen(true);
+  };
+
+  const closeWallet = () => {
+    if (walletClosing) return;
+    setWalletClosing(true);
+    setTimeout(() => {
+      setWalletOpen(false);
+      setWalletClosing(false);
+    }, 260);
+  };
 
   const greeting = getGreeting();
   const userName =
@@ -1350,87 +1374,365 @@ function SpendlyMobileHome({
       </div>
 
       {/* ── SKEUOMORPHIC FROSTED WALLET CARD DECK HERO (GLASSMORPHISM TRANSPARENT) ── */}
-      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300">
-        {/* Wallet Label at Top Center */}
-        <div className="text-center pb-2">
-          <p className="wallet-card-deck__label text-xs font-semibold tracking-wider text-white/75 font-sans">
-            Wallet
-          </p>
-        </div>
-
-        {/* Layered Card Deck Stack with Frosted Front Pocket */}
-        <div className="relative mx-auto w-full h-[230px] sm:h-[250px] flex flex-col justify-end">
-          {/* Card 1 (Back Right): Sunset Peach/Pink Mastercard */}
-          <div
-            className="absolute inset-x-3 top-0 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-lg border border-white/30 transform rotate-[4deg] translate-x-3 -translate-y-1 transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[5deg]"
-            style={{
-              background: 'linear-gradient(135deg, #fce7f3 0%, #f472b6 40%, #fb923c 100%)',
-            }}
-          >
-            <div className="flex items-center justify-between">
-              {/* Mastercard circles */}
+      {/* Wallet card data */}
+      {(() => {
+        const walletCards = [
+          {
+            id: 'mastercard-pink',
+            label: 'Mastercard',
+            network: 'MC',
+            last4: '4821',
+            bg: 'linear-gradient(135deg, #fce7f3 0%, #f472b6 40%, #fb923c 100%)',
+            textColor: '#7c2d12',
+            rotate: 'rotate-[4deg] translate-x-3 -translate-y-1',
+            hoverRotate: '-translate-y-2 rotate-[5deg]',
+            circles: (
               <div className="flex -space-x-1.5 drop-shadow-sm">
                 <div className="h-4 w-4 rounded-full bg-[#eb001b]" />
                 <div className="h-4 w-4 rounded-full bg-[#f79e1b] opacity-95" />
               </div>
-            </div>
-          </div>
-
-          {/* Card 2 (Middle Left): Frosted White/Silver Visa Card */}
-          <div
-            className="absolute inset-x-2 top-2 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-md transform -rotate-[3deg] -translate-x-2 translate-y-0.5 border-2 border-white/70 transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:-rotate-[4deg]"
-            style={{
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #fde68a 100%)',
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] font-black italic tracking-widest text-[#1a1f71] select-none font-sans drop-shadow-sm">
-                VISA
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3 (Foreground): Royal Electric Blue to Indigo Mastercard */}
-          <div
-            className="absolute inset-x-1 top-4 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-xl transform translate-y-2 border border-white/45 transition-transform duration-300 group-hover:translate-y-1"
-            style={{
-              background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #06b6d4 100%)',
-            }}
-          >
-            <div className="flex items-center justify-between">
+            ),
+          },
+          {
+            id: 'visa-white',
+            label: 'Visa',
+            network: 'VISA',
+            last4: '3307',
+            bg: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #fde68a 100%)',
+            textColor: '#1a1f71',
+            rotate: '-rotate-[3deg] -translate-x-2 translate-y-0.5',
+            hoverRotate: '-translate-y-1.5 -rotate-[4deg]',
+            circles: (
+              <span className="text-[12px] font-black italic tracking-widest text-[#1a1f71] select-none font-sans drop-shadow-sm">VISA</span>
+            ),
+          },
+          {
+            id: 'mastercard-blue',
+            label: 'Mastercard',
+            network: 'MC',
+            last4: '9174',
+            bg: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #06b6d4 100%)',
+            textColor: '#e0f2fe',
+            rotate: 'translate-y-2',
+            hoverRotate: 'translate-y-1',
+            circles: (
               <div className="flex -space-x-1.5 drop-shadow-sm">
                 <div className="h-4 w-4 rounded-full bg-[#eb001b]" />
                 <div className="h-4 w-4 rounded-full bg-[#f79e1b] opacity-95" />
               </div>
-            </div>
-          </div>
+            ),
+          },
+        ];
 
-          {/* Frosted Glass Pocket / Sleeve (Front) */}
-          <div className="wallet-front-pocket relative z-20 -mx-3.5 -mb-3 rounded-t-[1.85rem] rounded-b-[2.25rem] border border-white/35 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/85 to-[#0e1014]/90 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
-            <p className="text-[11px] font-medium tracking-wide text-white/70">
-              Total Balance
-            </p>
-            <div className="mt-0.5 flex items-baseline justify-center">
-              <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm font-sans" data-testid="spendly-total-balance">
-                {rupees(balance)}
-              </span>
-            </div>
+        return (
+          <>
+            {/* Clickable wallet deck */}
+            <button
+              type="button"
+              onClick={openWallet}
+              className="wallet-card-deck group relative w-full overflow-hidden rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300 text-left active:scale-[0.98] cursor-pointer"
+              aria-label="Open wallet"
+            >
+              {/* Wallet Label at Top Center */}
+              <div className="text-center pb-2 flex items-center justify-center gap-2">
+                <p className="wallet-card-deck__label text-xs font-semibold tracking-wider text-white/80 font-sans">
+                  Wallet
+                </p>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full transition-all ${
+                  isDark
+                    ? 'bg-white/10 text-emerald-300 border border-white/15'
+                    : 'bg-[#1E3B2F]/15 text-[#1E3B2F] border border-[#1E3B2F]/25'
+                }`}>
+                  Tap to slide cards
+                </span>
+              </div>
 
-            {/* Income & Expense Badges */}
-            <div className="flex items-center justify-center gap-3 pt-2 mt-2 border-t border-white/10 text-[11px]">
-              <div className="flex items-center gap-1 font-bold text-emerald-400">
-                <ArrowDownLeft className="h-3 w-3 stroke-[2.5]" />
-                <span>{rupees(salary)}</span>
+              {/* Layered Card Deck Stack with Frosted Front Pocket */}
+              <div className="relative mx-auto w-full h-[230px] sm:h-[250px] flex flex-col justify-end">
+                {/* Card 1 (Back Right): Sunset Peach/Pink Mastercard */}
+                <div
+                  className="absolute inset-x-3 top-0 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-lg border border-white/30 transform rotate-[4deg] translate-x-3 -translate-y-1 transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[5deg]"
+                  style={{ background: 'linear-gradient(135deg, #fce7f3 0%, #f472b6 40%, #fb923c 100%)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex -space-x-1.5 drop-shadow-sm">
+                      <div className="h-4 w-4 rounded-full bg-[#eb001b]" />
+                      <div className="h-4 w-4 rounded-full bg-[#f79e1b] opacity-95" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2 (Middle Left): Frosted White/Silver Visa Card */}
+                <div
+                  className="absolute inset-x-2 top-2 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-md transform -rotate-[3deg] -translate-x-2 translate-y-0.5 border-2 border-white/70 transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:-rotate-[4deg]"
+                  style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #fde68a 100%)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] font-black italic tracking-widest text-[#1a1f71] select-none font-sans drop-shadow-sm">VISA</span>
+                  </div>
+                </div>
+
+                {/* Card 3 (Foreground): Royal Electric Blue to Indigo Mastercard */}
+                <div
+                  className="absolute inset-x-1 top-4 h-[145px] sm:h-[160px] rounded-2xl p-3 shadow-xl transform translate-y-2 border border-white/45 transition-transform duration-300 group-hover:translate-y-1"
+                  style={{ background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #06b6d4 100%)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex -space-x-1.5 drop-shadow-sm">
+                      <div className="h-4 w-4 rounded-full bg-[#eb001b]" />
+                      <div className="h-4 w-4 rounded-full bg-[#f79e1b] opacity-95" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Frosted Glass Pocket / Sleeve (Front) */}
+                <div className="wallet-front-pocket relative z-20 -mx-3.5 -mb-3 rounded-t-[1.85rem] rounded-b-[2.25rem] border border-white/35 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/85 to-[#0e1014]/90 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
+                  <p className="text-[11px] font-medium tracking-wide text-white/70">
+                    Total Balance
+                  </p>
+                  <div className="mt-0.5 flex items-baseline justify-center">
+                    <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm font-sans" data-testid="spendly-total-balance">
+                      {rupees(balance)}
+                    </span>
+                  </div>
+
+                  {/* Income & Expense Badges */}
+                  <div className="flex items-center justify-center gap-3 pt-2 mt-2 border-t border-white/10 text-[11px]">
+                    <div className="flex items-center gap-1 font-bold text-emerald-400">
+                      <ArrowDownLeft className="h-3 w-3 stroke-[2.5]" />
+                      <span>{rupees(salary)}</span>
+                    </div>
+                    <div className="h-2.5 w-[1px] bg-white/20" />
+                    <div className="flex items-center gap-1 font-bold text-rose-400">
+                      <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
+                      <span>{rupees(spent)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="h-2.5 w-[1px] bg-white/20" />
-              <div className="flex items-center gap-1 font-bold text-rose-400">
-                <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
-                <span>{rupees(spent)}</span>
+            </button>
+
+            {/* ── POP-OUT WALLET MODAL — full-screen card carousel with Pop-In & Pop-Out ── */}
+            {(walletOpen || walletClosing) && (
+              <div
+                className="wallet-modal-overlay fixed inset-0 z-[999] flex items-end justify-center"
+                onClick={(e) => { if (e.target === e.currentTarget) closeWallet(); }}
+              >
+                {/* Blurred backdrop with fade in / fade out */}
+                <div className={`absolute inset-0 bg-black/60 backdrop-blur-md ${walletClosing ? 'wallet-modal-backdrop--out' : 'wallet-modal-backdrop'}`} />
+
+                {/* Bottom sheet with slide-up bounce in & slide-down pop out */}
+                <div
+                  className={`wallet-modal-sheet relative w-full max-w-md rounded-t-[2.5rem] overflow-hidden ${
+                    walletClosing ? 'wallet-modal-sheet--out' : ''
+                  }`}
+                  style={isDark
+                    ? {
+                        background: 'linear-gradient(180deg, rgba(15,20,32,0.98) 0%, rgba(8,12,20,0.99) 100%)',
+                        backdropFilter: 'blur(32px)',
+                        boxShadow: '0 -24px 72px rgba(0,0,0,0.7)',
+                        borderTop: '1px solid rgba(255,255,255,0.12)',
+                      }
+                    : {
+                        background: 'linear-gradient(180deg, rgba(250,245,236,0.98) 0%, rgba(245,234,212,0.99) 100%)',
+                        backdropFilter: 'blur(32px)',
+                        boxShadow: '0 -20px 60px rgba(30,59,47,0.22)',
+                        borderTop: '2px solid rgba(255,255,255,0.95)',
+                      }
+                  }
+                >
+                  {/* Drag handle */}
+                  <div className="flex justify-center pt-3.5 pb-1">
+                    <div className={`h-1.5 w-12 rounded-full ${isDark ? 'bg-white/25' : 'bg-[#1E3B2F]/25'}`} />
+                  </div>
+
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-6 pb-2.5">
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-[#4A6356]'}`}>My Wallet</p>
+                      <h2 className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-[#1E3B2F]'}`}>Cards & Balance</h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeWallet}
+                      className={`grid h-9 w-9 place-items-center rounded-full transition text-base font-bold active:scale-95 ${
+                        isDark
+                          ? 'bg-white/[0.08] border border-white/10 text-white/70 hover:text-white'
+                          : 'bg-[#1E3B2F]/10 border border-[#1E3B2F]/20 text-[#1E3B2F] hover:bg-[#1E3B2F]/15'
+                      }`}
+                      aria-label="Close wallet"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Swipeable & Slidable Card Carousel */}
+                  <div className="relative px-6 select-none">
+                    {/* Left & Right Slider Arrows */}
+                    {activeCard > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCard((c) => Math.max(0, c - 1))}
+                        className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 grid h-8 w-8 place-items-center rounded-full shadow-lg transition active:scale-90 ${
+                          isDark
+                            ? 'bg-black/60 text-white border border-white/20'
+                            : 'bg-white/90 text-[#1E3B2F] border border-[#1E3B2F]/20'
+                        }`}
+                        aria-label="Previous card"
+                      >
+                        ‹
+                      </button>
+                    )}
+
+                    {activeCard < walletCards.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCard((c) => Math.min(walletCards.length - 1, c + 1))}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 grid h-8 w-8 place-items-center rounded-full shadow-lg transition active:scale-90 ${
+                          isDark
+                            ? 'bg-black/60 text-white border border-white/20'
+                            : 'bg-white/90 text-[#1E3B2F] border border-[#1E3B2F]/20'
+                        }`}
+                        aria-label="Next card"
+                      >
+                        ›
+                      </button>
+                    )}
+
+                    {/* Carousel viewport */}
+                    <div
+                      className="overflow-hidden rounded-[1.75rem]"
+                      onTouchStart={(e) => {
+                        swipeTouchStartX.current = e.touches[0].clientX;
+                        swipeTouchStartY.current = e.touches[0].clientY;
+                      }}
+                      onTouchEnd={(e) => {
+                        const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
+                        const dy = e.changedTouches[0].clientY - swipeTouchStartY.current;
+                        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 36) {
+                          if (dx < 0 && activeCard < walletCards.length - 1) setActiveCard((c) => c + 1);
+                          if (dx > 0 && activeCard > 0) setActiveCard((c) => c - 1);
+                        } else if (dy > 70 && Math.abs(dx) < 40) {
+                          closeWallet();
+                        }
+                      }}
+                      onMouseDown={(e) => { swipeMouseStartX.current = e.clientX; swipeDragging.current = true; }}
+                      onMouseUp={(e) => {
+                        if (!swipeDragging.current) return;
+                        swipeDragging.current = false;
+                        const dx = e.clientX - swipeMouseStartX.current;
+                        if (Math.abs(dx) > 36) {
+                          if (dx < 0 && activeCard < walletCards.length - 1) setActiveCard((c) => c + 1);
+                          if (dx > 0 && activeCard > 0) setActiveCard((c) => c - 1);
+                        }
+                      }}
+                      onMouseLeave={() => { swipeDragging.current = false; }}
+                    >
+                      {/* Cards strip */}
+                      <div
+                        className="flex gap-4 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                        style={{ transform: `translateX(calc(${-activeCard * 100}% - ${activeCard * 16}px))` }}
+                      >
+                        {walletCards.map((card, idx) => (
+                          <div
+                            key={card.id}
+                            onClick={() => setActiveCard(idx)}
+                            className={`wallet-popup-card flex-shrink-0 w-full rounded-[1.75rem] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.45)] border border-white/25 transition-all duration-500 cursor-pointer ${
+                              idx === activeCard ? 'scale-100 opacity-100 ring-2 ring-white/40' : 'scale-95 opacity-60'
+                            }`}
+                            style={{ background: card.bg, minHeight: '190px' }}
+                          >
+                            {/* Card top row */}
+                            <div className="flex items-start justify-between">
+                              {card.circles}
+                              <span className="text-[9px] font-bold uppercase tracking-widest opacity-75 font-sans" style={{ color: card.textColor }}>
+                                {card.network}
+                              </span>
+                            </div>
+                            {/* Chip */}
+                            <div className="mt-4 h-6 w-9 rounded-md border border-black/15 bg-gradient-to-br from-yellow-200 to-yellow-400 shadow-sm" />
+                            {/* Card number */}
+                            <div className="mt-3.5 font-mono text-sm sm:text-base font-bold tracking-[0.22em] opacity-90 drop-shadow-sm" style={{ color: card.textColor }}>
+                              •••• •••• •••• {card.last4}
+                            </div>
+                            {/* Bottom row */}
+                            <div className="mt-3.5 flex items-end justify-between">
+                              <div>
+                                <p className="text-[9px] uppercase tracking-widest opacity-60 font-sans" style={{ color: card.textColor }}>Card Holder</p>
+                                <p className="text-xs font-bold mt-0.5 truncate max-w-[150px] font-sans" style={{ color: card.textColor }}>
+                                  {profile?.full_name || user?.user_metadata?.full_name || 'Guest User'}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[9px] uppercase tracking-widest opacity-60 font-sans" style={{ color: card.textColor }}>Balance</p>
+                                <p className="text-sm font-black mt-0.5 font-sans" style={{ color: card.textColor }}>{rupees(balance)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dot navigation indicators */}
+                  <div className="flex justify-center items-center gap-2 pt-3.5 pb-1">
+                    {walletCards.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveCard(idx)}
+                        aria-label={`Go to card ${idx + 1}`}
+                        className={`rounded-full transition-all duration-300 ${
+                          idx === activeCard
+                            ? isDark
+                              ? 'w-7 h-2 bg-white'
+                              : 'w-7 h-2 bg-[#1E3B2F]'
+                            : isDark
+                              ? 'w-2 h-2 bg-white/30 hover:bg-white/50'
+                              : 'w-2 h-2 bg-[#1E3B2F]/25 hover:bg-[#1E3B2F]/45'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Card label badge */}
+                  <div className="text-center pb-2">
+                    <p className={`text-[11px] font-semibold ${isDark ? 'text-white/45' : 'text-[#4A6356]'}`}>
+                      {walletCards[activeCard].label} •••• {walletCards[activeCard].last4} ({activeCard + 1} of {walletCards.length})
+                    </p>
+                  </div>
+
+                  {/* Total Balance summary strip */}
+                  <div className={`mx-6 mb-6 mt-1 rounded-2xl p-4 flex items-center justify-between transition-all ${
+                    isDark
+                      ? 'border border-white/[0.08] bg-white/[0.05]'
+                      : 'border border-[#1E3B2F]/15 bg-white/80 shadow-sm'
+                  }`}>
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-[#4A6356]'}`}>
+                        Total Balance
+                      </p>
+                      <p className={`text-2xl font-black mt-0.5 ${isDark ? 'text-white' : 'text-[#1E3B2F]'}`}>
+                        {rupees(balance)}
+                      </p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
+                        <ArrowDownLeft className="h-3 w-3 stroke-[2.5]" />
+                        <span>{rupees(salary)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-400">
+                        <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
+                        <span>{rupees(spent)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Transactions Section Header */}
       <div className="flex items-center justify-between pt-1 px-0.5">
