@@ -25,6 +25,17 @@
       gtag('config', 'G-HJHDZNRJWY');
     </script>
 
+    <!-- OneSignal Web Push Notifications -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "2688b385-8132-47ee-93bd-06261c8fe580",
+        });
+      });
+    </script>
+
     <!-- PWA / Mobile Web App Meta -->
     <meta name="theme-color" content="#030712" />
     <meta name="mobile-web-app-capable" content="yes" />
