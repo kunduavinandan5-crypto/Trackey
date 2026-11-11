@@ -1128,12 +1128,13 @@ body {
   }
   .spendly-cat-chip--inactive {
     background: #0f1422;
-    border: 1px solid rgba(245, 158, 11, 0.15);
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
     color: #9ca3af;
   }
   .spendly-cat-chip--inactive:hover {
     color: #f3f4f6;
-    border-color: rgba(245, 158, 11, 0.35);
+    background: #182033;
   }
 
   /* Spendly Metric KPI Card (Mobile Reports) */
@@ -1401,6 +1402,13 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.06);
     color: #f1f5f3;
   }
+  .dark .wallet-card-deck {
+    background: rgba(255, 255, 255, 0.04) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.12) !important;
+  }
 
   /* Spendly Primary Action Button */
   .spendly-neon-btn {
@@ -1567,11 +1575,21 @@ html:not(.dark) {
     color: #9ca3af !important;
   }
 
-  /* Wallet Card Deck: Preserves exact Image 1 dark frosted aesthetic in light mode */
+  /* Wallet Card Deck: Glassmorphism Transparent */
   .wallet-card-deck {
-    background: #111317 !important;
-    border-color: rgba(30, 59, 47, 0.3) !important;
-    box-shadow: 0 20px 50px -10px rgba(30, 59, 47, 0.35) !important;
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.75) !important;
+    box-shadow:
+      0 16px 42px -8px rgba(30, 59, 47, 0.12),
+      inset 0 1.5px 2px rgba(255, 255, 255, 0.95) !important;
+  }
+  .wallet-card-deck__label {
+    color: #1E3B2F !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    opacity: 0.8 !important;
   }
   .wallet-card-deck [class*="text-white"] {
     color: #ffffff !important;
@@ -1614,31 +1632,42 @@ html:not(.dark) {
      - Inactive: Butter Cream surface (#FAF5EC / #EAE0CA), Forest Green text
      - Active: Solid Forest Green (#1E3B2F), Butter Cream text (#F5EAD4)
   ═══════════════════════════════════════════════════════════════ */
-  /* Tab Track / Shell Containers */
+  /* Tab Track / Shell Containers (excluding category carousel) */
   .spendly-segmented-toggle,
-  .spendly-cat-carousel,
   [class*="rounded-2xl bg-[#0c101c]"],
   [class*="rounded-full bg-[#0c101c]"] {
     background-color: #EAE0CA !important;
     border: 1px solid rgba(30, 59, 47, 0.18) !important;
   }
 
-  /* 1. Category Filter Chips (Home Screen) */
+  /* 1. Category Filter Chips (Home Screen): Clean, borderless floating pills */
+  .spendly-cat-carousel {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.25rem 0 !important;
+  }
+  .spendly-cat-chip {
+    border: none !important;
+    outline: none !important;
+  }
   .spendly-cat-chip--inactive {
     background: #FAF5EC !important;
-    border: 1px solid rgba(30, 59, 47, 0.18) !important;
+    border: none !important;
+    box-shadow: 0 1px 3px rgba(30, 59, 47, 0.08) !important;
     color: #1E3B2F !important;
   }
   .spendly-cat-chip--inactive:hover {
     background: #EAE0CA !important;
+    border: none !important;
     color: #1E3B2F !important;
-    border-color: #1E3B2F !important;
   }
   .spendly-cat-chip--active {
     background: #1E3B2F !important;
     color: #F5EAD4 !important;
-    border: 1px solid #1E3B2F !important;
-    box-shadow: 0 4px 14px rgba(30, 59, 47, 0.28) !important;
+    border: none !important;
+    box-shadow: 0 3px 10px rgba(30, 59, 47, 0.25) !important;
     font-weight: 800 !important;
   }
   .spendly-cat-chip--active * {

@@ -1349,11 +1349,11 @@ function SpendlyMobileHome({
         </div>
       </div>
 
-      {/* ── SKEUOMORPHIC FROSTED WALLET CARD DECK HERO (IMAGE 1 EXACT MATCH) ── */}
-      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] bg-[#121316] border-2 border-white/35 p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.12)] transition-all duration-300">
+      {/* ── SKEUOMORPHIC FROSTED WALLET CARD DECK HERO (GLASSMORPHISM TRANSPARENT) ── */}
+      <div className="wallet-card-deck group relative overflow-hidden rounded-[2.25rem] bg-white/[0.04] backdrop-blur-2xl border border-white/25 p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300">
         {/* Wallet Label at Top Center */}
         <div className="text-center pb-2">
-          <p className="text-xs font-semibold tracking-wider text-white/75 font-sans">
+          <p className="wallet-card-deck__label text-xs font-semibold tracking-wider text-white/75 font-sans">
             Wallet
           </p>
         </div>
@@ -1406,7 +1406,7 @@ function SpendlyMobileHome({
           </div>
 
           {/* Frosted Glass Pocket / Sleeve (Front) */}
-          <div className="relative z-20 -mx-3.5 -mb-3 rounded-t-[1.85rem] rounded-b-[2.25rem] border border-white/45 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/90 to-[#0e1014]/98 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
+          <div className="wallet-front-pocket relative z-20 -mx-3.5 -mb-3 rounded-t-[1.85rem] rounded-b-[2.25rem] border border-white/35 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/85 to-[#0e1014]/90 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300">
             <p className="text-[11px] font-medium tracking-wide text-white/70">
               Total Balance
             </p>
