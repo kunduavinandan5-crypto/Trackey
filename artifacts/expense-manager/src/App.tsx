@@ -4283,34 +4283,23 @@ function SpendlyMobileSettings({
             </div>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full bg-[#fbbf24]/15 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] border border-[#fbbf24]/30">
-            Interactive
+            Evil Buttons
           </span>
         </div>
 
         {/* Live Interactive Switch */}
-        <div className="rounded-xl border border-white/10 bg-[#0d121d] p-4 flex flex-col items-center justify-center gap-2.5">
+        <div className="rounded-xl border border-border/40 bg-muted/20 dark:bg-black/30 p-6 flex flex-col items-center justify-center gap-3">
           <RealisticSwitch
             size="lg"
             sound
             aria-label="Main power switch"
             onCheckedChange={(on) => {
-              finance.notify(on ? 'Switch latched ON (sound + glow active)' : 'Switch released OFF', on ? 'success' : undefined);
+              finance.notify(on ? 'Power ON (latched down with glow)' : 'Power OFF (released up)', on ? 'success' : undefined);
             }}
           />
           <p className="text-[11px] font-mono text-[#9ca3af] text-center">
             Press to sink into socket &bull; Springs up on release
           </p>
-        </div>
-
-        {/* Color & Size Showcase */}
-        <div className="pt-1 flex flex-col gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#9ca3af]">Colors & Sizes</p>
-          <div className="flex items-center justify-center gap-3.5 py-1">
-            <RealisticSwitch size="sm" sound color="#e1261c" defaultChecked aria-label="Red switch" />
-            <RealisticSwitch size="default" sound color="#1f6feb" defaultChecked aria-label="Blue switch" />
-            <RealisticSwitch size="lg" sound color="#10b981" defaultChecked aria-label="Emerald switch" />
-            <RealisticSwitch size="default" sound color="#f5f5f5" markColor="#1e293b" illuminated={false} aria-label="White switch" />
-          </div>
         </div>
       </div>
     </div>
@@ -4602,44 +4591,19 @@ function SettingsPage({
           </span>
         </div>
 
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          {/* Main interactive switch */}
-          <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-muted/30 p-6">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Interactive Preview</p>
-            <RealisticSwitch
-              size="lg"
-              sound
-              aria-label="Power switch"
-              onCheckedChange={(on) => {
-                finance.notify(on ? 'Switch latched ON (sound + glow active)' : 'Switch released OFF', on ? 'success' : undefined);
-              }}
-            />
-            <p className="text-xs font-mono text-muted-foreground text-center">
-              Click to sink into socket &bull; Synthesizes mechanical audio
-            </p>
-          </div>
-
-          {/* Color & Size Showcase */}
-          <div className="flex flex-col justify-center gap-4 rounded-xl border border-border bg-muted/30 p-6">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Color Variants</p>
-              <div className="flex items-center gap-5">
-                <RealisticSwitch size="default" sound color="#e1261c" defaultChecked aria-label="Red switch" />
-                <RealisticSwitch size="default" sound color="#1f6feb" defaultChecked aria-label="Blue switch" />
-                <RealisticSwitch size="default" sound color="#10b981" defaultChecked aria-label="Emerald switch" />
-                <RealisticSwitch size="default" sound color="#f5f5f5" markColor="#1e293b" illuminated={false} aria-label="White switch" />
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-border">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Size Variants (sm, default, lg)</p>
-              <div className="flex items-center gap-5">
-                <RealisticSwitch size="sm" sound aria-label="Small switch" />
-                <RealisticSwitch size="default" sound aria-label="Default switch" />
-                <RealisticSwitch size="lg" sound aria-label="Large switch" />
-              </div>
-            </div>
-          </div>
+        <div className="mt-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-muted/30 p-8 max-w-xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Interactive Switch</p>
+          <RealisticSwitch
+            size="lg"
+            sound
+            aria-label="Power switch"
+            onCheckedChange={(on) => {
+              finance.notify(on ? 'Power ON (latched down with glow)' : 'Power OFF (released up)', on ? 'success' : undefined);
+            }}
+          />
+          <p className="text-xs font-mono text-muted-foreground text-center">
+            Click to sink into socket &bull; Synthesizes mechanical audio
+          </p>
         </div>
       </section>
     </div>
