@@ -1560,16 +1560,6 @@ function SpendlyMobileHome({
               </div>
             </div>
           )}
-
-          {filteredExpenses.length > 0 && (
-            <div className="pt-2 pb-0.5 flex items-center justify-center gap-2 select-none spendly-ledger-end">
-              <span className="h-[1px] w-6 rounded-full bg-current opacity-30" />
-              <span className="text-[10px] font-bold tracking-widest uppercase opacity-65">
-                End of ledger
-              </span>
-              <span className="h-[1px] w-6 rounded-full bg-current opacity-30" />
-            </div>
-          )}
         </div>
       </div>
     </div>

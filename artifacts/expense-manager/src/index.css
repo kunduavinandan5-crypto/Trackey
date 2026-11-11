@@ -1994,21 +1994,17 @@ body {
       0 18px 45px -8px rgba(0, 0, 0, 0.6),
       inset 0 1.5px 2px rgba(255, 255, 255, 0.22),
       inset 0 -1.5px 2px rgba(0, 0, 0, 0.3);
-    padding: 0.95rem 0.95rem 1.4rem;
-    margin-top: 0.85rem;
-    margin-bottom: 5.5rem;
+    padding: 0.85rem 0.85rem 0.85rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
   }
 
   .spendly-sheet__notch {
-    width: 42px;
+    width: 38px;
     height: 4px;
     border-radius: 9999px;
     background: rgba(167, 243, 208, 0.4);
-    margin: 0 auto 1.1rem;
-  }
-
-  .spendly-ledger-end {
-    color: #a7f3d0;
+    margin: 0 auto 0.85rem;
   }
 
   /* Spendly Dark Glass Transaction Card */
@@ -2796,7 +2792,7 @@ html:not(.dark) {
      TRANSACTIONS LOWER SHEET & CARDS (Finished Sap Green Glassmorphism)
      - Finished 4-corner rounded ledger with crisp light boundary
      - Translucent Sap Green botanical glass over Butter Cream
-     - Fully enclosed perimeter outline & comfortable clearance
+     - Fully enclosed perimeter outline & snug padding
   ═══════════════════════════════════════════════════════════════ */
   .spendly-sheet {
     border-radius: 2rem !important;
@@ -2809,21 +2805,17 @@ html:not(.dark) {
       0 16px 40px -8px rgba(30, 59, 47, 0.18),
       inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
       inset 0 -1.5px 2px rgba(30, 59, 47, 0.1) !important;
-    padding: 0.95rem 0.95rem 1.4rem !important;
-    margin-top: 0.85rem !important;
-    margin-bottom: 5.5rem !important;
+    padding: 0.85rem 0.85rem 0.85rem !important;
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
   }
 
   .spendly-sheet__notch {
-    width: 42px !important;
+    width: 38px !important;
     height: 4px !important;
     border-radius: 9999px !important;
     background: rgba(30, 59, 47, 0.32) !important;
-    margin: 0 auto 1.1rem !important;
-  }
-
-  .spendly-ledger-end {
-    color: #1E3B2F !important;
+    margin: 0 auto 0.85rem !important;
   }
 
   /* Empty state card inside the transaction sheet */
