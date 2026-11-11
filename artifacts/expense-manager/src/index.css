@@ -3016,3 +3016,11 @@ html:not(.dark) {
 .wallet-float-out {
   animation: wallet-float-out 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+/* Overlapping stacked card transitions */
+.wallet-stack-card {
+  transition: transform 0.52s cubic-bezier(0.25, 1, 0.35, 1),
+              opacity 0.45s ease,
+              box-shadow 0.45s ease;
+  will-change: transform, opacity;
+}
