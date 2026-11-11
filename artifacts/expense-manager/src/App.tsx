@@ -1249,57 +1249,6 @@ function MetricCard({
   );
 }
 
-type DrawerMotionPhase =
-  | 'tucked'
-  | 'extracting'
-  | 'landing'
-  | 'revealed'
-  | 'unflipping'
-  | 'aligning_side'
-  | 'sliding_in';
-
-function getWalletExtractTransform(phase: DrawerMotionPhase, hovered: boolean) {
-  switch (phase) {
-    case 'tucked':
-      return hovered
-        ? 'translate3d(0, -6px, 2px) scale(1) rotate(0deg)'
-        : 'translate3d(0, 0px, 0px) scale(1) rotate(0deg)';
-    case 'extracting':
-      return 'translate3d(0, -145px, 8px) scale(1.02) rotate(1deg)';
-    case 'landing':
-      return 'translate3d(0, -10px, 36px) scale(1.05) rotate(-0.5deg)';
-    case 'revealed':
-      return 'translate3d(0, 0px, 42px) scale(1.06) rotate(0deg)';
-    case 'unflipping':
-    case 'aligning_side':
-      return 'translate3d(0, -145px, 12px) scale(1.02) rotate(1deg)';
-    case 'sliding_in':
-      return 'translate3d(0, 0px, 2px) scale(1) rotate(0deg)';
-    default:
-      return 'translate3d(0, 0, 0)';
-  }
-}
-
-function getWalletExtractTransition(phase: DrawerMotionPhase, reduced: boolean) {
-  if (reduced) return 'none';
-  switch (phase) {
-    case 'extracting':
-      return 'transform 0.42s cubic-bezier(0.2, 0.85, 0.35, 1.15)';
-    case 'landing':
-      return 'transform 0.38s cubic-bezier(0.2, 0.9, 0.35, 1.1)';
-    case 'revealed':
-      return 'transform 0.65s cubic-bezier(0.34, 1.35, 0.64, 1), box-shadow 0.65s ease';
-    case 'unflipping':
-      return 'transform 0.52s cubic-bezier(0.34, 1.25, 0.64, 1), box-shadow 0.52s ease';
-    case 'aligning_side':
-      return 'transform 0.35s cubic-bezier(0.2, 0.85, 0.35, 1.15)';
-    case 'sliding_in':
-      return 'transform 0.42s cubic-bezier(0.2, 0.85, 0.35, 1.15)';
-    default:
-      return 'transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1)';
-  }
-}
-
 function SpendlyMobileHome({
   finance,
   selectedMonth,
@@ -1324,10 +1273,9 @@ function SpendlyMobileHome({
   const { user, profile } = useAuth();
   const [, setLocation] = useLocation();
   const [activeCategory, setActiveCategory] = useState('All');
-  const [walletPhase, setWalletPhase] = useState<DrawerMotionPhase>('tucked');
+  const [isWalletPopped, setIsWalletPopped] = useState(false);
   const [walletHovered, setWalletHovered] = useState(false);
   const [activeCard, setActiveCard] = useState(2);
-  const [reducedMotion, setReducedMotion] = useState(false);
   const isDark = theme !== 'light';
 
   // Swipe tracking refs
@@ -1336,68 +1284,9 @@ function SpendlyMobileHome({
   const swipeMouseStartX = useRef(0);
   const swipeDragging = useRef(false);
 
-  useEffect(() => {
-    const motionMq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReducedMotion(motionMq.matches);
-    const handler = () => setReducedMotion(motionMq.matches);
-    motionMq.addEventListener('change', handler);
-    return () => motionMq.removeEventListener('change', handler);
-  }, []);
-
-  useEffect(() => {
-    if (reducedMotion) return;
-    const wait =
-      walletPhase === 'extracting'
-        ? 380
-        : walletPhase === 'landing'
-          ? 320
-          : walletPhase === 'unflipping'
-            ? 500
-            : walletPhase === 'aligning_side'
-              ? 320
-              : walletPhase === 'sliding_in'
-                ? 420
-                : 0;
-    if (!wait) return;
-    const next: DrawerMotionPhase =
-      walletPhase === 'extracting'
-        ? 'landing'
-        : walletPhase === 'landing'
-          ? 'revealed'
-          : walletPhase === 'unflipping'
-            ? 'aligning_side'
-            : walletPhase === 'aligning_side'
-              ? 'sliding_in'
-              : 'tucked';
-    const timer = window.setTimeout(() => setWalletPhase(next), wait);
-    return () => window.clearTimeout(timer);
-  }, [walletPhase, reducedMotion]);
-
-  useEffect(() => {
-    if (walletPhase !== 'tucked') {
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = prevOverflow;
-      };
-    }
-  }, [walletPhase]);
-
-  const isWalletBusy = walletPhase !== 'tucked' && walletPhase !== 'revealed';
-
-  const openWallet = () => {
-    if (isWalletBusy) return;
-    if (walletPhase === 'tucked') {
-      setWalletPhase(reducedMotion ? 'revealed' : 'extracting');
-    }
-  };
-
-  const closeWallet = () => {
-    if (isWalletBusy) return;
-    if (walletPhase === 'revealed') {
-      setWalletPhase(reducedMotion ? 'tucked' : 'aligning_side');
-    }
-  };
+  const toggleWallet = () => setIsWalletPopped((prev) => !prev);
+  const openWallet = () => setIsWalletPopped(true);
+  const closeWallet = () => setIsWalletPopped(false);
 
   const greeting = getGreeting();
   const userName =
@@ -1537,292 +1426,237 @@ function SpendlyMobileHome({
           },
         ];
 
-        const inFront =
-          walletPhase === 'landing' ||
-          walletPhase === 'revealed' ||
-          walletPhase === 'unflipping' ||
-          walletPhase === 'aligning_side';
-
         return (
-          <>
-            {/* Fullscreen soft backdrop blur when cards pop out */}
-            {typeof document !== 'undefined' && walletPhase !== 'tucked' && createPortal(
-              <div
-                className={`fixed inset-0 z-[9990] w-full h-[100dvh] bg-black/75 transition-opacity duration-300 ${
-                  walletPhase === 'sliding_in' ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                }`}
-                style={{
-                  backdropFilter: 'blur(24px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          <div
+            className="wallet-card-deck group relative w-full overflow-visible rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300 text-left cursor-pointer active:scale-[0.99]"
+            style={{
+              perspective: '2000px',
+              transformStyle: 'preserve-3d',
+            }}
+            onClick={() => setIsWalletPopped((p) => !p)}
+            onMouseEnter={() => setWalletHovered(true)}
+            onMouseLeave={() => setWalletHovered(false)}
+          >
+            {/* Wallet Label at Top Center */}
+            <div className="text-center pb-2 flex items-center justify-center gap-2">
+              <p className="wallet-card-deck__label text-xs font-semibold tracking-wider text-white/80 font-sans">
+                Wallet
+              </p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsWalletPopped((p) => !p);
                 }}
-                onClick={closeWallet}
-              />,
-              document.body
-            )}
+                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full transition-all cursor-pointer ${
+                  isDark
+                    ? 'bg-white/10 text-emerald-300 border border-white/15'
+                    : 'bg-[#1E3B2F]/15 text-[#1E3B2F] border border-[#1E3B2F]/25'
+                }`}
+              >
+                {isWalletPopped ? 'Tap to tuck' : 'Tap to slide cards'}
+              </button>
+            </div>
 
-            {/* Clickable wallet deck with Confidential Folder extraction choreography */}
+            {/* Layered Card Deck Stack with Frosted Front Pocket */}
             <div
-              className={`wallet-card-deck group relative w-full overflow-visible rounded-[2.25rem] backdrop-blur-2xl p-3.5 pt-3 pb-3 shadow-[0_22px_55px_rgba(0,0,0,0.35)] transition-all duration-300 text-left ${
-                walletPhase !== 'tucked' ? 'relative z-[9995]' : 'relative z-10'
-              } ${walletPhase === 'tucked' ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+              className="relative mx-auto w-full h-[230px] sm:h-[250px] flex flex-col justify-end overflow-visible"
               style={{
                 perspective: '2000px',
                 transformStyle: 'preserve-3d',
               }}
-              onClick={walletPhase === 'tucked' ? openWallet : undefined}
-              onMouseEnter={() => setWalletHovered(true)}
-              onMouseLeave={() => setWalletHovered(false)}
             >
-              {/* Wallet Label at Top Center */}
-              <div className="text-center pb-2 flex items-center justify-center gap-2">
-                <p className="wallet-card-deck__label text-xs font-semibold tracking-wider text-white/80 font-sans">
-                  Wallet
-                </p>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (walletPhase === 'tucked') openWallet();
-                    else if (walletPhase === 'revealed') closeWallet();
-                  }}
-                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full transition-all cursor-pointer ${
-                    isDark
-                      ? 'bg-white/10 text-emerald-300 border border-white/15'
-                      : 'bg-[#1E3B2F]/15 text-[#1E3B2F] border border-[#1E3B2F]/25'
-                  }`}
-                >
-                  {walletPhase === 'revealed' ? 'Tap to tuck card' : 'Tap to slide cards'}
-                </button>
-              </div>
-
-              {/* Layered Card Deck Stack with Frosted Front Pocket */}
+              {/* Pop-out extracting cards stack */}
               <div
-                className="relative mx-auto w-full h-[230px] sm:h-[250px] flex flex-col justify-end overflow-visible"
+                className="absolute inset-x-0 bottom-0 h-[210px] sm:h-[225px] overflow-visible"
                 style={{
-                  perspective: '2000px',
+                  transform: isWalletPopped
+                    ? 'translate3d(0, -68px, 16px) scale(1.02)'
+                    : 'translate3d(0, 0px, 0px) scale(1)',
+                  transition: isWalletPopped
+                    ? 'transform 0.32s cubic-bezier(0.34, 1.35, 0.64, 1)'
+                    : 'transform 0.26s cubic-bezier(0.2, 0.85, 0.35, 1.15)',
+                  zIndex: isWalletPopped ? 30 : 10,
                   transformStyle: 'preserve-3d',
+                  willChange: 'transform',
                 }}
+                onTouchStart={(e) => {
+                  swipeTouchStartX.current = e.touches[0].clientX;
+                  swipeTouchStartY.current = e.touches[0].clientY;
+                }}
+                onTouchEnd={(e) => {
+                  const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
+                  const dy = e.changedTouches[0].clientY - swipeTouchStartY.current;
+                  if (!isWalletPopped) {
+                    if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+                      setIsWalletPopped(true);
+                    }
+                    return;
+                  }
+                  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+                    if (dx < 0 && activeCard < walletCards.length - 1) setActiveCard((c) => c + 1);
+                    if (dx > 0 && activeCard > 0) setActiveCard((c) => c - 1);
+                  } else if (dy > 40 && Math.abs(dx) < 40) {
+                    setIsWalletPopped(false);
+                  } else if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+                    setIsWalletPopped(false);
+                  }
+                }}
+                onMouseDown={(e) => {
+                  if (!isWalletPopped) return;
+                  swipeMouseStartX.current = e.clientX;
+                  swipeDragging.current = true;
+                }}
+                onMouseUp={(e) => {
+                  if (!swipeDragging.current || !isWalletPopped) return;
+                  swipeDragging.current = false;
+                  const dx = e.clientX - swipeMouseStartX.current;
+                  if (Math.abs(dx) > 30) {
+                    if (dx < 0 && activeCard < walletCards.length - 1) setActiveCard((c) => c + 1);
+                    if (dx > 0 && activeCard > 0) setActiveCard((c) => c - 1);
+                  }
+                }}
+                onMouseLeave={() => { swipeDragging.current = false; }}
               >
-                {/* Pop-out extracting cards stack */}
-                <div
-                  className="absolute inset-x-0 bottom-0 h-[210px] sm:h-[225px] overflow-visible"
-                  style={{
-                    transform: getWalletExtractTransform(walletPhase, walletHovered && !reducedMotion),
-                    transition: getWalletExtractTransition(walletPhase, reducedMotion),
-                    zIndex: inFront ? 50 : 5,
-                    transformStyle: 'preserve-3d',
-                    willChange: 'transform',
-                  }}
-                  onTouchStart={(e) => {
-                    swipeTouchStartX.current = e.touches[0].clientX;
-                    swipeTouchStartY.current = e.touches[0].clientY;
-                  }}
-                  onTouchEnd={(e) => {
-                    if (walletPhase !== 'revealed') return;
-                    const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
-                    const dy = e.changedTouches[0].clientY - swipeTouchStartY.current;
-                    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-                      if (dx < 0 && activeCard < walletCards.length - 1) setActiveCard((c) => c + 1);
-                      if (dx > 0 && activeCard > 0) setActiveCard((c) => c - 1);
-                    } else if (dy > 50 && Math.abs(dx) < 40) {
-                      closeWallet();
-                    }
-                  }}
-                  onMouseDown={(e) => {
-                    if (walletPhase !== 'revealed') return;
-                    swipeMouseStartX.current = e.clientX;
-                    swipeDragging.current = true;
-                  }}
-                  onMouseUp={(e) => {
-                    if (!swipeDragging.current || walletPhase !== 'revealed') return;
-                    swipeDragging.current = false;
-                    const dx = e.clientX - swipeMouseStartX.current;
-                    if (Math.abs(dx) > 30) {
-                      if (dx < 0 && activeCard < walletCards.length - 1) setActiveCard((c) => c + 1);
-                      if (dx > 0 && activeCard > 0) setActiveCard((c) => c - 1);
-                    }
-                  }}
-                  onMouseLeave={() => { swipeDragging.current = false; }}
-                >
-                  <div className="relative w-full h-full">
-                    {walletCards.map((card, idx) => {
-                      const isTucked = walletPhase === 'tucked';
-                      let cardTransform = '';
-                      let cardZIndex = 10;
-                      let cardOpacity = 1;
-                      let cardFilter = 'none';
-                      let cardShadow = '';
-                      let isClickable = false;
+                <div className="relative w-full h-full">
+                  {walletCards.map((card, idx) => {
+                    let cardTransform = '';
+                    let cardZIndex = 10;
+                    let cardOpacity = 1;
+                    let cardFilter = 'none';
+                    let cardShadow = '';
+                    let isClickable = false;
 
-                      if (isTucked) {
-                        if (idx === 0) {
-                          cardTransform = 'rotate(4deg) translateX(12px) translateY(-4px)';
-                          cardZIndex = 10;
-                        } else if (idx === 1) {
-                          cardTransform = 'rotate(-3deg) translateX(-8px) translateY(2px)';
-                          cardZIndex = 15;
-                        } else {
-                          cardTransform = 'translateY(8px)';
-                          cardZIndex = 20;
-                        }
-                        cardShadow = `${card.strokeRing}, 0 8px 20px -4px rgba(0,0,0,0.3), ${card.innerGlow}`;
+                    if (!isWalletPopped) {
+                      if (idx === 0) {
+                        cardTransform = 'rotate(4deg) translateX(12px) translateY(-4px)';
+                        cardZIndex = 10;
+                      } else if (idx === 1) {
+                        cardTransform = 'rotate(-3deg) translateX(-8px) translateY(2px)';
+                        cardZIndex = 15;
                       } else {
-                        if (idx < activeCard) {
-                          const diff = activeCard - idx;
-                          const translateY = -diff * 12;
-                          const scale = 1 - diff * 0.025;
-                          cardTransform = `translateY(${translateY}px) scale(${scale})`;
-                          cardZIndex = 10 + idx * 5;
-                          cardFilter = `brightness(${1 - diff * 0.05})`;
-                          cardShadow = `${card.strokeRing}, 0 8px 20px -4px rgba(0,0,0,0.38), ${card.innerGlow}`;
-                          isClickable = true;
-                        } else if (idx === activeCard) {
-                          cardTransform = 'translateX(0px) translateY(0px) scale(1)';
-                          cardZIndex = 40;
-                          cardFilter = 'brightness(1)';
-                          cardShadow = `${card.strokeRing}, 0 20px 48px -8px rgba(0,0,0,0.45), ${card.innerGlow}`;
-                        } else {
-                          cardTransform = 'translateX(104%) translateY(0px) scale(0.98)';
-                          cardZIndex = 45 + idx * 5;
-                          cardOpacity = 0;
-                        }
+                        cardTransform = 'translateY(8px)';
+                        cardZIndex = 20;
                       }
+                      cardShadow = `${card.strokeRing}, 0 8px 20px -4px rgba(0,0,0,0.3), ${card.innerGlow}`;
+                    } else {
+                      if (idx < activeCard) {
+                        const diff = activeCard - idx;
+                        const translateY = -diff * 11;
+                        const scale = 1 - diff * 0.025;
+                        cardTransform = `translateY(${translateY}px) scale(${scale})`;
+                        cardZIndex = 10 + idx * 5;
+                        cardFilter = `brightness(${1 - diff * 0.05})`;
+                        cardShadow = `${card.strokeRing}, 0 8px 20px -4px rgba(0,0,0,0.38), ${card.innerGlow}`;
+                        isClickable = true;
+                      } else if (idx === activeCard) {
+                        cardTransform = 'translateX(0px) translateY(0px) scale(1)';
+                        cardZIndex = 40;
+                        cardFilter = 'brightness(1)';
+                        cardShadow = `${card.strokeRing}, 0 16px 36px -8px rgba(0,0,0,0.45), ${card.innerGlow}`;
+                      } else {
+                        cardTransform = 'translateX(104%) translateY(0px) scale(0.98)';
+                        cardZIndex = 45 + idx * 5;
+                        cardOpacity = 0;
+                      }
+                    }
 
-                      return (
-                        <div
-                          key={card.id}
-                          onClick={(e) => {
-                            if (walletPhase === 'tucked') return;
-                            e.stopPropagation();
-                            if (isClickable) {
-                              setActiveCard(idx);
-                            } else if (idx === activeCard) {
-                              closeWallet();
-                            }
-                          }}
-                          className="wallet-stack-card absolute inset-x-1 sm:inset-x-2 top-0 h-[150px] sm:h-[165px] rounded-[1.75rem] p-4 sm:p-5 select-none"
-                          style={{
-                            background: card.bg,
-                            border: card.border,
-                            transform: cardTransform,
-                            zIndex: cardZIndex,
-                            opacity: cardOpacity,
-                            filter: cardFilter,
-                            boxShadow: cardShadow,
-                            cursor: walletPhase === 'revealed' ? (isClickable ? 'pointer' : 'grab') : 'pointer',
-                            pointerEvents: isTucked ? 'none' : (idx > activeCard ? 'none' : 'auto'),
-                          }}
-                        >
-                          {/* Card top row */}
-                          <div className="flex items-start justify-between">
-                            {card.circles}
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-85 font-sans" style={{ color: card.textColor }}>
-                              {card.network}
-                            </span>
+                    return (
+                      <div
+                        key={card.id}
+                        onClick={(e) => {
+                          if (!isWalletPopped) return;
+                          e.stopPropagation();
+                          if (isClickable) {
+                            setActiveCard(idx);
+                          } else if (idx === activeCard) {
+                            setIsWalletPopped(false);
+                          }
+                        }}
+                        className="wallet-stack-card absolute inset-x-1 sm:inset-x-2 top-0 h-[150px] sm:h-[165px] rounded-[1.75rem] p-4 sm:p-5 select-none"
+                        style={{
+                          background: card.bg,
+                          border: card.border,
+                          transform: cardTransform,
+                          zIndex: cardZIndex,
+                          opacity: cardOpacity,
+                          filter: cardFilter,
+                          boxShadow: cardShadow,
+                          cursor: isWalletPopped ? (isClickable ? 'pointer' : 'grab') : 'pointer',
+                          pointerEvents: !isWalletPopped ? 'none' : (idx > activeCard ? 'none' : 'auto'),
+                        }}
+                      >
+                        {/* Card top row */}
+                        <div className="flex items-start justify-between">
+                          {card.circles}
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-85 font-sans" style={{ color: card.textColor }}>
+                            {card.network}
+                          </span>
+                        </div>
+
+                        {/* Golden Chip */}
+                        <div className="mt-3.5 h-6 w-9 sm:h-7 sm:w-11 rounded-lg border border-black/15 bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 shadow-md flex items-center justify-center">
+                          <div className="w-4 h-3 sm:w-5 sm:h-4 border border-black/20 rounded-sm opacity-60" />
+                        </div>
+
+                        {/* Card Number */}
+                        <div className="mt-2.5 sm:mt-3 font-mono text-sm sm:text-base font-bold tracking-[0.22em] drop-shadow-sm" style={{ color: card.textColor }}>
+                          •••• •••• •••• {card.last4}
+                        </div>
+
+                        {/* Bottom row: Card Holder & Balance */}
+                        <div className="mt-2 sm:mt-3 flex items-end justify-between">
+                          <div>
+                            <p className="text-[8px] sm:text-[9px] uppercase tracking-widest opacity-60 font-sans font-bold" style={{ color: card.textColor }}>
+                              Card Holder
+                            </p>
+                            <p className="text-xs sm:text-sm font-extrabold mt-0.5 truncate max-w-[130px] font-sans drop-shadow-sm" style={{ color: card.textColor }}>
+                              {profile?.full_name || user?.user_metadata?.full_name || 'Guest User'}
+                            </p>
                           </div>
-
-                          {/* Golden Chip */}
-                          <div className="mt-3.5 h-6 w-9 sm:h-7 sm:w-11 rounded-lg border border-black/15 bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 shadow-md flex items-center justify-center">
-                            <div className="w-4 h-3 sm:w-5 sm:h-4 border border-black/20 rounded-sm opacity-60" />
-                          </div>
-
-                          {/* Card Number */}
-                          <div className="mt-2.5 sm:mt-3 font-mono text-sm sm:text-base font-bold tracking-[0.22em] drop-shadow-sm" style={{ color: card.textColor }}>
-                            •••• •••• •••• {card.last4}
-                          </div>
-
-                          {/* Bottom row: Card Holder & Balance */}
-                          <div className="mt-2 sm:mt-3 flex items-end justify-between">
-                            <div>
-                              <p className="text-[8px] sm:text-[9px] uppercase tracking-widest opacity-60 font-sans font-bold" style={{ color: card.textColor }}>
-                                Card Holder
-                              </p>
-                              <p className="text-xs sm:text-sm font-extrabold mt-0.5 truncate max-w-[130px] font-sans drop-shadow-sm" style={{ color: card.textColor }}>
-                                {profile?.full_name || user?.user_metadata?.full_name || 'Guest User'}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[8px] sm:text-[9px] uppercase tracking-widest opacity-60 font-sans font-bold" style={{ color: card.textColor }}>
-                                Balance
-                              </p>
-                              <p className="text-sm sm:text-base font-black mt-0.5 font-sans drop-shadow-sm" style={{ color: card.textColor }}>
-                                {rupees(balance)}
-                              </p>
-                            </div>
+                          <div className="text-right">
+                            <p className="text-[8px] sm:text-[9px] uppercase tracking-widest opacity-60 font-sans font-bold" style={{ color: card.textColor }}>
+                              Balance
+                            </p>
+                            <p className="text-sm sm:text-base font-black mt-0.5 font-sans drop-shadow-sm" style={{ color: card.textColor }}>
+                              {rupees(balance)}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Frosted Glass Pocket / Sleeve (Front) */}
+              <div
+                className="wallet-front-pocket relative z-20 -mx-3.5 -mb-3 rounded-t-[1.85rem] rounded-b-[2.25rem] border border-white/35 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/85 to-[#0e1014]/90 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300"
+              >
+                <p className="text-[11px] font-medium tracking-wide text-white/70">
+                  Total Balance
+                </p>
+                <div className="mt-0.5 flex items-baseline justify-center">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm font-sans" data-testid="spendly-total-balance">
+                    {rupees(balance)}
+                  </span>
                 </div>
 
-                {/* Frosted Glass Pocket / Sleeve (Front) */}
-                <div
-                  onClick={(e) => {
-                    if (walletPhase === 'revealed') {
-                      e.stopPropagation();
-                      closeWallet();
-                    }
-                  }}
-                  className="wallet-front-pocket relative z-20 -mx-3.5 -mb-3 rounded-t-[1.85rem] rounded-b-[2.25rem] border border-white/35 bg-gradient-to-b from-white/[0.22] via-[#1a1d24]/85 to-[#0e1014]/90 backdrop-blur-2xl px-4 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.45)] text-center transition-all duration-300"
-                >
-                  <p className="text-[11px] font-medium tracking-wide text-white/70">
-                    Total Balance
-                  </p>
-                  <div className="mt-0.5 flex items-baseline justify-center">
-                    <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm font-sans" data-testid="spendly-total-balance">
-                      {rupees(balance)}
-                    </span>
+                {/* Income & Expense Badges */}
+                <div className="flex items-center justify-center gap-3 pt-2 mt-2 border-t border-white/10 text-[11px]">
+                  <div className="flex items-center gap-1 font-bold text-emerald-400">
+                    <ArrowDownLeft className="h-3 w-3 stroke-[2.5]" />
+                    <span>{rupees(salary)}</span>
                   </div>
-
-                  {/* Income & Expense Badges */}
-                  <div className="flex items-center justify-center gap-3 pt-2 mt-2 border-t border-white/10 text-[11px]">
-                    <div className="flex items-center gap-1 font-bold text-emerald-400">
-                      <ArrowDownLeft className="h-3 w-3 stroke-[2.5]" />
-                      <span>{rupees(salary)}</span>
-                    </div>
-                    <div className="h-2.5 w-[1px] bg-white/20" />
-                    <div className="flex items-center gap-1 font-bold text-rose-400">
-                      <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
-                      <span>{rupees(spent)}</span>
-                    </div>
+                  <div className="h-2.5 w-[1px] bg-white/20" />
+                  <div className="flex items-center gap-1 font-bold text-rose-400">
+                    <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
+                    <span>{rupees(spent)}</span>
                   </div>
-
-                  {/* When Revealed: Dots and Tuck hint */}
-                  {walletPhase === 'revealed' && (
-                    <div className="mt-3 pt-2.5 border-t border-white/10 flex flex-col items-center gap-1.5">
-                      <div className="flex items-center gap-2">
-                        {walletCards.map((_, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveCard(idx);
-                            }}
-                            aria-label={`Go to card ${idx + 1}`}
-                            className={`rounded-full transition-all duration-300 ${
-                              idx === activeCard
-                                ? 'w-6 h-1.5 bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)] ring-1 ring-white/50'
-                                : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] font-mono text-white/80">
-                        <span>{walletCards[activeCard].label}</span>
-                        <span className="opacity-40">•</span>
-                        <span>•••• {walletCards[activeCard].last4}</span>
-                      </div>
-                      <p className="text-[10px] text-white/50 font-sans tracking-wide">
-                        Swipe left/right to browse • Tap outside to tuck in
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
-          </>
+          </div>
         );
       })()}
 
