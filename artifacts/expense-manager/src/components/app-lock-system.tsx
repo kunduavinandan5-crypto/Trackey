@@ -18,6 +18,7 @@ import {
   saveAppLockConfig,
   setAppPin,
   verifyPin,
+  getPinLockRemainingMs,
   disableAppLock,
   updateAppLockMeta,
   isSessionUnlocked,
@@ -99,7 +100,12 @@ export function AppLockScreen({ onUnlock, notify }: AppLockScreenProps) {
           onUnlock();
         } else {
           setIsShaking(true);
-          setError('Incorrect PIN. Please try again.');
+          const waitMs = getPinLockRemainingMs();
+          setError(
+            waitMs > 0
+              ? `Too many attempts. Try again in ${Math.ceil(waitMs / 1000)}s.`
+              : 'Incorrect PIN. Please try again.',
+          );
           setTimeout(() => {
             setPin('');
             setIsShaking(false);

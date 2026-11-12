@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /settings
 Disallow: /add-expense
+Disallow: /api/
 
 # AI Search & Generative Engine Optimization (GEO)
 User-agent: GPTBot

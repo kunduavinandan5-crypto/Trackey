@@ -24,17 +24,47 @@ import type {
   SalaryRow,
 } from './types.js';
 
-const SUPABASE_URL = (
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  'https://ytnrtpaavuvrufbjqgfe.supabase.co'
-).replace(/\/+$/, '');
+// Configuration comes from server env vars only (no hardcoded project URL/keys).
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+// Public anon key only. NEVER use a service-role key here: calls must run as the user so RLS applies.
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Public anon key (same one the browser app already ships with).
-const SUPABASE_ANON_KEY =
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bnJ0cGFhdnV2cnVmYmpxZ2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4Nzg4NzAsImV4cCI6MjEwNDQ1NDg3MH0.NpevKARacYjbS-KndRWr9MHParKp8TDinwdgtzFJarM';
+const MAX_BODY_BYTES = 16 * 1024;
+const IP_RATE_LIMIT = 60; // requests per window per IP (pre-auth, blocks token-guessing/floods)
+const IP_BUCKET_MAX = 5000;
+const ipBuckets = new Map<string, number[]>();
+
+function clientIp(request: Request): string {
+  const fwd = request.headers.get('x-forwarded-for') || '';
+  return fwd.split(',')[0].trim() || request.headers.get('x-real-ip') || 'unknown';
+}
+
+function ipLimited(ip: string): boolean {
+  const now = Date.now();
+  const hits = (ipBuckets.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  hits.push(now);
+  if (ipBuckets.size >= IP_BUCKET_MAX && !ipBuckets.has(ip)) {
+    const oldest = ipBuckets.keys().next().value;
+    if (oldest !== undefined) ipBuckets.delete(oldest);
+  }
+  ipBuckets.set(ip, hits);
+  return hits.length > IP_RATE_LIMIT;
+}
+
+/** Structured security/audit log (no tokens, no message content, obfuscated identifiers). */
+function audit(event: string, request: Request, extra: Record<string, unknown> = {}) {
+  const ip = clientIp(request);
+  const maskedIp = ip.includes(':') ? ip.split(':').slice(0, 3).join(':') + ':*' : ip.split('.').slice(0, 3).join('.') + '.*';
+  console.warn(
+    JSON.stringify({
+      sec: event,
+      at: new Date().toISOString(),
+      ip: maskedIp,
+      ua: (request.headers.get('user-agent') || '').slice(0, 120),
+      ...extra,
+    }),
+  );
+}
 
 const MAX_MESSAGES = 8;
 const MAX_MESSAGE_CHARS = 1000;
@@ -376,19 +406,39 @@ export async function POST(request: Request): Promise<Response> {
     return json({ error: 'AI assistant is not configured on the server yet.' }, 503);
   }
 
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('[ai-chat] SUPABASE_URL / SUPABASE_ANON_KEY are not configured on the server.');
+    return json({ error: 'AI assistant is not configured on the server yet.' }, 503);
+  }
+
+  if (ipLimited(clientIp(request))) {
+    audit('ai.rate_limited.ip', request);
+    return json({ error: 'Too many requests. Please slow down.' }, 429);
+  }
+
   const auth = request.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  if (!token) return json({ error: 'Please sign in to use the AI assistant.' }, 401);
+  if (!token || token.length > 4096) return json({ error: 'Please sign in to use the AI assistant.' }, 401);
 
   const user = await verifyUser(token);
-  if (!user) return json({ error: 'Your session has expired. Please sign in again.' }, 401);
+  if (!user) {
+    audit('ai.auth.failed', request);
+    return json({ error: 'Your session has expired. Please sign in again.' }, 401);
+  }
   if (rateLimited(user.id)) {
+    audit('ai.rate_limited.user', request, { user: user.id.slice(0, 8) });
     return json({ error: 'You are asking too quickly. Please wait a few minutes and try again.' }, 429);
   }
 
+  const declaredLength = Number(request.headers.get('content-length') || 0);
+  if (declaredLength > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
+
   let body: { messages?: unknown; provider?: unknown };
   try {
-    body = (await request.json()) as typeof body;
+    const text = await request.text();
+    if (text.length > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
+    body = JSON.parse(text) as typeof body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('bad body');
   } catch {
     return json({ error: 'Invalid request.' }, 400);
   }
