@@ -106,19 +106,59 @@ export async function hashPin(pin: string, salt: string): Promise<string> {
   }
 }
 
+// PIN brute-force protection: 5 wrong attempts => escalating lockout (30s, 1m, 5m, 15m).
+const PIN_FAIL_KEY = 'spendly_pin_failures_v1';
+const PIN_MAX_FAILS = 5;
+
+function readPinFailState(): { count: number; lockedUntil: number } {
+  try {
+    const p = JSON.parse(localStorage.getItem(PIN_FAIL_KEY) || '{}');
+    return { count: Number(p.count) || 0, lockedUntil: Number(p.lockedUntil) || 0 };
+  } catch {
+    return { count: 0, lockedUntil: 0 };
+  }
+}
+
+/** Milliseconds remaining before PIN entry is allowed again (0 = not locked). */
+export function getPinLockRemainingMs(): number {
+  return Math.max(0, readPinFailState().lockedUntil - Date.now());
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 // Verify entered PIN against stored configuration
 export async function verifyPin(pin: string): Promise<boolean> {
   const config = getAppLockConfig();
   if (!config.enabled || !config.pinHash || !config.pinSalt) return true;
+  if (getPinLockRemainingMs() > 0) return false;
   const hash = await hashPin(pin, config.pinSalt);
-  return hash === config.pinHash;
+  const ok = constantTimeEqual(hash, config.pinHash);
+  try {
+    if (ok) {
+      localStorage.removeItem(PIN_FAIL_KEY);
+    } else {
+      const count = readPinFailState().count + 1;
+      let lockedUntil = 0;
+      if (count >= PIN_MAX_FAILS) {
+        const step = Math.min(count - PIN_MAX_FAILS, 3);
+        lockedUntil = Date.now() + [30_000, 60_000, 300_000, 900_000][step];
+      }
+      localStorage.setItem(PIN_FAIL_KEY, JSON.stringify({ count, lockedUntil }));
+      console.warn('[Security] applock.pin.failed', new Date().toISOString());
+    }
+  } catch {}
+  return ok;
 }
 
 // Set up or update the numeric PIN. Pass userId to also sync to Supabase.
 export async function setAppPin(pin: string, enableBiometric = false, userId?: string): Promise<void> {
-  const salt = window.crypto?.getRandomValues
-    ? buf2hex(window.crypto.getRandomValues(new Uint8Array(16)).buffer)
-    : Math.random().toString(36).substring(2) + Date.now().toString(36);
+  if (!window.crypto?.getRandomValues) throw new Error('Secure random number generator unavailable.');
+  const salt = buf2hex(window.crypto.getRandomValues(new Uint8Array(16)).buffer);
   const pinHash = await hashPin(pin, salt);
 
   const prev = getAppLockConfig();

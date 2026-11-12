@@ -37,6 +37,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_USER_KEY = 'spendly_auth_user';
 const LEGACY_AUTH_USER_KEY = 'paisa_auth_user';
 
+// Client-side brute-force throttle: 5 failed sign-ins => 15 minute lockout.
+// (Defence in depth; Supabase enforces the authoritative server-side limits.)
+const LOGIN_FAIL_KEY = 'spendly_login_failures_v1';
+const LOGIN_MAX_FAILS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
+function readLoginFailures(): number[] {
+  try {
+    const arr = JSON.parse(localStorage.getItem(LOGIN_FAIL_KEY) || '[]');
+    const now = Date.now();
+    return Array.isArray(arr) ? arr.filter((t) => typeof t === 'number' && now - t < LOGIN_WINDOW_MS) : [];
+  } catch {
+    return [];
+  }
+}
+function getLoginLockMs(): number {
+  const fails = readLoginFailures();
+  return fails.length >= LOGIN_MAX_FAILS ? LOGIN_WINDOW_MS - (Date.now() - fails[0]) : 0;
+}
+function recordLoginFailure() {
+  try {
+    localStorage.setItem(LOGIN_FAIL_KEY, JSON.stringify([...readLoginFailures(), Date.now()]));
+  } catch {}
+}
+function clearLoginFailures() {
+  try {
+    localStorage.removeItem(LOGIN_FAIL_KEY);
+  } catch {}
+}
+
 // Only the id is needed to pick the right local cache on reload; don't persist
 // the full Supabase user object (metadata, identities, etc.) in localStorage.
 const rememberAuthUser = (u: User) =>
@@ -158,11 +188,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithPassword = async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
+      // Never grant an authenticated-looking session without a real backend in production.
+      if (!import.meta.env.DEV) {
+        return { error: new Error('Sign-in is unavailable right now. Please try again later.') };
+      }
       signInWithDemo(email, email.split('@')[0]);
       return { error: null };
     }
     const cleanEmail = email.trim().toLowerCase();
+    const lock = getLoginLockMs();
+    if (lock > 0) {
+      return { error: new Error(`Too many failed attempts. Try again in ${Math.ceil(lock / 60000)} minute(s).`) };
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+    if (error) {
+      recordLoginFailure();
+      console.warn('[Security] auth.login.failed', new Date().toISOString());
+    } else {
+      clearLoginFailures();
+      console.info('[Security] auth.login.success', new Date().toISOString());
+    }
     if (!error && data.user) {
       setUser(data.user);
       if (data.session) setSession(data.session);
@@ -181,6 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     if (!isSupabaseConfigured) {
+      if (!import.meta.env.DEV) {
+        return { data: null, error: new Error('Sign-up is unavailable right now. Please try again later.') };
+      }
       signInWithDemo(email, fullName || email.split('@')[0]);
       return { data: null, error: null };
     }

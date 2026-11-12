@@ -324,3 +324,25 @@ CREATE POLICY "Users can manage own emi schedules"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+
+-- ==============================================================================
+-- 8. APP LOCK SETTINGS (PIN hash + salt only; raw PIN never leaves the device)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.app_lock_settings (
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  pin_hash TEXT NOT NULL CHECK (char_length(pin_hash) BETWEEN 8 AND 256),
+  pin_salt TEXT NOT NULL CHECK (char_length(pin_salt) BETWEEN 8 AND 128),
+  bio_enabled BOOLEAN NOT NULL DEFAULT false,
+  auto_lock_min INT NOT NULL DEFAULT 0 CHECK (auto_lock_min BETWEEN 0 AND 1440),
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.app_lock_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own app lock settings" ON public.app_lock_settings;
+CREATE POLICY "Users can manage own app lock settings"
+  ON public.app_lock_settings FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+REVOKE ALL ON public.app_lock_settings FROM anon;
