@@ -45,6 +45,46 @@ function seo(siteUrl: string | undefined): Plugin {
   };
 }
 
+// Serves api/chat.ts under `vite dev` / `vite preview` (Vercel serves it in production).
+function localApi(env: Record<string, string>): Plugin {
+  // Make server-only keys from .env available to the handler as process.env.*
+  for (const key of ['GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'AI_PROVIDER', 'GEMINI_MODEL', 'ANTHROPIC_MODEL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY']) {
+    if (env[key] && !process.env[key]) process.env[key] = env[key];
+  }
+  return {
+    name: 'spendly-local-api',
+    configureServer(server) {
+      server.middlewares.use('/api/chat', async (req, res) => {
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          const body = Buffer.concat(chunks);
+          const headers = new Headers();
+          for (const [k, v] of Object.entries(req.headers)) {
+            if (typeof v === 'string') headers.set(k, v);
+          }
+          const method = req.method || 'GET';
+          const request = new Request(`http://localhost${req.url || ''}`, {
+            method,
+            headers,
+            body: method === 'GET' || method === 'HEAD' ? undefined : body,
+          });
+          const mod = (await server.ssrLoadModule('/api/chat.ts')) as Record<string, (r: Request) => Promise<Response>>;
+          const handler = mod[method];
+          const response = handler ? await handler(request) : new Response('Method Not Allowed', { status: 405 });
+          res.statusCode = response.status;
+          response.headers.forEach((value, key) => res.setHeader(key, value));
+          res.end(Buffer.from(await response.arrayBuffer()));
+        } catch (err) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Local API error', detail: err instanceof Error ? err.message : String(err) }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const siteUrl = process.env.VITE_SITE_URL || env.VITE_SITE_URL;
@@ -61,6 +101,7 @@ export default defineConfig(({ mode }) => {
     react(),
     tailwindcss(),
     seo(siteUrl),
+    localApi(env),
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {

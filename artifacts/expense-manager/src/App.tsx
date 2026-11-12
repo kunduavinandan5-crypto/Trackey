@@ -72,6 +72,7 @@ import LoginPage from '@/pages/login';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 import { ReportCharts } from '@/components/report-charts';
+import { AiAssistant } from '@/components/ai-assistant';
 import { exportMonthlyExpensePdf } from '@/lib/pdf-report';
 import {
   saveExpenseToDb,
@@ -905,6 +906,9 @@ function AppShell({
       <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-[1420px] px-3.5 pb-20 pt-3 sm:px-8 sm:pb-16 sm:pt-6 lg:px-12">
         {children}
       </main>
+
+      {/* AI assistant (answers from the signed-in user's own data) */}
+      <AiAssistant />
 
       {/* Floating Toast */}
       {toast && (
