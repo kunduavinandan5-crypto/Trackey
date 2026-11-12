@@ -73,17 +73,23 @@ const SYNONYMS: Record<string, string> = {
 
 function tokenize(question: string): Set<string> {
   const out = new Set<string>();
-  for (const w of question.toLowerCase().replace(/[^\p{L}\p{N}₹]+/gu, ' ').split(' ')) {
-    if (!w || FILLER.has(w)) continue;
+  const words = question
+    .toLowerCase()
+    .replace(/[^\w\s₹\u00C0-\u024F\u0900-\u097F]+/g, ' ')
+    .split(/\s+/);
+  words.forEach((w) => {
+    if (!w || FILLER.has(w)) return;
     out.add(SYNONYMS[w] ?? w);
-  }
+  });
   return out;
 }
 
 function similarity(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 || b.size === 0) return 0;
   let inter = 0;
-  for (const t of a) if (b.has(t)) inter++;
+  a.forEach((t) => {
+    if (b.has(t)) inter++;
+  });
   return inter / (a.size + b.size - inter);
 }
 
