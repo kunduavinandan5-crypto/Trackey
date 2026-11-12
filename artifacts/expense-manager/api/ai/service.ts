@@ -316,7 +316,7 @@ function systemPrompt(contextJson: string): string {
 // Model providers
 // ---------------------------------------------------------------------------
 async function callGemini(system: string, messages: ChatMessage[]): Promise<string> {
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
@@ -340,7 +340,7 @@ async function callGemini(system: string, messages: ChatMessage[]): Promise<stri
 }
 
 async function callClaude(system: string, messages: ChatMessage[]): Promise<string> {
-  const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+  const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5';
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
