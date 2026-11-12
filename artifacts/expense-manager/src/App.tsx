@@ -72,7 +72,7 @@ import LoginPage from '@/pages/login';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 import { ReportCharts } from '@/components/report-charts';
-import { AiAssistant } from '@/components/ai-assistant';
+import { AiAssistant } from '@/ai';
 import { exportMonthlyExpensePdf } from '@/lib/pdf-report';
 import {
   saveExpenseToDb,

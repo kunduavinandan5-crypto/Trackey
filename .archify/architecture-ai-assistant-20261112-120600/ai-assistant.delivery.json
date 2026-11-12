@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "3d537b6f-d807-4434-a7c8-31b9c1178b87",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\Expense\\.archify\\architecture-ai-assistant-20261112-120600\\candidate.json",
+  "output": "D:\\Expense\\.archify\\architecture-ai-assistant-20261112-120600\\ai-assistant.html",
+  "specification": {
+    "sha256": "073ee12ebd6939a08f3161ea173301072c293e467d06624e41bbe316666753a1",
+    "bytes": 8987
+  },
+  "artifact": {
+    "sha256": "72fe8fafefcc7be7aac40ddcc85798200cd7a27333c8f06b61041c9562505cd8",
+    "bytes": 864515
+  }
+}

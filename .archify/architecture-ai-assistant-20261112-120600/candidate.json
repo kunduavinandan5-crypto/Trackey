@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Spendly AI Financial Assistant",
+    "subtitle": "Zero-Trust Financial Copilot with RLS Isolation, Semantic Caching & Dual-Model Inference",
+    "output": ".archify/architecture-ai-assistant-20261112-120600/ai-assistant.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/kunduavinandan5-crypto/Trackey",
+      "provider": "github",
+      "revision": "4a581133c561f0c26ba26bf5d151f2fec0535f82"
+    },
+    "viewBox": [1240, 640],
+    "legend": {
+      "mode": "all"
+    },
+    "views": [
+      {
+        "id": "full-flow",
+        "label": "End-to-End Chat Flow",
+        "focus": ["users", "pwa-ui", "api-chat", "supabase-db", "llm-gemini"],
+        "note": "Complete path from user prompt to RLS data retrieval and Gemini inference response"
+      },
+      {
+        "id": "zero-trust-rls",
+        "label": "Security & RLS Isolation",
+        "focus": ["auth-limiter", "supabase-auth", "api-chat", "supabase-db"],
+        "note": "Bearer JWT verified by Supabase Auth; all financial queries executed under caller's Row Level Security"
+      },
+      {
+        "id": "semantic-caching",
+        "label": "Semantic Cache Layer",
+        "focus": ["api-chat", "semantic-cache"],
+        "note": "Per-user SHA-256 fingerprint + Jaccard token similarity (80% threshold) eliminates duplicate LLM calls"
+      },
+      {
+        "id": "dual-model",
+        "label": "Dual AI Fallback",
+        "focus": ["api-chat", "llm-gemini", "llm-claude"],
+        "note": "Serverless dispatch to Google Gemini 1.5 Flash with fallback to Anthropic Claude 3.5 Sonnet"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Authenticated User",
+      "sublabel": "Mobile / Web Session",
+      "tag": "Prompt Input",
+      "icon": "person",
+      "pos": [40, 260],
+      "size": [140, 64]
+    },
+    {
+      "id": "pwa-ui",
+      "type": "frontend",
+      "label": "AI Assistant Modal",
+      "sublabel": "React + Tailwind",
+      "tag": "Floating Sheet UI",
+      "brand": "react",
+      "sources": [
+        {
+          "path": "artifacts/expense-manager/src/components/ai-assistant.tsx",
+          "line": 1,
+          "label": "ai-assistant.tsx"
+        }
+      ],
+      "pos": [300, 260],
+      "size": [160, 64]
+    },
+    {
+      "id": "api-chat",
+      "type": "backend",
+      "label": "AI Chat Router",
+      "sublabel": "Vercel /api/chat",
+      "tag": "Node.js ES2022",
+      "brand": "vercel",
+      "sources": [
+        {
+          "path": "artifacts/expense-manager/api/chat.ts",
+          "line": 1,
+          "label": "chat.ts handler"
+        }
+      ],
+      "pos": [640, 260],
+      "size": [170, 64]
+    },
+    {
+      "id": "auth-limiter",
+      "type": "security",
+      "label": "JWT & Rate Limiter",
+      "sublabel": "In-Memory Token Bucket",
+      "tag": "20 req / 5 min",
+      "icon": "security",
+      "sources": [
+        {
+          "path": "artifacts/expense-manager/api/chat.ts",
+          "line": 36,
+          "label": "Rate limit check"
+        }
+      ],
+      "pos": [640, 100],
+      "size": [170, 64]
+    },
+    {
+      "id": "semantic-cache",
+      "type": "database",
+      "label": "Semantic Cache",
+      "sublabel": "Per-User Token LRU",
+      "tag": "SHA-256 + Jaccard 80%",
+      "icon": "database",
+      "sources": [
+        {
+          "path": "artifacts/expense-manager/api/chat.ts",
+          "line": 54,
+          "label": "Semantic cache"
+        }
+      ],
+      "pos": [640, 420],
+      "size": [170, 64]
+    },
+    {
+      "id": "supabase-auth",
+      "type": "security",
+      "label": "Supabase Auth",
+      "sublabel": "GoTrue /auth/v1/user",
+      "tag": "JWT Verification",
+      "brand": "supabase",
+      "pos": [990, 100],
+      "size": [170, 64]
+    },
+    {
+      "id": "supabase-db",
+      "type": "cloud",
+      "label": "Supabase PostgreSQL",
+      "sublabel": "Expenses, Salaries, Loans",
+      "tag": "Row Level Security",
+      "brand": "postgresql",
+      "sources": [
+        {
+          "path": "artifacts/expense-manager/api/chat.ts",
+          "line": 177,
+          "label": "sbRows() RLS queries"
+        }
+      ],
+      "pos": [990, 220],
+      "size": [170, 64]
+    },
+    {
+      "id": "llm-gemini",
+      "type": "external",
+      "label": "Google Gemini",
+      "sublabel": "gemini-1.5-flash",
+      "tag": "Primary Provider",
+      "brand": "google-gemini",
+      "sources": [
+        {
+          "path": "artifacts/expense-manager/api/chat.ts",
+          "line": 347,
+          "label": "callGemini()"
+        }
+      ],
+      "pos": [990, 350],
+      "size": [170, 64]
+    },
+    {
+      "id": "llm-claude",
+      "type": "external",
+      "label": "Anthropic Claude",
+      "sublabel": "claude-3-5-sonnet",
+      "tag": "Fallback Provider",
+      "brand": "anthropic",
+      "sources": [
+        {
+          "path": "artifacts/expense-manager/api/chat.ts",
+          "line": 381,
+          "label": "callClaude()"
+        }
+      ],
+      "pos": [990, 480],
+      "size": [170, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Client PWA Environment",
+      "wraps": ["users", "pwa-ui"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Vercel Serverless Function Isolation (/api/chat)",
+      "wraps": ["auth-limiter", "api-chat", "semantic-cache"]
+    },
+    {
+      "kind": "region",
+      "label": "Supabase Cloud Managed BaaS",
+      "wraps": ["supabase-auth", "supabase-db"]
+    },
+    {
+      "kind": "region",
+      "label": "External Foundation Model APIs",
+      "wraps": ["llm-gemini", "llm-claude"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-to-pwa",
+      "from": "users",
+      "to": "pwa-ui",
+      "label": "Question prompt",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight"
+    },
+    {
+      "id": "pwa-to-api",
+      "from": "pwa-ui",
+      "to": "api-chat",
+      "label": "POST /api/chat (Bearer JWT)",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight"
+    },
+    {
+      "id": "api-to-limiter",
+      "from": "api-chat",
+      "to": "auth-limiter",
+      "label": "Check rate limit",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "route": "straight"
+    },
+    {
+      "id": "limiter-to-auth",
+      "from": "auth-limiter",
+      "to": "supabase-auth",
+      "label": "Verify JWT token",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight"
+    },
+    {
+      "id": "api-to-cache",
+      "from": "api-chat",
+      "to": "semantic-cache",
+      "label": "SHA-256 + Jaccard match",
+      "variant": "default",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight"
+    },
+    {
+      "id": "api-to-db",
+      "from": "api-chat",
+      "to": "supabase-db",
+      "label": "REST v1 (RLS queries)",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "api-to-gemini",
+      "from": "api-chat",
+      "to": "llm-gemini",
+      "label": "Synthesized financial context",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "gemini-to-claude",
+      "from": "llm-gemini",
+      "to": "llm-claude",
+      "label": "Failover fallback",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Zero-Trust Data Isolation",
+      "items": [
+        "The browser client never sends raw financial records; only the question and user JWT are transmitted.",
+        "The serverless function queries Supabase REST v1 with the caller's JWT, enforcing PostgreSQL Row Level Security (RLS).",
+        "Cross-user data leakage is cryptographically impossible because queries execute under the caller's database role."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Semantic In-Memory Cache",
+      "items": [
+        "Fingerprints user context + today's date via SHA-256; any new transaction or day rolls the cache automatically.",
+        "Jaccard word similarity (80% threshold) detects rephrased queries ('what did I spend' vs 'how much did I spend').",
+        "Zero latency and zero token cost on cache hits; ephemeral memory resets on cold starts."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Serverless Model Orchestration",
+      "items": [
+        "API keys (GEMINI_API_KEY, ANTHROPIC_API_KEY) live strictly in server environment secrets, never exposed to clients.",
+        "Rate limiter restricts traffic to 20 requests per 5-minute rolling window per authenticated user.",
+        "Supports Google Gemini 1.5 Flash as primary, with seamless fallback to Anthropic Claude 3.5 Sonnet."
+      ]
+    }
+  ]
+}
